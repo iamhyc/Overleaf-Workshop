@@ -10,6 +10,7 @@ Open Overleaf/ShareLaTex projects in vscode, with full collaboration support.
   - fetch remote history changes
   - display multiple cursors
   - send/receive chat message
+  - compile: 1) on save, 2) on `ctrl+alt+b`
 
 - virtual workspace
   - display icon on sidebar when workspace open
