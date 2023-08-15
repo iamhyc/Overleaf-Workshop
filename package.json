@@ -1,0 +1,150 @@
+{
+  "name": "overleaf-workshop",
+  "displayName": "Overleaf-Workshop",
+  "description": "Open Overleaf/ShareLaTex projects in vscode, with full collaboration support.",
+  "version": "0.0.1",
+  "author": {
+    "name": "iamhyc",
+    "email": "sudofree@163.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iamhyc/overleaf-workshop"
+  },
+  "bugs": {
+    "url": "https://github.com/iamhyc/overleaf-workshop/issues"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+
+    "commands": [
+      {
+        "command": "projectManager.addServer",
+        "title": "Add New Server",
+        "icon": "$(add)"
+      },
+      {
+        "command": "projectManager.loginServer",
+        "title": "Login Server",
+        "icon": "$(log-in)"
+      },
+      {
+        "command": "projectManager.logoutServer",
+        "title": "Logout Server",
+        "icon": "$(log-out)"
+      },
+      {
+        "command": "projectManager.refreshServer",
+        "title": "Refresh Project List",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "projectManager.deleteServer",
+        "title": "Remove Server",
+        "icon": "$(trash)"
+      },
+      
+      {
+        "command": "projectManager.openProjectInCurrentWindow",
+        "title": "Open Project in Current Window ...",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "projectManager.openProjectInNewWindow",
+        "title": "Open Project in New Window ...",
+        "icon": "$(empty-window)"
+      }
+    ],
+
+    "viewsContainers": {
+      "activitybar": [{
+        "id": "overleaf-workshop",
+        "title": "Overleaf-Workshop",
+        "icon": "resources/icons/overleaf_bw.svg"
+      }]
+    },
+
+    "views": {
+      "overleaf-workshop": [
+        {
+          "id": "projectManager",
+          "name": "Hosts"
+        }
+      ]
+    },
+
+    "menus": {
+      "view/title": [
+        {
+          "command": "projectManager.addServer",
+          "when": "view == projectManager",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "projectManager.loginServer",
+          "when": "view == projectManager && viewItem == server",
+          "group": "inline"
+        },
+        {
+          "command": "projectManager.logoutServer",
+          "when": "view == projectManager && viewItem == server"
+        },
+        {
+          "command": "projectManager.refreshServer",
+          "when": "view == projectManager && viewItem == server",
+          "group": "inline"
+        },
+        {
+          "command": "projectManager.deleteServer",
+          "when": "view == projectManager && viewItem == server"
+        },
+        {
+          "command": "projectManager.openProjectInCurrentWindow",
+          "when": "view == projectManager && viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "projectManager.openProjectInNewWindow",
+          "when": "view == projectManager && viewItem == project",
+          "group": "inline"
+        }
+      ]
+    }
+
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "test-compile": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "20.2.5",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.8",
+    "@typescript-eslint/parser": "^5.59.8",
+    "@vscode/test-electron": "^2.3.2",
+    "esbuild": "^0.18.14",
+    "eslint": "^8.41.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "typescript": "^5.1.3"
+  }
+}
