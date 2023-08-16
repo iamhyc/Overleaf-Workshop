@@ -23,12 +23,16 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-
     "commands": [
       {
         "command": "projectManager.addServer",
         "title": "Add New Server",
         "icon": "$(add)"
+      },
+      {
+        "command": "projectManager.removeServer",
+        "title": "Remove Server",
+        "icon": "$(trash)"
       },
       {
         "command": "projectManager.loginServer",
@@ -38,19 +42,13 @@
       {
         "command": "projectManager.logoutServer",
         "title": "Logout Server",
-        "icon": "$(log-out)"
+        "icon": "$(debug-disconnect)"
       },
       {
         "command": "projectManager.refreshServer",
         "title": "Refresh Project List",
         "icon": "$(sync)"
       },
-      {
-        "command": "projectManager.deleteServer",
-        "title": "Remove Server",
-        "icon": "$(trash)"
-      },
-      
       {
         "command": "projectManager.openProjectInCurrentWindow",
         "title": "Open Project in Current Window ...",
@@ -62,15 +60,15 @@
         "icon": "$(empty-window)"
       }
     ],
-
     "viewsContainers": {
-      "activitybar": [{
-        "id": "overleaf-workshop",
-        "title": "Overleaf-Workshop",
-        "icon": "resources/icons/overleaf_bw.svg"
-      }]
+      "activitybar": [
+        {
+          "id": "overleaf-workshop",
+          "title": "Overleaf-Workshop",
+          "icon": "resources/icons/overleaf_bw.svg"
+        }
+      ]
     },
-
     "views": {
       "overleaf-workshop": [
         {
@@ -79,7 +77,6 @@
         }
       ]
     },
-
     "menus": {
       "view/title": [
         {
@@ -91,21 +88,21 @@
       "view/item/context": [
         {
           "command": "projectManager.loginServer",
-          "when": "view == projectManager && viewItem == server",
+          "when": "view == projectManager && viewItem == server_no_login",
           "group": "inline"
         },
         {
           "command": "projectManager.logoutServer",
-          "when": "view == projectManager && viewItem == server"
+          "when": "view == projectManager && viewItem == server_login"
         },
         {
           "command": "projectManager.refreshServer",
-          "when": "view == projectManager && viewItem == server",
+          "when": "view == projectManager && viewItem == server_login",
           "group": "inline"
         },
         {
-          "command": "projectManager.deleteServer",
-          "when": "view == projectManager && viewItem == server"
+          "command": "projectManager.removeServer",
+          "when": "view == projectManager && viewItem == server_login || viewItem == server_no_login"
         },
         {
           "command": "projectManager.openProjectInCurrentWindow",
@@ -119,7 +116,6 @@
         }
       ]
     }
-
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
@@ -137,6 +133,7 @@
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "20.2.5",
+    "@types/node-fetch": "^2.6.4",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "@typescript-eslint/parser": "^5.59.8",
@@ -146,5 +143,8 @@
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
     "typescript": "^5.1.3"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.12"
   }
 }

@@ -1,50 +1,46 @@
 # Overleaf-Workshop
 
-> Only for open-source [overleaf](https://github.com/overleaf/overleaf).
+==**This project is in very early stage, stay tunned!**==
 
-Open Overleaf/ShareLaTex projects in vscode, with full collaboration support.
+Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
-### Basic Design
 
-- websocket API
-  - sync remote text buffer --> `TextDocumentProvider`
-  - sync remote project structure --> `FileSystemProvider``
-  - fetch remote history changes
-  - display multiple cursors
-  - send/receive chat message
-  - compile: 1) on save, 2) on `ctrl+alt+b`
 
-- virtual workspace
-  - display icon on "Activity Bar" when workspace open
-  - mount project structure as virtual directory
-  - display history changes in sidebar
-  - chat message in sidebar
+### TODO
 
-- On status bar, display:
-  - build icon (with word count), chat icon
+- Web API reverse engineering (Overleaf Web Route List, [webapi.md](./docs/webapi.md))
 
-- support local syntax check
+  - [ ] Login / Logout Server
+  - [ ] Create / Delete Project
+  - [ ] Fetch project entities, project change histories
+  - [ ] Remote Edit Cursor Position
+  - [ ] ...
 
-- support project-specific setting
-  - "Compiler", "Main document"
-  - "Spell check", "Dictionary"
+- Open project as virtual workspace
 
-- support source-PDF (reverse) jump (via API)
+  - [ ] sync remote project structure via `FileSystemProvider`
+  - [ ] sync remote text buffer via `TextDocumentProvider`
+  - [ ] support "source <--> PDF" (reverse) jump (via web API)
+  - [ ] support local syntax check (via other extension)
+  - [ ] compile: 1) on save, 2) on `ctrl+alt+b`
+  - [ ] display "build icon" on status bar
 
-- support local git bridge
+- Collaboration
 
-### UX Design
+  - [ ] Display online users on each project
+  - [ ] Display multiple colored cursors in one file
+  - [ ] send/receive chat message
 
-- Primary Sidebar: project structure, 
+- Miscs
 
-  - extension page: history list
+  - [ ] support project-specific settings:
 
-- Secondary Sidebar: chat list
+    > "Compiler", "Main document", "Spell check", "Dictionary"
+
+  - [ ] support local git bridge
+
+
 
 ### References
-
-- VSCode API Reference, [index.d.ts](./node_modules/@types/vscode/index.d.ts)
-
-- Overleaf Web Route List, [webapi.md](./docs/webapi.md)
 
 - Overleaf Official Logos, [link](https://www.overleaf.com/for/partners/jlogos)
