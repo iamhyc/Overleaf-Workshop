@@ -27,6 +27,7 @@ class ProjectItem extends DataItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
         super(label, vscode.TreeItemCollapsibleState.None);
+        this.iconPath = new vscode.ThemeIcon('notebook');
         this.contextValue = 'project';
     }
 }
@@ -56,7 +57,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             const servers = GlobalStateManager.getServers(this.context);
             const serverItems = Object.values(servers).map(server => new ServerItem(
                 server.name,
-                server.login?.projects? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
+                server.login? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
             ));
             return Promise.resolve(serverItems);
         }
@@ -114,11 +115,22 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         });
     }
 
-    logoutServer(element: ServerItem) { console.log('logout: ', element.name) }
-    refreshServer(element: ServerItem) { console.log('refresh: ', element.name) }
-    deleteServer(element: ServerItem) { console.log('delete: ', element.name) }
+    logoutServer(name: string) {
+        vscode.window.showInformationMessage(`Logout server "${name}" ?`, "Yes", "No")
+        .then((answer) => {
+            if (answer === "Yes") {
+                GlobalStateManager.logoutServer(this.context, name)
+                .then(success => {
+                    if (success)
+                        this.refresh();
+                });
+            }
+        });
+    }
+    refreshServer(element: ServerItem) { }
+    deleteServer(element: ServerItem) { }
 
-    openProjectInCurrentWindow(element: ProjectItem) { console.log('open: ', element.label) }
-    openProjectInNewWindow(element: ProjectItem) { console.log('open in new window: ', element.label) }
+    openProjectInCurrentWindow(element: ProjectItem) { }
+    openProjectInNewWindow(element: ProjectItem) { }
     private _openProject(element: ProjectItem, newWindow: boolean) {}
 }

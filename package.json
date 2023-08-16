@@ -92,11 +92,12 @@
           "group": "inline"
         },
         {
-          "command": "projectManager.logoutServer",
-          "when": "view == projectManager && viewItem == server_login"
+          "command": "projectManager.refreshServer",
+          "when": "view == projectManager && viewItem == server_login",
+          "group": "inline"
         },
         {
-          "command": "projectManager.refreshServer",
+          "command": "projectManager.logoutServer",
           "when": "view == projectManager && viewItem == server_login",
           "group": "inline"
         },

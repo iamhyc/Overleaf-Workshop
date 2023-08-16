@@ -4,34 +4,78 @@ import fetch from 'node-fetch';
 interface ResponseSchema {
     type: 'success' | 'error';
     message?: string;
-    cookies?: {[key:string]:string};
+    identity?: {
+        csrfToken: string;
+        sharelatex_sid: string;
+    }
 }
 
-export async function passportLogin(url:string, email:string, password:string, cookies?:any): Promise<ResponseSchema> {
+async function getCsrfToken(url:string): Promise<[string,string]> {
+    const res = await fetch(url+'/login', {
+        method: 'GET'
+    });
+    const body = await res.text();
+    const match = body.match(/<input.*name="_csrf".*value="([\w\d-]*)">/);
+    if (!match) {
+        throw new Error('Failed to get CSRF token.');
+    } else {
+        const cookies = res.headers.raw()['set-cookie'];
+        const sharelatex_sid = cookies.find((cookie:string) => cookie.startsWith('sharelatex.sid')) as string;
+        return [ match[1],sharelatex_sid ];
+    }
+}
+
+export async function passportLogin(url:string, email:string, password:string): Promise<ResponseSchema> {
+    const [csrfToken,sharelatex_sid] = await getCsrfToken(url);
     const res = await fetch(url+'/login', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0',
-            'Cookie': cookies
+            'Cookie': sharelatex_sid,
+            'X-Csrf-Token': csrfToken
         },
-        body: JSON.stringify({ email: email, password: password })
+        body: JSON.stringify({ _csrf: csrfToken, email: email, password: password })
     });
 
     if (res.status===200) {
-        res.headers.raw()['set-cookie'].map((cookie:string) => {
-            const [key, value] = cookie.split(';')[0].split('=');
-            cookies[key] = value;
-        });
         return {
             type: 'success',
-            cookies: cookies
+            identity: {
+                csrfToken: csrfToken,
+                sharelatex_sid: sharelatex_sid,
+            }
         };
-    } else {
-        console.log(await res.text())
+    } else if (res.status===401) {
         return {
             type: 'error',
             message: (await res.json() as any).message
+        };
+    } else {
+        return {
+            type: 'error',
+            message: `${res.status}: `+await res.text()
+        };
+    }
+}
+
+export async function logout(url:string, identity:{[key:string]:string}): Promise<ResponseSchema> {
+    const res = await fetch(url+'/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Cookie': identity.sharelatex_sid,
+        },
+        body: JSON.stringify({ _csrf: identity.csrfToken })
+    });
+
+    if (res.status===200) {
+        return {
+            type: 'success'
+        };
+    } else {
+        return {
+            type: 'error',
+            message: `${res.status}: `+await res.text()
         };
     }
 }

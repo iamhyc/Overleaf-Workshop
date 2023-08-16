@@ -10,9 +10,10 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
 - Web API reverse engineering (Overleaf Web Route List, [webapi.md](./docs/webapi.md))
 
-  - [ ] Login / Logout Server
-  - [ ] Create / Delete Project
-  - [ ] Fetch project entities, project change histories
+  - [x] Login / Logout Server
+  - [ ] Create / Delete Projects
+  - [ ] List project related information
+  - [ ] Fetch project change histories
   - [ ] Remote Edit Cursor Position
   - [ ] ...
 

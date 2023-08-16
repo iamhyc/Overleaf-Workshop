@@ -14,8 +14,7 @@ export interface ServerState {
     url: string;
     login?: {
         username: string;
-        sharelatex_sid: string;
-        expires: string;
+        identity: any;
         projects?: ProjectState[]
     };
 }
@@ -58,11 +57,10 @@ export class GlobalStateManager {
 
         if (server.login===undefined) {
             const res = await api.passportLogin(server.url, auth.email, auth.password);
-            if (res.type==='success' && res.cookies!==undefined) {
+            if (res.type==='success' && res.identity!==undefined) {
                 server.login = {
                     username: auth.email,
-                    sharelatex_sid: res.cookies.sharelatex_sid,
-                    expires: res.cookies.expires
+                    identity: res.identity
                 };
                 context.globalState.update(keyServerStates, servers);
                 return true;
@@ -72,6 +70,20 @@ export class GlobalStateManager {
                 }
                 return false;
             }
+        } else {
+            return false;
+        }
+    }
+
+    static async logoutServer(context:vscode.ExtensionContext, name:string): Promise<boolean> {
+        const servers = context.globalState.get<ServerStateMap>(keyServerStates, {});
+        const server  = servers[name];
+
+        if (server.login!==undefined) {
+            await api.logout(server.url, server.login.identity);
+            delete server.login;
+            context.globalState.update(keyServerStates, servers);
+            return true;
         } else {
             return false;
         }

@@ -16,6 +16,9 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('projectManager.loginServer', (item) => {
         projectManagerProvider.loginServer(item.name);
     });
+    vscode.commands.registerCommand('projectManager.logoutServer', (item) => {
+        projectManagerProvider.logoutServer(item.name);
+    });
 
     // Register: commands shortcuts
     let disposable = vscode.commands.registerCommand(`${consts['ROOT_NAME']}.helloWorld`, () => {
