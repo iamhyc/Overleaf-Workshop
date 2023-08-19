@@ -8,37 +8,35 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
 ### TODO
 
-- Web API reverse engineering (Overleaf Web Route List, [webapi.md](./docs/webapi.md))
-
-  - [x] Login / Logout Server
-  - [x] List Projects
-  - [ ] Fetch project change histories
-  - [ ] Remote Edit Cursor Position
-  - [ ] ...
-
+- REST API (Overleaf Web Route List, [webapi.md](./docs/webapi.md))
+  - [x] Login / Logout server
+  - [x] List projects
+  - [ ] Compile project
+  - [ ] Get project build output (PDF)
+  - [ ] Sync between code and pdf
+  - [ ] Get file history updates and diff
+  - [ ] Download original files
+- WebSocket API
+  - [ ] Init websocket connection
+  - [ ] Request: `joinProject`
+  - [ ] Request: `joinDoc`, `leaveDoc`
+  - [ ] Request: `clientTracking.getConnectedUsers`
+  - [ ] Request: `clientTracking.updatePosition`
+  - [ ] Request: `applyOtUpdate`
 - Open project as virtual workspace
-
-  - [ ] sync remote project structure via `FileSystemProvider`
-  - [ ] sync remote text buffer via `TextDocumentProvider`
-  - [ ] support "source <--> PDF" (reverse) jump (via web API)
+  - [ ] sync remote project via `FileSystemProvider`
+  - [ ] sync between "code" and "pdf" (REST API)
   - [ ] support local syntax check (via other extension)
   - [ ] compile: 1) on save, 2) on `ctrl+alt+b`
   - [ ] display "build icon" on status bar
-
 - Collaboration
-
   - [ ] Display online users on each project
-  - [ ] Display multiple colored cursors in one file
+  - [ ] Display multiple colored cursors in joined doc
   - [ ] send/receive chat message
-
 - Miscs
-
   - [ ] support project-specific settings:
-
     > "Compiler", "Main document", "Spell check", "Dictionary"
-
   - [ ] support local git bridge
-
 
 
 ### References
