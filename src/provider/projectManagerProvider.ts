@@ -12,10 +12,12 @@ class DataItem extends vscode.TreeItem {
 
 class ServerItem extends DataItem {
     constructor(
+        private api: any,
         public readonly name: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
         super(name, collapsibleState);
+        this.api = api;
         this.iconPath = new vscode.ThemeIcon('vm');
         this.contextValue = collapsibleState===vscode.TreeItemCollapsibleState.None ? 'server_no_login' : 'server_login';
     }
@@ -24,7 +26,6 @@ class ServerItem extends DataItem {
 class ProjectItem extends DataItem {
     constructor(
         public readonly label: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
         super(label, vscode.TreeItemCollapsibleState.None);
         this.iconPath = new vscode.ThemeIcon('notebook');
@@ -52,12 +53,21 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
 
     getChildren(element?: DataItem): Thenable<DataItem[]> {
         if (element) {
-            return Promise.resolve([]);
+            if (element instanceof ServerItem) {
+                const _promise = GlobalStateManager.fetchServerProjects(this.context, element.name);
+                return _promise.then(projects => {
+                    const projectItems = projects.map(project => new ProjectItem(project.name));
+                    return projectItems;
+                });
+            } else {
+                return Promise.resolve([]);
+            }
         } else {
-            const servers = GlobalStateManager.getServers(this.context);
-            const serverItems = Object.values(servers).map(server => new ServerItem(
-                server.name,
-                server.login? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
+            const persists = GlobalStateManager.getServers(this.context);
+            const serverItems = Object.values(persists).map(persist => new ServerItem(
+                persist.api,
+                persist.server.name,
+                persist.server.login? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
             ));
             return Promise.resolve(serverItems);
         }
