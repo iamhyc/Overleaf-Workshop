@@ -137,8 +137,10 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             }
         });
     }
-    refreshServer(element: ServerItem) { }
-    deleteServer(element: ServerItem) { }
+
+    refreshServer(element: ServerItem) {
+        this.refresh();
+    }
 
     openProjectInCurrentWindow(element: ProjectItem) { }
     openProjectInNewWindow(element: ProjectItem) { }
