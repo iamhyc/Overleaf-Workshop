@@ -1,6 +1,6 @@
 # Overleaf-Workshop
 
-==**This project is in very early stage, stay tunned!**==
+==**This project is in very early stage, stay tuned!**==
 
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
@@ -12,7 +12,6 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
   - [x] Login / Logout Server
   - [x] List Projects
-  - [ ] Create / Delete Projects
   - [ ] Fetch project change histories
   - [ ] Remote Edit Cursor Position
   - [ ] ...
