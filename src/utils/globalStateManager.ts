@@ -20,26 +20,23 @@ export interface ServerPersist {
 }
 
 interface ServerPersistMap {
-    [name: string]: {
-        server: ServerPersist,
-        api?: BaseAPI
-    };
+    [name: string]: ServerPersist,
 }
 
 export class GlobalStateManager {
 
-    static getServers(context:vscode.ExtensionContext):ServerPersistMap {
+    static getServers(context:vscode.ExtensionContext) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        Object.values(persists).forEach(persist => {
-            persist.api = new BaseAPI(persist.server.url);
-        });
-        return persists;
+        return Object.values(persists).map(persist => { return {
+            server: persist,
+            api: new BaseAPI(persist.url),
+        }});
     }
 
     static addServer(context:vscode.ExtensionContext, name:string, url:string): boolean {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         if ( persists[name]===undefined ) {
-            persists[name] = { server: { name, url } };
+            persists[name] = { name, url };
             context.globalState.update(keyServerPersists, persists);
             return true;
         } else {
@@ -58,10 +55,9 @@ export class GlobalStateManager {
         }
     }
 
-    static async loginServer(context:vscode.ExtensionContext, name:string, auth:{[key:string]:string}): Promise<boolean> {
+    static async loginServer(context:vscode.ExtensionContext, api:BaseAPI, name:string, auth:{[key:string]:string}): Promise<boolean> {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name].server;
-        const api      = persists[name].api;
+        const server   = persists[name];
 
         if (server.login===undefined && api!==undefined) {
             const res = await api.passportLogin(auth.email, auth.password);
@@ -83,10 +79,9 @@ export class GlobalStateManager {
         }
     }
 
-    static async logoutServer(context:vscode.ExtensionContext, name:string): Promise<boolean> {
+    static async logoutServer(context:vscode.ExtensionContext, api:BaseAPI, name:string): Promise<boolean> {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name].server;
-        const api      = persists[name].api;
+        const server   = persists[name];
 
         if (server.login!==undefined && api!==undefined) {
             await api.logout(server.login.identity);
@@ -98,10 +93,9 @@ export class GlobalStateManager {
         }
     }
 
-    static async fetchServerProjects(context:vscode.ExtensionContext, name:string): Promise<ProjectPersist[]> {
+    static async fetchServerProjects(context:vscode.ExtensionContext, api:BaseAPI, name:string): Promise<ProjectPersist[]> {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name].server;
-        const api      = persists[name].api;
+        const server   = persists[name];
 
         if (server.login!==undefined && api!==undefined) {
             const res = await api.userProjects(server.login.identity);
@@ -118,6 +112,10 @@ export class GlobalStateManager {
         } else {
             return [];
         }
+    }
+
+    static async initWebsocketConnection(context:vscode.ExtensionContext, api:BaseAPI, name:string) {
+        //TODO: use `api.agent` and persist identity
     }
 
 }

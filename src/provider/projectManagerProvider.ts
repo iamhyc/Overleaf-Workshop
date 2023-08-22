@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ROOT_NAME } from '../consts';
 import { GlobalStateManager } from '../utils/globalStateManager';
 
 class DataItem extends vscode.TreeItem {
@@ -12,7 +13,7 @@ class DataItem extends vscode.TreeItem {
 
 class ServerItem extends DataItem {
     constructor(
-        private api: any,
+        public readonly api: any,
         public readonly name: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
@@ -25,9 +26,11 @@ class ServerItem extends DataItem {
 
 class ProjectItem extends DataItem {
     constructor(
+        public uri: string,
         public readonly label: string,
     ) {
         super(label, vscode.TreeItemCollapsibleState.None);
+        this.uri = uri;
         this.iconPath = new vscode.ThemeIcon('notebook');
         this.contextValue = 'project';
     }
@@ -54,9 +57,13 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     getChildren(element?: DataItem): Thenable<DataItem[]> {
         if (element) {
             if (element instanceof ServerItem) {
-                const _promise = GlobalStateManager.fetchServerProjects(this.context, element.name);
+                const _promise = GlobalStateManager.fetchServerProjects(this.context, element.api, element.name);
                 return _promise.then(projects => {
-                    const projectItems = projects.map(project => new ProjectItem(project.name));
+                    const projectItems = projects.map(project => {
+                        const uri = `${ROOT_NAME}://${element.name}/user_id/${project._id}`; //FIXME: user_id
+                        const name = project.name;
+                        return new ProjectItem(uri, name);
+                    });
                     return projectItems;
                 });
             } else {
@@ -104,14 +111,14 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         });
     }
 
-    loginServer(name: string) { 
+    loginServer(server: ServerItem) {
         vscode.window.showInputBox({'placeHolder': 'Email'})
         .then(email => {
             if (email) {
                 vscode.window.showInputBox({'placeHolder': 'Password', 'password': true})
                 .then(password => {
                     if (password) {
-                        GlobalStateManager.loginServer(this.context, name, {email, password})
+                        GlobalStateManager.loginServer(this.context, server.api, server.name, {email, password})
                         .then(success => {
                             if (success) {
                                 this.refresh();
@@ -125,11 +132,11 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         });
     }
 
-    logoutServer(name: string) {
-        vscode.window.showInformationMessage(`Logout server "${name}" ?`, "Yes", "No")
+    logoutServer(server: ServerItem) {
+        vscode.window.showInformationMessage(`Logout server "${server.name}" ?`, "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
-                GlobalStateManager.logoutServer(this.context, name)
+                GlobalStateManager.logoutServer(this.context, server.api, server.name)
                 .then(success => {
                     if (success)
                         this.refresh();
@@ -138,11 +145,15 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         });
     }
 
-    refreshServer(element: ServerItem) {
+    refreshServer(server: ServerItem) {
         this.refresh();
     }
 
-    openProjectInCurrentWindow(element: ProjectItem) { }
-    openProjectInNewWindow(element: ProjectItem) { }
-    private _openProject(element: ProjectItem, newWindow: boolean) {}
+    openProjectInCurrentWindow(project: ProjectItem) {
+        vscode.workspace.updateWorkspaceFolders(0, 0, { uri: vscode.Uri.parse(project.uri) });
+    }
+
+    openProjectInNewWindow(project: ProjectItem) {
+        vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.parse(project.uri), true);
+    }
 }
