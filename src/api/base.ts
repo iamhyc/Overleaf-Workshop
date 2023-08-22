@@ -1,5 +1,6 @@
 import * as http from 'http';
 import * as https from 'https';
+import { WebSocket } from 'ws';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
 
@@ -56,6 +57,26 @@ export class BaseAPI {
             const userId = match[1];
             return userId;
         }
+    }
+
+    async _initWebSocket(identity:Identity): Promise<WebSocket> {
+        const res = await fetch(this.url+`socket.io/1/?t=${Date.now()}`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            }
+        });
+        const wsId = (await res.text()).split(':')[0];
+
+        const url = this.url.replace(/https?/, 'ws') + `socket.io/1/websocket/${wsId}`
+        return new WebSocket(url, {
+            agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive, Upgrade',
+                'Cookie': identity.cookies.split(';')[0],
+            }
+        });
     }
 
     async passportLogin(email:string, password:string): Promise<ResponseSchema> {

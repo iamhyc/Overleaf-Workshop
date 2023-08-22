@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Identity, ResponseSchema, BaseAPI } from '../api/base';
+import { WebSocketAPI } from '../api/websocket';
 
 const keyServerPersists: string = 'overleaf-servers';
 
@@ -61,7 +62,7 @@ export class GlobalStateManager {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
-        if (server.login===undefined && api!==undefined) {
+        if (server.login===undefined) {
             const res = await api.passportLogin(auth.email, auth.password);
             if (res.type==='success' && res.identity!==undefined && res.message!==undefined) {
                 server.login = {
@@ -86,7 +87,7 @@ export class GlobalStateManager {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
-        if (server.login!==undefined && api!==undefined) {
+        if (server.login!==undefined) {
             await api.logout(server.login.identity);
             delete server.login;
             context.globalState.update(keyServerPersists, persists);
@@ -100,7 +101,7 @@ export class GlobalStateManager {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
-        if (server.login!==undefined && api!==undefined) {
+        if (server.login!==undefined) {
             const res = await api.userProjects(server.login.identity);
             if (res.type==='success' && res.projects!==undefined) {
                 Object.values(res.projects).forEach(project => {
@@ -120,8 +121,13 @@ export class GlobalStateManager {
         }
     }
 
-    static async initWebsocketConnection(context:vscode.ExtensionContext, api:BaseAPI, name:string) {
-        //TODO: use `api.agent` and persist identity
+    static async initWebSocketAPI(context:vscode.ExtensionContext, api:BaseAPI, name:string) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+
+        if (server.login!==undefined) {
+            return new WebSocketAPI(server.url, api, server.login.identity);
+        }
     }
 
 }
