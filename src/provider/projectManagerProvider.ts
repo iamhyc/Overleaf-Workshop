@@ -60,7 +60,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                 const _promise = GlobalStateManager.fetchServerProjects(this.context, element.api, element.name);
                 return _promise.then(projects => {
                     const projectItems = projects.map(project => {
-                        const uri = `${ROOT_NAME}://${element.name}/user_id/${project._id}`; //FIXME: user_id
+                        const uri = `${ROOT_NAME}://${element.name}/${project._userId}/${project._id}`;
                         const name = project.name;
                         return new ProjectItem(uri, name);
                     });

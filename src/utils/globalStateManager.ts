@@ -4,6 +4,7 @@ import { Identity, ResponseSchema, BaseAPI } from '../api/base';
 const keyServerPersists: string = 'overleaf-servers';
 
 export interface ProjectPersist {
+    _userId: string;
     _id: string;
     name: string;
     accessLevel: string;
@@ -13,6 +14,7 @@ export interface ServerPersist {
     name: string;
     url: string;
     login?: {
+        userId: string;
         username: string;
         identity: Identity;
         projects?: ProjectPersist[]
@@ -61,8 +63,9 @@ export class GlobalStateManager {
 
         if (server.login===undefined && api!==undefined) {
             const res = await api.passportLogin(auth.email, auth.password);
-            if (res.type==='success' && res.identity!==undefined) {
+            if (res.type==='success' && res.identity!==undefined && res.message!==undefined) {
                 server.login = {
+                    userId: res.message,
                     username: auth.email,
                     identity: res.identity
                 };
@@ -100,6 +103,9 @@ export class GlobalStateManager {
         if (server.login!==undefined && api!==undefined) {
             const res = await api.userProjects(server.login.identity);
             if (res.type==='success' && res.projects!==undefined) {
+                Object.values(res.projects).forEach(project => {
+                    project._userId = (server.login as any).userId
+                });
                 server.login.projects = res.projects;
                 context.globalState.update(keyServerPersists, persists);
                 return res.projects;
