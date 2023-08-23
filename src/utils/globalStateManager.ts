@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Identity, ResponseSchema, BaseAPI } from '../api/base';
-import { WebSocketAPI } from '../api/websocket';
+import { SocketIOAPI } from '../api/socketio';
 
 const keyServerPersists: string = 'overleaf-servers';
 
@@ -121,12 +121,12 @@ export class GlobalStateManager {
         }
     }
 
-    static async initWebSocketAPI(context:vscode.ExtensionContext, api:BaseAPI, name:string) {
+    static async initSocketIOAPI(context:vscode.ExtensionContext, api:BaseAPI, name:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
         if (server.login!==undefined) {
-            return new WebSocketAPI(server.url, api, server.login.identity);
+            return new SocketIOAPI(server.url, api, server.login.identity);
         }
     }
 

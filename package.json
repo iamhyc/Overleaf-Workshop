@@ -119,6 +119,7 @@
     }
   },
   "scripts": {
+    "postinstall": "patch-package",
     "vscode:prepublish": "npm run esbuild-base -- --minify",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -135,8 +136,8 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "20.2.5",
     "@types/node-fetch": "^2.6.4",
+    "@types/socket.io-client": "^1.4.36",
     "@types/vscode": "^1.80.0",
-    "@types/ws": "^8.5.5",
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "@typescript-eslint/parser": "^5.59.8",
     "@vscode/test-electron": "^2.3.2",
@@ -144,10 +145,9 @@
     "eslint": "^8.41.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
+    "node-fetch": "^2.6.13",
+    "patch-package": "^7.0.2",
+    "socket.io-client": "github:overleaf/socket.io-client#0.9.17-overleaf-5",
     "typescript": "^5.1.3"
-  },
-  "dependencies": {
-    "node-fetch": "^2.6.12",
-    "ws": "^8.13.0"
   }
 }

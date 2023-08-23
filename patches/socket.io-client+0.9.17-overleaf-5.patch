@@ -1,0 +1,30 @@
+diff --git a/node_modules/socket.io-client/lib/socket.js b/node_modules/socket.io-client/lib/socket.js
+index 07c1c3f..67674db 100644
+--- a/node_modules/socket.io-client/lib/socket.js
++++ b/node_modules/socket.io-client/lib/socket.js
+@@ -152,6 +152,12 @@
+       if (this.isXDomain()) {
+         xhr.withCredentials = true;
+       }
++      if (this.options['extraHeaders']) {
++        xhr.setDisableHeaderCheck(true);
++        Object.entries(this.options['extraHeaders']).forEach(([key, value]) => {
++          xhr.setRequestHeader(key, value);
++        });
++      }
+       xhr.onreadystatechange = function () {
+         if (xhr.readyState == 4) {
+           xhr.onreadystatechange = empty;
+@@ -369,6 +375,12 @@
+     ].join('/') + '/?disconnect=1';
+ 
+     xhr.open('GET', uri, false);
++    if (this.options['extraHeaders']) {
++      xhr.setDisableHeaderCheck(true);
++      Object.entries(this.options['extraHeaders']).forEach(([key, value]) => {
++        xhr.setRequestHeader(key, value);
++      });
++    }
+     xhr.send(null);
+ 
+     // handle disconnection immediately

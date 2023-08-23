@@ -1,6 +1,5 @@
 import * as http from 'http';
 import * as https from 'https';
-import { WebSocket } from 'ws';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
 
@@ -59,21 +58,13 @@ export class BaseAPI {
         }
     }
 
-    async _initWebSocket(identity:Identity): Promise<WebSocket> {
-        const res = await fetch(this.url+`socket.io/1/?t=${Date.now()}`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            }
-        });
-        const wsId = (await res.text()).split(':')[0];
-
-        const url = this.url.replace(/https?/, 'ws') + `socket.io/1/websocket/${wsId}`
-        return new WebSocket(url, {
-            agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive, Upgrade',
+    // Reference: "github:overleaf/overleaf/services/web/frontend/js/ide/connection/ConnectionManager.js#137"
+    _initSocketV0(identity:Identity) {
+        const url = new URL(this.url).origin;
+        return (require('socket.io-client').connect as any)(url, {
+            reconnection: false,
+            forceNew: true,
+            extraHeaders: {
                 'Cookie': identity.cookies.split(';')[0],
             }
         });
