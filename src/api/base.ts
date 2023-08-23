@@ -58,12 +58,12 @@ export class BaseAPI {
         }
     }
 
-    // Reference: "github:overleaf/overleaf/services/web/frontend/js/ide/connection/ConnectionManager.js#137"
+    // Reference: "github:overleaf/overleaf/services/web/frontend/js/ide/connection/ConnectionManager.js#L137"
     _initSocketV0(identity:Identity) {
         const url = new URL(this.url).origin;
         return (require('socket.io-client').connect as any)(url, {
-            reconnection: false,
-            forceNew: true,
+            reconnect: false,
+            'force new connection': true,
             extraHeaders: {
                 'Cookie': identity.cookies.split(';')[0],
             }
