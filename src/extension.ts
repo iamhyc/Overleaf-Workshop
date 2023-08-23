@@ -6,7 +6,7 @@ import { ProjectManagerProvider } from './provider/projectManagerProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register: RemoteFileSystemProvider
-    const remoteFileSystemProvider = new RemoteFileSystemProvider(null, null, null);
+    const remoteFileSystemProvider = new RemoteFileSystemProvider(context);
     context.subscriptions.push(
         vscode.workspace.registerFileSystemProvider(ROOT_NAME, remoteFileSystemProvider, { isCaseSensitive: true })
     );

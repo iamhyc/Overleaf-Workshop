@@ -31,14 +31,25 @@ export interface OnlineUserSchema {
 export class SocketIOAPI {
     private url: string;
     private socket?: any;
+    private emit: any;
 
     constructor(url:string, api:BaseAPI, identity:Identity) {
         this.url = url;
         this.socket = api._initSocketV0(identity);
+        (this.socket.emit)[require('util').promisify.custom] = (event:string, ...args:any[]) => {
+            return new Promise((resolve, reject) => {
+                this.socket.emit(event, ...args, (err:any, ...data:any[]) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(data);
+                    }
+                });
+            });
+        };
+        this.emit = require('util').promisify(this.socket.emit).bind(this.socket);
         this.connect();
     }
-
-    private emit = require('util').promisify(this.socket.emit);
 
     private connect() {
         this.socket.on('connect', () => {
@@ -71,10 +82,8 @@ export class SocketIOAPI {
      */
     async joinProject(projectId:string) {
         return this.emit('joinProject', {project_id: projectId})
-                .then((err:any, project:ProjectEntity, permissionsLevel:string, protocolVersion:number) => {
-                    if (err) {
-                        throw new Error(err.message);
-                    }
+                .then((returns:[ProjectEntity, string, number]) => {
+                    const [project, permissionsLevel, protocolVersion] = returns;
                     return project;
                 });
     }
@@ -86,10 +95,8 @@ export class SocketIOAPI {
      */
     async joinDoc(docId:string) {
         return this.emit('joinDoc', docId, { encodeRanges: true })
-            .then((error:any, docLines:Array<string>, version:number, updates:Array<any>, ranges:any) => {
-                if (error) {
-                    throw new Error(error.message);
-                }
+            .then((returns: [Array<string>, number, Array<any>, any]) => {
+                const [docLines, version, updates, ranges] = returns;
                 return {docLines, version, updates, ranges};
             });
     }
@@ -101,10 +108,8 @@ export class SocketIOAPI {
      */
     async leaveDoc(docId:string) {
         return this.emit('leaveDoc', docId)
-            .then((error:any) => {
-                if (error) {
-                    throw new Error(error.message);
-                }
+            .then(() => {
+                return;
             });
     }
 
@@ -116,10 +121,8 @@ export class SocketIOAPI {
      */
     async applyOtUpdate(docId:string, update:UpdateSchema) {
         return this.emit('applyOtUpdate', docId, update)
-            .then((error:any) => {
-                if (error) {
-                    throw new Error(error.message);
-                }
+            .then(() => {
+                return;
             });
     }
 
@@ -129,10 +132,8 @@ export class SocketIOAPI {
      */
     async getConnectedUsers() {
         return this.emit('getConnectedUsers')
-            .then((error:any, connectedUsers:Array<OnlineUserSchema>) => {
-                if (error) {
-                    throw new Error(error.message);
-                }
+            .then((returns:[Array<OnlineUserSchema>]) => {
+                const [connectedUsers] = returns;
                 return connectedUsers;
             });
     }
@@ -144,6 +145,8 @@ export class SocketIOAPI {
      */
     async updatePosition(docId:string, row:number, column:number) {
         return this.emit('clientTracking.updatePosition', row, column, docId)
-            .then((error:any) => {return error});
+            .then(() => {
+                return;
+            });
     }
 }
