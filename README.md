@@ -4,7 +4,7 @@
 
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
-![demo](docs/assets/demo.webm)
+![demo](docs/assets/demo.webm.mov)
 
 ### TODO
 
