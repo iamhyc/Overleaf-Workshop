@@ -2,9 +2,6 @@ import * as vscode from 'vscode';
 import { SocketIOAPI } from '../api/socketio';
 import { GlobalStateManager } from '../utils/globalStateManager';
 
-// Reference: https://github.com/microsoft/vscode-extension-samples/blob/main/fsprovider-sample/src/fileSystemProvider.ts
-// Reference: https://code.visualstudio.com/api/references/vscode-api#FileSystemProvider
-
 export interface DocumentEntity {
     _id: string,
     name: string,
@@ -56,14 +53,14 @@ export interface ProjectEntity {
 export class File implements vscode.FileStat {
     type: vscode.FileType;
     name: string;
-    _type: "doc" | "fileRef";
+    sub_type?: "doc" | "fileRef";
     ctime: number;
     mtime: number;
     size: number;
-    constructor(name: string, _type:any, ctime?: number) {
-        this.type = vscode.FileType.File;
+    constructor(name: string, type: vscode.FileType, sub_type?: any, ctime?: number) {
+        this.type = type;
         this.name = name;
-        this._type = _type;
+        this.sub_type = sub_type;
         this.ctime = ctime || Date.now();
         this.mtime = Date.now();
         this.size = 0;
@@ -73,37 +70,112 @@ export class File implements vscode.FileStat {
 class VirtualFileSystem {
     private root?: ProjectEntity;
     private socket: SocketIOAPI;
+    private userId: string;
+    private projectId: string;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri) {
         const {userId,projectId,path} = this.parseUri(uri);
+        this.userId = userId;
+        this.projectId = projectId;
         const socket = GlobalStateManager.initSocketIOAPI(context, uri.authority);
         if (socket) {
             this.socket = socket;
-            this.socket.joinProject(projectId).then((project:ProjectEntity) => {
-                this.root = project;
-            });
         } else {
-            throw new Error(`[RemoteFileSystemProvider] Cannot init SocketIOAPI for ${uri.authority}`);
+            throw new Error(`Cannot init SocketIOAPI for ${uri.authority}`);
         }
     }
 
     private parseUri(uri: vscode.Uri) {
-        const matches = uri.path.match(/\/user\/(\w*)\/project\/(\w*)\/?(.*)/);
-        if (matches) {
-            const [_, userId, projectId, path] = matches;
-            return {userId, projectId, path};
-        } else {
-            throw new Error(`[RemoteFileSystemProvider] Invalid URI: ${uri.authority}`);
-        }
+        const query:any = uri.query.split('&').reduce((acc, v) => {
+            const [key,value] = v.split('=');
+            return {...acc, [key]:value};
+        }, {});
+        const [userId, projectId] = [query.user, query.project];
+        const path = uri.path;
+        return {userId, projectId, path}
     }
 
-    public resolve(uri: vscode.Uri): File {
-        const {userId,projectId,path} = this.parseUri(uri);
+    async joinProject() {
+        return this.socket.joinProject(this.projectId).then((project:ProjectEntity) => {
+            this.root = project;
+        });
+    }
+
+    private path_resolve(uri: vscode.Uri): [FolderEntity, string] {
+        const path = uri.path;
         if (this.root) {
-            return new File('', '', 0); //TODO: resolve file/folder
-        } else {
-            throw new Error(`[RemoteFileSystemProvider] Cannot resolve URI: ${uri.authority}`);
+            let currentFolder = this.root.rootFolder[0];
+            const pathParts = path.split('/').slice(1);
+            for (let i = 0; i < pathParts.length-1; i++) {
+                const folderName = pathParts[i];
+                const folder = currentFolder.folders.find((folder) => folder.name === folderName);
+                if (folder) {
+                    currentFolder = folder;
+                } else {
+                    throw vscode.FileSystemError.FileNotFound(uri);
+                }
+            }
+            const fileName = pathParts[pathParts.length-1];
+            return [currentFolder, fileName];
         }
+        throw vscode.FileSystemError.FileNotFound(uri);
+    }
+
+    resolve(uri: vscode.Uri): File {
+        const [parent, fileName] = this.path_resolve(uri);
+        // resolve as folder
+        let folder = parent.folders.find((folder) => folder.name === fileName);
+        if (fileName==='') { folder = parent; }
+        if (folder) {
+            return new File(folder.name, vscode.FileType.Directory);
+        }
+        // resolve as doc
+        const doc = parent.docs.find((doc) => doc.name === fileName);
+        if (doc) {
+            return new File(doc.name, vscode.FileType.File, 'doc');
+        }
+        // resolve as fileRef
+        const fileRef = parent.fileRefs.find((fileRef) => fileRef.name === fileName);
+        if (fileRef) {
+            return new File(fileRef.name, vscode.FileType.File, 'fileRef', Date.parse(fileRef.created));
+        }
+        throw vscode.FileSystemError.FileNotFound(uri);
+    }
+
+    listFolder(uri: vscode.Uri): [string, vscode.FileType][] {
+        const [parent, fileName] = this.path_resolve(uri);
+        let results:[string, vscode.FileType][] = [];
+        let folder = parent.folders.find((folder) => folder.name === fileName);
+        if (fileName==='') { folder = parent; }
+        if (folder) {
+            folder.folders.forEach((folder) => {
+                results.push([folder.name, vscode.FileType.Directory]);
+            });
+            folder.docs.forEach((doc) => {
+                results.push([doc.name, vscode.FileType.File]);
+            });
+            folder.fileRefs.forEach((ref) => {
+                results.push([ref.name, vscode.FileType.File]);
+            });
+        }
+        return results;
+    }
+
+    async openFile(uri: vscode.Uri): Promise<Uint8Array> {
+        const [parent, fileName] = this.path_resolve(uri);
+        const doc = parent.docs.find((doc) => doc.name === fileName);
+        // resolve as doc
+        if (doc) {
+            const res = await this.socket.joinDoc(doc._id);
+            const content = res.docLines.join('\n');
+            return new TextEncoder().encode(content);
+        }
+        // resolve as fileRef
+        const fileRef = parent.fileRefs.find((fileRef) => fileRef.name === fileName);
+        if (fileRef) {
+            return new Uint8Array;
+        }
+        throw vscode.FileSystemError.FileNotFound();
     }
 
 }
@@ -119,29 +191,27 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
         this.vfss = {};
     }
 
-    private getVFS(uri: vscode.Uri): VirtualFileSystem {
-        const key = uri.authority + uri.path;
-        const vfs = this.vfss[key];
+    private getVFS(uri: vscode.Uri): Promise<VirtualFileSystem> {
+        const vfs = this.vfss[ uri.query ];
         if (vfs) {
-            return vfs;
+            return Promise.resolve(vfs);
         } else {
             const vfs = new VirtualFileSystem(this.context, uri);
-            this.vfss[key] = vfs;
-            return vfs;
+            this.vfss[ uri.query ] = vfs;
+            return vfs.joinProject().then(() => vfs);
         }
     }
 
-    stat(uri: vscode.Uri): vscode.FileStat {
-        const entity = this.getVFS(uri).resolve(uri);
-        throw vscode.FileSystemError.FileNotFound(uri);
+    stat(uri: vscode.Uri): Thenable<vscode.FileStat> {
+        return this.getVFS(uri).then( vfs => vfs.resolve(uri) );
     }
 
     watch(uri: vscode.Uri, options: { recursive: boolean; excludes: string[]; }): vscode.Disposable {
         return new vscode.Disposable(() => {});
     }
 
-    readDirectory(uri: vscode.Uri): [string, vscode.FileType][] {
-        return [];
+    readDirectory(uri: vscode.Uri): Thenable<[string, vscode.FileType][]> {
+        return this.getVFS(uri).then( vfs => vfs.listFolder(uri) );
     }
 
     createDirectory(uri: vscode.Uri): Thenable<void> {
@@ -149,7 +219,7 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
     }
 
     readFile(uri: vscode.Uri): Thenable<Uint8Array> {
-        return Promise.resolve(new Uint8Array);
+        return this.getVFS(uri).then( vfs => vfs.openFile(uri) );
     }
 
     writeFile(uri: vscode.Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean; }): Thenable<void> {
