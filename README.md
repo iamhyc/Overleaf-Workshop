@@ -1,10 +1,10 @@
 # Overleaf-Workshop
 
-==**This project is in very early stage, stay tuned!**==
+**This project is in very early stage, stay tuned!**
 
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
-
+![demo](docs/assets/demo.webm)
 
 ### TODO
 
