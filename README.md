@@ -4,8 +4,6 @@
 
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
-![demo](docs/assets/demo.webm.mov)
-
 ### TODO
 
 - REST API (Overleaf Web Route List, [webapi.md](./docs/webapi.md))
