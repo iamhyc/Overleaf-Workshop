@@ -18,7 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
         projectManagerProvider.addServer();
     });
     vscode.commands.registerCommand('projectManager.removeServer', (item) => {
-        projectManagerProvider.removeServer(item);
+        projectManagerProvider.removeServer(item.name);
     });
     vscode.commands.registerCommand('projectManager.loginServer', (item) => {
         projectManagerProvider.loginServer(item);

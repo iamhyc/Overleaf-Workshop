@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { SocketIOAPI } from '../api/socketio';
 import { GlobalStateManager } from '../utils/globalStateManager';
+import { BaseAPI } from '../api/base';
 
 export interface DocumentEntity {
     _id: string,
@@ -69,6 +70,8 @@ export class File implements vscode.FileStat {
 
 class VirtualFileSystem {
     private root?: ProjectEntity;
+    private context: vscode.ExtensionContext;
+    private api: BaseAPI;
     private socket: SocketIOAPI;
     private userId: string;
     private projectId: string;
@@ -77,9 +80,11 @@ class VirtualFileSystem {
         const {userId,projectId,path} = this.parseUri(uri);
         this.userId = userId;
         this.projectId = projectId;
-        const socket = GlobalStateManager.initSocketIOAPI(context, uri.authority);
-        if (socket) {
-            this.socket = socket;
+        this.context = context;
+        const res = GlobalStateManager.initSocketIOAPI(context, uri.authority);
+        if (res) {
+            this.api = res.api;
+            this.socket = res.socket;
         } else {
             throw new Error(`Cannot init SocketIOAPI for ${uri.authority}`);
         }
@@ -173,7 +178,9 @@ class VirtualFileSystem {
         // resolve as fileRef
         const fileRef = parent.fileRefs.find((fileRef) => fileRef.name === fileName);
         if (fileRef) {
-            return new Uint8Array;
+            const server_name = uri.authority;
+            const res = await GlobalStateManager.getProjectFile(this.context, this.api, server_name, this.projectId, fileRef._id);
+            return new Uint8Array(res);
         }
         throw vscode.FileSystemError.FileNotFound();
     }

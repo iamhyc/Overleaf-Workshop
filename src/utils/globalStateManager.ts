@@ -121,13 +121,33 @@ export class GlobalStateManager {
         }
     }
 
+    static async getProjectFile(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileId:string) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+
+        if (server.login!==undefined) {
+            const res = await api.getFile(server.login.identity, projectId, fileId);
+            if (res.type==='success' && res.raw!==undefined) {
+                return res.raw;
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
+                return new ArrayBuffer(0);
+            }
+        } else {
+            return new ArrayBuffer(0);
+        }
+    }
+
     static initSocketIOAPI(context:vscode.ExtensionContext, name:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
         if (server.login!==undefined) {
             const api = new BaseAPI(server.url);
-            return new SocketIOAPI(server.url, api, server.login.identity);
+            const socket = new SocketIOAPI(server.url, api, server.login.identity);
+            return {api, socket};
         }
     }
 

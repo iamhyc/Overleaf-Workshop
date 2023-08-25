@@ -16,7 +16,7 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
   - [ ] Get project build output (PDF)
   - [ ] Jump between "code" and "pdf"
   - [ ] Get file history updates and diff
-  - [ ] Download original files
+  - [x] Download original files
 - WebSocket API
   - [x] Init websocket connection
   - [x] Request: `joinProject`, `joinDoc`, `leaveDoc`

@@ -8,8 +8,29 @@ export interface Identity {
     cookies: string;
 }
 
+export interface CompileResponseSchema {
+    status: 'success' | 'error';
+    compileGroup: string;
+    outputFiles: Array<{
+        path: string, //output file name
+        url: string, // `project/${projectId}/user/${userId}/output/${build}/output/${path}`
+        type: string, //output file type (postfix)
+        build: string, //build id
+    }>;
+    stats: {
+        "latexmk-errors":number, "pdf-size":number,
+        "latex-runs":number, "latex-runs-with-errors":number,
+        "latex-runs-0":number, "latex-runs-with-error-0s":number,
+    };
+    timings: {
+        "sync":number, "compile":number, "output":number, "compileE2E":number,
+    };
+    enableHybridPdfDownload: boolean;
+}
+
 export interface ResponseSchema {
     type: 'success' | 'error';
+    raw?: ArrayBuffer;
     message?: string;
     identity?: Identity;
     projects?: ProjectPersist[];
@@ -157,6 +178,28 @@ export class BaseAPI {
             return {
                 type: 'success',
                 projects: (await res.json() as any).projects
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async getFile(identity:Identity, projectId:string, fileId:string) {
+        const res = await fetch(this.url+`project/${projectId}/file/${fileId}`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            }
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                raw: await res.arrayBuffer()
             };
         } else {
             return {
