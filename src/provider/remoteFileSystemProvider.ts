@@ -178,11 +178,20 @@ class VirtualFileSystem {
         // resolve as fileRef
         const fileRef = parent.fileRefs.find((fileRef) => fileRef.name === fileName);
         if (fileRef) {
-            const server_name = uri.authority;
-            const res = await GlobalStateManager.getProjectFile(this.context, this.api, server_name, this.projectId, fileRef._id);
+            const serverName = uri.authority;
+            const res = await GlobalStateManager.getProjectFile(this.context, this.api, serverName, this.projectId, fileRef._id);
             return new Uint8Array(res);
         }
         throw vscode.FileSystemError.FileNotFound();
+    }
+
+    async mkdir(uri: vscode.Uri) {
+        const [parent, fileName] = this.path_resolve(uri);
+        const serverName = uri.authority;
+        const res = await GlobalStateManager.addProjectFolder(this.context, this.api, serverName, this.projectId, fileName, parent._id);
+        if (res) {
+            parent.folders.push(res);
+        }
     }
 
 }
@@ -222,7 +231,7 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
     }
 
     createDirectory(uri: vscode.Uri): Thenable<void> {
-        return Promise.resolve();
+        return this.getVFS(uri).then( vfs => vfs.mkdir(uri) );
     }
 
     readFile(uri: vscode.Uri): Thenable<Uint8Array> {

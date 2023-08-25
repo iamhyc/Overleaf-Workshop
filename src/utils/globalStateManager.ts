@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Identity, ResponseSchema, BaseAPI } from '../api/base';
 import { SocketIOAPI } from '../api/socketio';
+import { FolderEntity } from '../provider/remoteFileSystemProvider';
 
 const keyServerPersists: string = 'overleaf-servers';
 
@@ -138,6 +139,23 @@ export class GlobalStateManager {
         } else {
             return new ArrayBuffer(0);
         }
+    }
+
+    static async addProjectFolder(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, folderName:string, parentFolderId:string): Promise<FolderEntity|undefined> {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+
+        if (server.login!==undefined) {
+            const res = await api.addFolder(server.login.identity, projectId, folderName, parentFolderId);
+            if (res.type==='success' && res.folder!==undefined) {
+                return res.folder;
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
+            }
+        }
+        return;
     }
 
     static initSocketIOAPI(context:vscode.ExtensionContext, name:string) {

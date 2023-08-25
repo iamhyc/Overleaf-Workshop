@@ -2,6 +2,7 @@ import * as http from 'http';
 import * as https from 'https';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
+import { FolderEntity } from '../provider/remoteFileSystemProvider';
 
 export interface Identity {
     csrfToken: string;
@@ -34,6 +35,7 @@ export interface ResponseSchema {
     message?: string;
     identity?: Identity;
     projects?: ProjectPersist[];
+    folder?: FolderEntity;
 }
 
 export class BaseAPI {
@@ -146,8 +148,8 @@ export class BaseAPI {
         const res = await fetch(this.url+'logout', {
             method: 'POST', redirect: 'manual', agent: this.agent,
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
                 'Connection': 'keep-alive',
+                'Content-Type': 'application/x-www-form-urlencoded',
                 'Cookie': identity.cookies.split(';')[0],
             },
             body: JSON.stringify({ _csrf: identity.csrfToken })
@@ -202,6 +204,34 @@ export class BaseAPI {
                 raw: await res.arrayBuffer()
             };
         } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async addFolder(identity:Identity, projectId:string, folderName:string, parentFolderId:string) {
+        const res = await fetch(this.url+`project/${projectId}/folder`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+            body: JSON.stringify({
+                name: folderName,
+                parent_folder_id: parentFolderId
+            })
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                folder: (await res.json() as any),
+            };
+        } else { //FIXME: 403 forbidden
             return {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
