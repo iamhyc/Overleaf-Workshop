@@ -62,7 +62,7 @@ export class BaseAPI {
         }
     }
 
-    private async getUserId(identity:Identity): Promise<string> {
+    private async getUserId(identity:Identity) {
         const res = await fetch(this.url+'project', {
             method: 'GET', redirect:'manual', agent: this.agent,
             headers: {
@@ -72,12 +72,14 @@ export class BaseAPI {
         });
 
         const body = await res.text();
-        const match = body.match(/<meta\s+name="ol-user_id"\s+content="([^"]*)">/);
-        if (!match) {
-            throw new Error('Failed to get UserID.');
+        const userIDMatch = body.match(/<meta\s+name="ol-user_id"\s+content="([^"]*)">/);
+        const csrfTokenMatch = body.match(/<meta\s+name="ol-csrfToken"\s+content="([^"]*)">/);
+        if (userIDMatch!==null && csrfTokenMatch!==null) {
+            const userId = userIDMatch[1];
+            const csrfToken = csrfTokenMatch[1];
+            return {userId, csrfToken};
         } else {
-            const userId = match[1];
-            return userId;
+            throw new Error('Failed to get UserID.');
         }
     }
 
@@ -113,7 +115,8 @@ export class BaseAPI {
             if (redirect==='/project') {
                 const cookies = res.headers.raw()['set-cookie'][0];
                 identity.cookies = cookies;
-                const userId = await this.getUserId(identity);
+                const {userId,csrfToken} = await this.getUserId(identity);
+                identity.csrfToken = csrfToken;
                 return {
                     type: 'success',
                     message: userId,
@@ -189,6 +192,26 @@ export class BaseAPI {
         }
     }
 
+    private async _sendEditingSessionHeartbeat(identity:Identity, projectId:string, segmentation: any) {
+        const res = await fetch(this.url+`editingSession/${projectId}`, {
+            method: 'PUT', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+            body: JSON.stringify({segmentation})
+        });
+
+        const body = await res.text();
+        if (res.status===202 && body==='Accepted') {
+            return;
+        } else {
+            throw new Error(`${res.status}: `+body);
+        }
+    }
+
     async getFile(identity:Identity, projectId:string, fileId:string) {
         const res = await fetch(this.url+`project/${projectId}/file/${fileId}`, {
             method: 'GET', redirect: 'manual', agent: this.agent,
@@ -212,6 +235,7 @@ export class BaseAPI {
     }
 
     async addFolder(identity:Identity, projectId:string, folderName:string, parentFolderId:string) {
+        // await this._sendEditingSessionHeartbeat(identity, projectId, {editorType:'ace'});
         const res = await fetch(this.url+`project/${projectId}/folder`, {
             method: 'POST', redirect: 'manual', agent: this.agent,
             headers: {
@@ -231,7 +255,7 @@ export class BaseAPI {
                 type: 'success',
                 folder: (await res.json() as any),
             };
-        } else { //FIXME: 403 forbidden
+        } else {
             return {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
