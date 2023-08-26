@@ -20,10 +20,15 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 - WebSocket API
   - [x] Init websocket connection
   - [x] Request: `joinProject`, `joinDoc`, `leaveDoc`
-  - [x] Request: `clientTracking.getConnectedUsers`
-  - [ ] Request: `clientTracking.updatePosition`
   - [ ] Request: `applyOtUpdate`
-  - [ ] Event: ...
+  - [ ] Request: `clientTracking.getConnectedUsers`
+  - [ ] Request: `clientTracking.updatePosition`
+  - [ ] Event: `compilerUpdated`
+  - [ ] Event: `otUpdateApplied`
+  - [ ] Event: `projectNameUpdated`
+  - [ ] Event: `reciveNewDoc`, `reciveNewFile`, `reciveNewFolder`
+  - [ ] Event: `reciveEntityRename`, `removeEntity`, `reciveEntityMove`
+  - [ ] Event: `clientTracking.clientUpdated`, `clientTracking.clientDisconnected`
 - Open project as virtual workspace
   - [ ] sync remote project via `FileSystemProvider`
   - [ ] support local syntax check (via other extension)
