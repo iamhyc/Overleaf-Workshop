@@ -244,9 +244,10 @@ class VirtualFileSystem {
                         await GlobalStateManager.moveProjectEntity(this.context, this.api, serverName, this.projectId, oldPath.fileType, oldPath.fileId, newPath.parentFolder._id) );
             if (res) {
                 const key = oldPath.fileType==='folder' ? 'folders' : oldPath.fileType==='doc' ? 'docs' : 'fileRefs';
-                //FIXME: push and filter are not working
+                const index = oldPath.parentFolder[key].findIndex((entity) => entity._id===oldPath.fileId);
+                oldPath.fileEntity.name = newPath.fileName;
                 newPath.parentFolder[key].push(oldPath.fileEntity as any);
-                oldPath.parentFolder[key].filter(oldPath.fileEntity as any);
+                oldPath.parentFolder[key].splice(index, 1);
             }
         }
     }
