@@ -158,12 +158,50 @@ export class GlobalStateManager {
         return;
     }
 
-    static async deleteProjectFile(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileType:any, fileId:string) {
+    static async deleteProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileType:any, fileId:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
         if (server.login!==undefined) {
-            const res = await api.deleteFile(server.login.identity, projectId, fileType, fileId);
+            const res = await api.deleteEntity(server.login.identity, projectId, fileType, fileId);
+            if (res.type==='success') {
+                return true;
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    static async renameProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, entityType:string, entityId:string, newName:string) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+
+        if (server.login!==undefined) {
+            const res = await api.renameEntity(server.login.identity, projectId, entityType, entityId, newName);
+            if (res.type==='success') {
+                return true;
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    static async moveProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, entityType:string, entityId:string, newParentId:string) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+
+        if (server.login!==undefined) {
+            const res = await api.moveEntity(server.login.identity, projectId, entityType, entityId, newParentId);
             if (res.type==='success') {
                 return true;
             } else {

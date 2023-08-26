@@ -263,7 +263,7 @@ export class BaseAPI {
         }
     }
 
-    async deleteFile(identity:Identity, projectId:string, fileType:'file'|'doc'|'folder', fileId:string) {
+    async deleteEntity(identity:Identity, projectId:string, fileType:'file'|'doc'|'folder', fileId:string) {
         const res = await fetch(this.url+`project/${projectId}/${fileType}/${fileId}`, {
             method: 'DELETE', redirect: 'manual', agent: this.agent,
             headers: {
@@ -278,6 +278,55 @@ export class BaseAPI {
                 type: 'success',
             };
         } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async renameEntity(identity:Identity, projectId:string, entityType:string, entityId:string, newName:string) {
+        const res = await fetch(this.url+`project/${projectId}/${entityType}/${entityId}/rename`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+            body: JSON.stringify({name:newName})
+        });
+
+        if (res.status==204) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async moveEntity(identity:Identity, projectId:string, entityType:string, entityId:string, newParentFolderId:string) {
+        const res = await fetch(this.url+`project/${projectId}/${entityType}/${entityId}/move`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+            body: JSON.stringify({parent_folder_id:newParentFolderId})
+        });
+
+        if (res.status==204) {
+            return {
+                type: 'success',
+            };
+        }
+        else {
             return {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
