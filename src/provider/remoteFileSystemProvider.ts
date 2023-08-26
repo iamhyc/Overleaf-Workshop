@@ -194,6 +194,41 @@ class VirtualFileSystem {
         }
     }
 
+    async remove(uri: vscode.Uri) {
+        const [parent, fileName] = this.path_resolve(uri);
+        const serverName = uri.authority;
+        const [fileType, fileId] = (() => {
+            // resolve as folder
+            let folder = parent.folders.find((folder) => folder.name === fileName);
+            if (fileName==='') { folder = parent; }
+            if (folder) {
+                return ['folder', folder._id];
+            }
+            // resolve as doc
+            const doc = parent.docs.find((doc) => doc.name === fileName);
+            if (doc) {
+                return ['doc', doc._id];
+            }
+            // resolve as fileRef
+            const fileRef = parent.fileRefs.find((fileRef) => fileRef.name === fileName);
+            if (fileRef) {
+                return ['file', fileRef._id];
+            }
+            return [];
+        })();
+        if (fileType && fileId) {
+            const res = await GlobalStateManager.deleteProjectFile(this.context, this.api, serverName, this.projectId, fileType, fileId);
+            if (res) {
+                if (fileType==='folder') {
+                    parent.folders = parent.folders.filter((folder) => folder._id !== fileId);
+                } else if (fileType==='doc') {
+                    parent.docs = parent.docs.filter((doc) => doc._id !== fileId);
+                } else if (fileType==='file') {
+                    parent.fileRefs = parent.fileRefs.filter((fileRef) => fileRef._id !== fileId);
+                }
+            }
+        }
+    }
 }
 
 export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
@@ -243,7 +278,7 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
     }
 
     delete(uri: vscode.Uri, options: { recursive: boolean; }): Thenable<void> {
-        return Promise.resolve();
+        return this.getVFS(uri).then( vfs => vfs.remove(uri) );
     }
 
     rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean; }): Thenable<void> {

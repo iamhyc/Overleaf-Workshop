@@ -158,6 +158,25 @@ export class GlobalStateManager {
         return;
     }
 
+    static async deleteProjectFile(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileType:any, fileId:string) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+
+        if (server.login!==undefined) {
+            const res = await api.deleteFile(server.login.identity, projectId, fileType, fileId);
+            if (res.type==='success') {
+                return true;
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
     static initSocketIOAPI(context:vscode.ExtensionContext, name:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];

@@ -262,4 +262,26 @@ export class BaseAPI {
             };
         }
     }
+
+    async deleteFile(identity:Identity, projectId:string, fileType:'file'|'doc'|'folder', fileId:string) {
+        const res = await fetch(this.url+`project/${projectId}/${fileType}/${fileId}`, {
+            method: 'DELETE', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+        });
+
+        if (res.status==204) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
 }
