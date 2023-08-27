@@ -61,7 +61,7 @@ export class SocketIOAPI {
         this.socket.on('disconnect', () => {
             console.log('SocketIOAPI: disconnected');
         });
-        this.socket.on('forceDisconnect', (message:string, dealy=10) => {
+        this.socket.on('forceDisconnect', (message:string, delay=10) => {
             console.log('SocketIOAPI: forceDisconnect', message);
         });
         this.socket.on('connectionAccepted', (_:any, publicId:any) => {
@@ -127,7 +127,7 @@ export class SocketIOAPI {
     }
 
     /**
-     * Reference: services/web/frontend/js/ide/online-uesrs/OnlineUserManager.js#L42
+     * Reference: services/web/frontend/js/ide/online-users/OnlineUserManager.js#L42
      * @returns {Promise}
      */
     async getConnectedUsers() {
@@ -139,7 +139,7 @@ export class SocketIOAPI {
     }
     
     /**
-     * Reference: services/web/frontend/js/ide/online-uesrs/OnlineUserManager.js#L150
+     * Reference: services/web/frontend/js/ide/online-users/OnlineUserManager.js#L150
      * @param {string} docId - The document id.
      * @returns {Promise}
      */

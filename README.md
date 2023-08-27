@@ -12,7 +12,7 @@ The following overleaf (sharelatex) versions provided on [Docker Hub](https://hu
 
 - [ ] sharelatex/sharelatex:4 (active)
 
-- [x] [sharelatex/sharelatex:3.5](https://hub.docker.com/layers/sharelatex/sharelatex/3.5.9/images/sha256-9d9dc81311d476707eae163203c63d3c1216ac2d90c8e71a29a85df7b34205c2?context=explore) (active) (verified by [@iamhyc](https://github.com/iamhyc))
+- [x] [sharelatex/sharelatex:3.5](https://hub.docker.com/layers/sharelatex/sharelatex/3.5.11/images/sha256-05bf7235fa80fc86dc6ff999c1cd3e43f9ad088560270fadc696f16a4e508304?context=explore) (active) (verified by [@iamhyc](https://github.com/iamhyc))
 - [ ] [sharelatex/sharelatex:3.4](https://hub.docker.com/layers/sharelatex/sharelatex/3.4/images/sha256-2a72e9b6343ed66f37ded4e6da8df81ed66e8af77e553b91bd19307f98badc7a?context=explore) (archived)
 - [ ] [sharelatex/sharelatex:3.3](https://hub.docker.com/layers/sharelatex/sharelatex/3.3/images/sha256-e1ec01563d259bbf290de4eb90dce201147c0aae5a07738c8c2e538f6d39d3a8?context=explore) (archived)
 - [ ] [sharelatex/sharelatex:3.2](https://hub.docker.com/layers/sharelatex/sharelatex/3.2/images/sha256-5db71af296f7c16910f8e8939e3841dad8c9ac48ea0a807ad47ca690087f44bf?context=explore) (archived)
