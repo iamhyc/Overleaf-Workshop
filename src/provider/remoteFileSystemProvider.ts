@@ -4,6 +4,8 @@ import { GlobalStateManager } from '../utils/globalStateManager';
 import { BaseAPI } from '../api/base';
 import { assert } from 'console';
 
+export type FileType = 'doc' | 'file' | 'folder';
+
 export interface DocumentEntity {
     _id: string,
     name: string,
@@ -55,14 +57,12 @@ export interface ProjectEntity {
 export class File implements vscode.FileStat {
     type: vscode.FileType;
     name: string;
-    sub_type?: "doc" | "fileRef";
     ctime: number;
     mtime: number;
     size: number;
-    constructor(name: string, type: vscode.FileType, sub_type?: any, ctime?: number) {
+    constructor(name: string, type: vscode.FileType, ctime?: number) {
         this.type = type;
         this.name = name;
-        this.sub_type = sub_type;
         this.ctime = ctime || Date.now();
         this.mtime = Date.now();
         this.size = 0;
@@ -74,14 +74,20 @@ class VirtualFileSystem {
     private context: vscode.ExtensionContext;
     private api: BaseAPI;
     private socket: SocketIOAPI;
+    private origin: string;
     private userId: string;
     private projectId: string;
+    private notify: (events:vscode.FileChangeEvent[])=>void;
 
-    constructor(context: vscode.ExtensionContext, uri: vscode.Uri) {
+    constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
         const {userId,projectId,path} = this.parseUri(uri);
+        this.origin = uri.scheme + '://' + uri.authority;
         this.userId = userId;
         this.projectId = projectId;
+        //
         this.context = context;
+        this.notify = notify;
+        //
         const res = GlobalStateManager.initSocketIOAPI(context, uri.authority);
         if (res) {
             this.api = res.api;
@@ -89,6 +95,13 @@ class VirtualFileSystem {
         } else {
             throw new Error(`Cannot init SocketIOAPI for ${uri.authority}`);
         }
+    }
+
+    async init() {
+        this.remoteWatch();
+        return this.socket.joinProject(this.projectId).then((project:ProjectEntity) => {
+            this.root = project;
+        });
     }
 
     private parseUri(uri: vscode.Uri) {
@@ -101,13 +114,7 @@ class VirtualFileSystem {
         return {userId, projectId, path}
     }
 
-    async joinProject() {
-        return this.socket.joinProject(this.projectId).then((project:ProjectEntity) => {
-            this.root = project;
-        });
-    }
-
-    private _resolve(uri: vscode.Uri) {
+    private _resolveUri(uri: vscode.Uri) {
         // resolve path
         const [parentFolder, fileName] = (() => {
             const path = uri.path;
@@ -134,37 +141,136 @@ class VirtualFileSystem {
             let folder = parentFolder.folders.find((folder) => folder.name === fileName);
             if (fileName==='') { folder = parentFolder; }
             if (folder) {
-                return [folder, 'folder', folder._id];
+                return [folder, 'folder' as FileType, folder._id];
             }
             // resolve as doc
             const doc = parentFolder.docs.find((doc) => doc.name === fileName);
             if (doc) {
-                return [doc, 'doc', doc._id];
+                return [doc, 'doc' as FileType, doc._id];
             }
-            // resolve as fileRef
-            const fileRef = parentFolder.fileRefs.find((fileRef) => fileRef.name === fileName);
-            if (fileRef) {
-                return [fileRef, 'file', fileRef._id];
+            // resolve as file
+            const file = parentFolder.fileRefs.find((file) => file.name === fileName);
+            if (file) {
+                return [file, 'file' as FileType, file._id];
             }
             return [];
         })();
         return {parentFolder, fileName, fileEntity, fileType, fileId};
     }
 
+    private _resolveById(entityId: string, root?: FolderEntity, path?:string):{
+        parentFolder: FolderEntity, fileEntity: DocumentEntity, fileType:FileType, path:string
+    } | undefined {
+        if (!this.root) {
+            throw vscode.FileSystemError.FileNotFound();
+        }
+        root = root || this.root.rootFolder[0];
+        path = path || '/';
+
+        if (root._id === entityId) {
+            return {parentFolder: root, fileType: 'folder', fileEntity: root, path};
+        } else {
+            // search in root
+            const doc = root.docs.find((doc) => doc._id === entityId);
+            if (doc) {
+                return {parentFolder: root, fileType: 'doc', fileEntity: doc, path:path+doc.name};
+            }
+            const file = root.fileRefs.find((file) => file._id === entityId);
+            if (file) {
+                return {parentFolder: root, fileType: 'file', fileEntity: file, path:path+file.name};
+            }
+            // recursive search
+            for (let i = 0; i < root.folders.length; i++) {
+                const folder = root.folders[i];
+                const res = this._resolveById(entityId, folder, path+folder.name+'/');
+                if (res) return res;
+            }
+        }
+        return undefined;
+    }
+
+    private insertEntity(parentFolder: FolderEntity, fileType:FileType, entity: DocumentEntity) {
+        const key = fileType==='folder' ? 'folders' : fileType==='doc' ? 'docs' : 'fileRefs';
+        parentFolder[key].push(entity as any);
+    }
+
+    private removeEntity(parentFolder: FolderEntity, fileType:FileType, entity: DocumentEntity) {
+        const key = fileType==='folder' ? 'folders' : fileType==='doc' ? 'docs' : 'fileRefs';
+        const index = parentFolder[key].findIndex((e) => e._id === entity._id);
+        if (index>=0) {
+            parentFolder[key].splice(index, 1);
+        }
+    }
+
+    private removeEntityById(parentFolder: FolderEntity, fileType:FileType, entityId: string, recursive?:boolean) {
+        const key = fileType==='folder' ? 'folders' : fileType==='doc' ? 'docs' : 'fileRefs';
+        parentFolder[key] = parentFolder[key].filter((entity) => entity._id !== entityId) as any;
+    }
+
+    private remoteWatch() {
+        this.socket.updateEventHandlers({
+            onFileCreated: (parentFolderId:string, type:FileType, entity:DocumentEntity) => {
+                const res = this._resolveById(parentFolderId);
+                if (res) {
+                    const {fileEntity} = res;
+                    this.insertEntity(fileEntity as FolderEntity, type, entity);
+                    this.notify([
+                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.parse(this.origin+res.path)}
+                    ]);
+                }
+            },
+            onFileRenamed: (entityId:string, newName:string) => {
+                const res = this._resolveById(entityId);
+                if (res) {
+                    const {fileEntity} = res;
+                    const oldName = fileEntity.name;
+                    fileEntity.name = newName;
+                    this.notify([
+                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.parse(this.origin+res.path)},
+                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.parse(this.origin+res.path.replace(oldName, newName))}
+                    ]);
+                }
+            },
+            onFileRemoved: (entityId:string) => {
+                const res = this._resolveById(entityId);
+                if (res) {
+                    const {parentFolder, fileType, fileEntity} = res;
+                    this.removeEntity(parentFolder, fileType, fileEntity);
+                    this.notify([
+                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.parse(this.origin+res.path)}
+                    ]);
+                }
+            },
+            onFileMoved: (entityId:string, folderId:string) => {
+                const oldPath = this._resolveById(entityId);
+                const newPath = this._resolveById(folderId);
+                if (oldPath && newPath) {
+                    const newParentFolder = newPath.fileEntity as FolderEntity;
+                    this.insertEntity(newParentFolder, oldPath.fileType, oldPath.fileEntity);
+                    this.removeEntity(oldPath.parentFolder, oldPath.fileType, oldPath.fileEntity);
+                    this.notify([
+                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.parse(this.origin+oldPath.path)},
+                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.parse(this.origin+newPath.path+'/'+oldPath.fileEntity.name)}
+                    ]);
+                }
+            },
+        });
+    }
+
     resolve(uri: vscode.Uri): File {
-        const {fileName, fileType} = this._resolve(uri);
+        const {fileName, fileType} = this._resolveUri(uri);
         if (fileType==='folder') {
             return new File(fileName, vscode.FileType.Directory);
         } else if (fileType==='doc') {
-            return new File(fileName, vscode.FileType.File, 'doc');
+            return new File(fileName, vscode.FileType.File);
         } else if (fileType==='file') {
-            return new File(fileName, vscode.FileType.File, 'fileRef');
+            return new File(fileName, vscode.FileType.File);
         }
         throw vscode.FileSystemError.FileNotFound(uri);
     }
 
-    listFolder(uri: vscode.Uri): [string, vscode.FileType][] {
-        const {fileEntity} = this._resolve(uri);
+    list(uri: vscode.Uri): [string, vscode.FileType][] {
+        const {fileEntity} = this._resolveUri(uri);
         const folder = fileEntity as FolderEntity;
         let results:[string, vscode.FileType][] = [];
         if (folder) {
@@ -182,7 +288,7 @@ class VirtualFileSystem {
     }
 
     async openFile(uri: vscode.Uri): Promise<Uint8Array> {
-        const {fileType, fileId} = this._resolve(uri);
+        const {fileType, fileId} = this._resolveUri(uri);
         // resolve as doc
         if (fileType=='doc' && fileId) {
             const res = await this.socket.joinDoc(fileId);
@@ -197,44 +303,37 @@ class VirtualFileSystem {
     }
 
     async mkdir(uri: vscode.Uri) {
-        const {parentFolder, fileName} = this._resolve(uri);
+        const {parentFolder, fileName} = this._resolveUri(uri);
         const serverName = uri.authority;
         const res = await GlobalStateManager.addProjectFolder(this.context, this.api, serverName, this.projectId, fileName, parentFolder._id);
         if (res) {
-            parentFolder.folders.push(res);
+            this.insertEntity(parentFolder, 'folder', res);
         }
     }
 
     async remove(uri: vscode.Uri, recursive: boolean) {
-        const {parentFolder, fileType, fileId} = this._resolve(uri);
+        const {parentFolder, fileType, fileId} = this._resolveUri(uri);
         const serverName = uri.authority;
         
         if (fileType && fileId) {
             const res = await GlobalStateManager.deleteProjectEntity(this.context, this.api, serverName, this.projectId, fileType, fileId);
             if (res) {
-                if (fileType==='folder' && recursive) {
-                    parentFolder.folders = parentFolder.folders.filter((folder) => folder._id !== fileId);
-                } else if (fileType==='doc') {
-                    parentFolder.docs = parentFolder.docs.filter((doc) => doc._id !== fileId);
-                } else if (fileType==='file') {
-                    parentFolder.fileRefs = parentFolder.fileRefs.filter((fileRef) => fileRef._id !== fileId);
-                }
+                this.removeEntityById(parentFolder, fileType, fileId, recursive);
             }
         }
     }
 
     async rename(oldUri: vscode.Uri, newUri: vscode.Uri, force: boolean) {
-        const oldPath = this._resolve(oldUri);
-        const newPath = this._resolve(newUri);
+        const oldPath = this._resolveUri(oldUri);
+        const newPath = this._resolveUri(newUri);
         const serverName = oldUri.authority;
 
         if (oldPath.fileType && oldPath.fileId && oldPath.fileEntity) {
             // delete existence firstly
-            if (newPath.fileEntity) {
+            if (newPath.fileType && newPath.fileEntity) {
                 if (!force) return;
-                const key = newPath.fileType==='folder' ? 'folders' : oldPath.fileType==='doc' ? 'docs' : 'fileRefs';
                 await this.remove(newUri, true);
-                newPath.parentFolder[key].filter(newPath.fileEntity as any);
+                this.removeEntity(newPath.parentFolder, newPath.fileType, newPath.fileEntity);
             }
             // rename or move
             const res = (oldPath.parentFolder===newPath.parentFolder) ? (
@@ -243,11 +342,10 @@ class VirtualFileSystem {
                         // move
                         await GlobalStateManager.moveProjectEntity(this.context, this.api, serverName, this.projectId, oldPath.fileType, oldPath.fileId, newPath.parentFolder._id) );
             if (res) {
-                const key = oldPath.fileType==='folder' ? 'folders' : oldPath.fileType==='doc' ? 'docs' : 'fileRefs';
-                const index = oldPath.parentFolder[key].findIndex((entity) => entity._id===oldPath.fileId);
-                oldPath.fileEntity.name = newPath.fileName;
-                newPath.parentFolder[key].push(oldPath.fileEntity as any);
-                oldPath.parentFolder[key].splice(index, 1);
+                const newEntity = Object.assign(oldPath.fileEntity);
+                newEntity.name = newPath.fileName;
+                this.insertEntity(newPath.parentFolder, oldPath.fileType, newEntity);
+                this.removeEntity(oldPath.parentFolder, oldPath.fileType, oldPath.fileEntity);
             }
         }
     }
@@ -269,10 +367,14 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
         if (vfs) {
             return Promise.resolve(vfs);
         } else {
-            const vfs = new VirtualFileSystem(this.context, uri);
+            const vfs = new VirtualFileSystem(this.context, uri, this.notify.bind(this));
             this.vfss[ uri.query ] = vfs;
-            return vfs.joinProject().then(() => vfs);
+            return vfs.init().then(() => vfs);
         }
+    }
+
+    notify(events :vscode.FileChangeEvent[]) {
+        this._emitter.fire(events);
     }
 
     stat(uri: vscode.Uri): Thenable<vscode.FileStat> {
@@ -284,7 +386,7 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
     }
 
     readDirectory(uri: vscode.Uri): Thenable<[string, vscode.FileType][]> {
-        return this.getVFS(uri).then( vfs => vfs.listFolder(uri) );
+        return this.getVFS(uri).then( vfs => vfs.list(uri) );
     }
 
     createDirectory(uri: vscode.Uri): Thenable<void> {
@@ -296,7 +398,7 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
     }
 
     writeFile(uri: vscode.Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean; }): Thenable<void> {
-        return Promise.resolve();
+        return Promise.resolve(); //TODO:
     }
 
     delete(uri: vscode.Uri, options: { recursive: boolean; }): Thenable<void> {

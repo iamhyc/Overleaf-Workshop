@@ -1,5 +1,5 @@
 import { Identity, BaseAPI } from './base';
-import { ProjectEntity } from '../provider/remoteFileSystemProvider';
+import { DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../provider/remoteFileSystemProvider';
 
 export interface UpdateSchema {
     doc: string, //doc id
@@ -26,6 +26,13 @@ export interface OnlineUserSchema {
     connected: boolean,
     client_id: string,
     client_age: number,
+}
+
+export interface EventsHandler {
+    onFileCreated?: (parentFolderId:string, type:FileType, entity:DocumentEntity) => void,
+    onFileRenamed?: (entityId:string, newName:string) => void,
+    onFileRemoved?: (entityId:string) => void,
+    onFileMoved?: (entityId:string, newParentFolderId:string) => void,
 }
 
 export class SocketIOAPI {
@@ -72,6 +79,41 @@ export class SocketIOAPI {
         });
         this.socket.on('error', (err:any) => {
             throw new Error(err);
+        });
+    }
+
+    updateEventHandlers(handlers: EventsHandler) {
+        Object.values(handlers).forEach((handler) => {
+            switch (handler) {
+                case handlers.onFileCreated:
+                    this.socket.on('reciveNewDoc', (parentFolderId:string, doc:DocumentEntity) => {
+                        handler(parentFolderId, 'doc', doc);
+                    });
+                    this.socket.on('reciveNewFile', (parentFolderId:string, file:FileRefEntity) => {
+                        handler(parentFolderId, 'file', file);
+                    });
+                    this.socket.on('reciveNewFolder', (parentFolderId:string, folder:FolderEntity) => {
+                        handler(parentFolderId, 'folder', folder);
+                    });
+                    break;
+                case handlers.onFileRenamed:
+                    this.socket.on('reciveEntityRename', (entityId:string, newName:string) => {
+                        handler(entityId, newName);
+                    });
+                    break;
+                case handlers.onFileRemoved:
+                    this.socket.on('removeEntity', (entityId:string) => {
+                        handler(entityId);
+                    });
+                    break;
+                case handlers.onFileMoved:
+                    this.socket.on('reciveEntityMove', (entityId:string, folderId:string) => {
+                        handler(entityId, folderId);
+                    });
+                    break;
+                default:
+                    break;
+            }
         });
     }
 
