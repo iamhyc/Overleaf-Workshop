@@ -47,6 +47,8 @@ The following overleaf (sharelatex) versions provided on [Docker Hub](https://hu
   - [ ] support local syntax check (via other extension)
   - [ ] compile project: 1) on save, 2) on `ctrl+alt+b`
   - [ ] display "build icon" on status bar
+  - [ ] intellisense via `metadata`
+  - [ ] local snippet macro and grammar linting
 - Collaboration
   - [ ] Display online users on side bar
   - [ ] Display multiple colored selections (via `setDecorations`)
