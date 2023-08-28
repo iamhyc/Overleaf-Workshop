@@ -1,8 +1,10 @@
 import * as http from 'http';
 import * as https from 'https';
+import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
-import { FolderEntity } from '../provider/remoteFileSystemProvider';
+import { DocumentEntity, FileType, FolderEntity } from '../provider/remoteFileSystemProvider';
+
 
 export interface Identity {
     csrfToken: string;
@@ -35,7 +37,7 @@ export interface ResponseSchema {
     message?: string;
     identity?: Identity;
     projects?: ProjectPersist[];
-    folder?: FolderEntity;
+    entity?: DocumentEntity;
 }
 
 export class BaseAPI {
@@ -234,6 +236,39 @@ export class BaseAPI {
         }
     }
 
+    async uploadFile(identity:Identity, projectId:string, parentFolderId:string, fileName:string, fileContent:Uint8Array) {
+        const fileStream = require('stream').Readable.from(fileContent);
+        const formData = new (require('form-data'))();
+        formData.append('targetFolderId', parentFolderId);
+        formData.append('name', fileName);
+        formData.append('type', require('mime-types').lookup(fileName));
+        formData.append('qqfile', fileStream, {filename: fileName});
+
+        const res = await fetch(this.url+`project/${projectId}/upload?folder_id=${parentFolderId}`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'multipart/form-data',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+            body: formData
+        });
+
+        if (res.status===200) {
+            const {success, entity_id, entity_type} = await res.json() as any;
+            return {
+                type: 'success',
+                entity: {_type:entity_type, _id:entity_id, name:fileName}
+            }
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
     async addFolder(identity:Identity, projectId:string, folderName:string, parentFolderId:string) {
         // await this._sendEditingSessionHeartbeat(identity, projectId, {editorType:'ace'});
         const res = await fetch(this.url+`project/${projectId}/folder`, {
@@ -253,7 +288,7 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                folder: (await res.json() as any),
+                entity: (await res.json() as any),
             };
         } else {
             return {
@@ -263,7 +298,7 @@ export class BaseAPI {
         }
     }
 
-    async deleteEntity(identity:Identity, projectId:string, fileType:'file'|'doc'|'folder', fileId:string) {
+    async deleteEntity(identity:Identity, projectId:string, fileType:FileType, fileId:string) {
         const res = await fetch(this.url+`project/${projectId}/${fileType}/${fileId}`, {
             method: 'DELETE', redirect: 'manual', agent: this.agent,
             headers: {

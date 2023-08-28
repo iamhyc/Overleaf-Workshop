@@ -141,14 +141,30 @@ export class GlobalStateManager {
         }
     }
 
+    static async uploadProjectFile(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, parentFolderId:string, fileName:string, content:Uint8Array) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+
+        if (server.login!==undefined) {
+            const res = await api.uploadFile(server.login.identity, projectId, parentFolderId, fileName, content);
+            if (res.type==='success' && res.entity!==undefined) {
+                return res.entity;
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
+            }
+        }
+    }
+
     static async addProjectFolder(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, folderName:string, parentFolderId:string): Promise<FolderEntity|undefined> {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
         if (server.login!==undefined) {
             const res = await api.addFolder(server.login.identity, projectId, folderName, parentFolderId);
-            if (res.type==='success' && res.folder!==undefined) {
-                return res.folder;
+            if (res.type==='success' && res.entity!==undefined) {
+                return res.entity;
             } else {
                 if (res.message!==undefined) {
                     vscode.window.showErrorMessage(res.message);

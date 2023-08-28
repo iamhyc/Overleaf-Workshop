@@ -7,20 +7,17 @@ import { assert } from 'console';
 export type FileType = 'doc' | 'file' | 'folder';
 
 export interface DocumentEntity {
+    _type?: string,
     _id: string,
     name: string,
 }
 
 export interface FileRefEntity extends DocumentEntity {
-    // _id: string,
-    // name: string,
     linkedFileData: any,
     created: string,
 }
 
 export interface FolderEntity extends DocumentEntity {
-    // _id: string,
-    // name: string,
     docs: Array<DocumentEntity>,
     fileRefs: Array<FileRefEntity>,
     folders: Array<FolderEntity>,
@@ -302,6 +299,26 @@ class VirtualFileSystem {
         throw vscode.FileSystemError.FileNotFound();
     }
 
+    async createFile(uri: vscode.Uri, content:Uint8Array, overwrite?:boolean) {
+        const {parentFolder, fileName, fileEntity} = this._resolveUri(uri);
+        const serverName = uri.authority;
+        if (fileEntity && !overwrite) {
+            throw vscode.FileSystemError.FileExists(uri);
+        }
+        const res = await GlobalStateManager.uploadProjectFile(this.context, this.api, serverName, this.projectId, parentFolder._id, fileName, content);
+        if (res) {
+            this.insertEntity(parentFolder, res._type, res);
+        }
+    }
+
+    async writeFile(uri: vscode.Uri, content:Uint8Array) {
+        const {parentFolder, fileName, fileType, fileEntity} = this._resolveUri(uri);
+        if (fileType && fileType!=='doc') {
+            return this.createFile(uri, content, true);
+        }
+        //TODO: write file incrementally via `applyOtUpdate`
+    }
+
     async mkdir(uri: vscode.Uri) {
         const {parentFolder, fileName} = this._resolveUri(uri);
         const serverName = uri.authority;
@@ -398,7 +415,7 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
     }
 
     writeFile(uri: vscode.Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean; }): Thenable<void> {
-        return Promise.resolve(); //TODO:
+        return this.getVFS(uri).then( vfs => options.create? vfs.createFile(uri, content, options.overwrite) : vfs.writeFile(uri, content) );
     }
 
     delete(uri: vscode.Uri, options: { recursive: boolean; }): Thenable<void> {
