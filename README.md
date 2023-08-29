@@ -33,7 +33,7 @@ The following overleaf (sharelatex) versions provided on [Docker Hub](https://hu
 - WebSocket API
   - [x] Init websocket connection
   - [x] Request: `joinProject`, `joinDoc`, `leaveDoc`
-  - [ ] Request: `applyOtUpdate`
+  - [x] Request: `applyOtUpdate`
   - [ ] Request: `clientTracking.getConnectedUsers`
   - [ ] Request: `clientTracking.updatePosition`
   - [ ] Event: `otUpdateApplied`

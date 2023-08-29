@@ -3,21 +3,29 @@ import { SocketIOAPI } from '../api/socketio';
 import { GlobalStateManager } from '../utils/globalStateManager';
 import { BaseAPI } from '../api/base';
 import { assert } from 'console';
+import * as Diff from 'diff';
 
 export type FileType = 'doc' | 'file' | 'folder';
 
-export interface DocumentEntity {
-    _type?: string,
+export interface FileEntity {
     _id: string,
     name: string,
+    _type?: string,
 }
 
-export interface FileRefEntity extends DocumentEntity {
+export interface DocumentEntity extends FileEntity {
+    version?: number,
+    mtime?: number,
+    lastVersion?: number,
+    cache?: string,
+}
+
+export interface FileRefEntity extends FileEntity {
     linkedFileData: any,
     created: string,
 }
 
-export interface FolderEntity extends DocumentEntity {
+export interface FolderEntity extends FileEntity {
     docs: Array<DocumentEntity>,
     fileRefs: Array<FileRefEntity>,
     folders: Array<FolderEntity>,
@@ -156,7 +164,7 @@ class VirtualFileSystem {
     }
 
     private _resolveById(entityId: string, root?: FolderEntity, path?:string):{
-        parentFolder: FolderEntity, fileEntity: DocumentEntity, fileType:FileType, path:string
+        parentFolder: FolderEntity, fileEntity: FileEntity, fileType:FileType, path:string
     } | undefined {
         if (!this.root) {
             throw vscode.FileSystemError.FileNotFound();
@@ -186,12 +194,12 @@ class VirtualFileSystem {
         return undefined;
     }
 
-    private insertEntity(parentFolder: FolderEntity, fileType:FileType, entity: DocumentEntity) {
+    private insertEntity(parentFolder: FolderEntity, fileType:FileType, entity: FileEntity) {
         const key = fileType==='folder' ? 'folders' : fileType==='doc' ? 'docs' : 'fileRefs';
         parentFolder[key].push(entity as any);
     }
 
-    private removeEntity(parentFolder: FolderEntity, fileType:FileType, entity: DocumentEntity) {
+    private removeEntity(parentFolder: FolderEntity, fileType:FileType, entity: FileEntity) {
         const key = fileType==='folder' ? 'folders' : fileType==='doc' ? 'docs' : 'fileRefs';
         const index = parentFolder[key].findIndex((e) => e._id === entity._id);
         if (index>=0) {
@@ -206,7 +214,7 @@ class VirtualFileSystem {
 
     private remoteWatch() {
         this.socket.updateEventHandlers({
-            onFileCreated: (parentFolderId:string, type:FileType, entity:DocumentEntity) => {
+            onFileCreated: (parentFolderId:string, type:FileType, entity:FileEntity) => {
                 const res = this._resolveById(parentFolderId);
                 if (res) {
                     const {fileEntity} = res;
@@ -285,11 +293,14 @@ class VirtualFileSystem {
     }
 
     async openFile(uri: vscode.Uri): Promise<Uint8Array> {
-        const {fileType, fileId} = this._resolveUri(uri);
+        const {fileType, fileEntity, fileId} = this._resolveUri(uri);
         // resolve as doc
-        if (fileType=='doc' && fileId) {
+        if (fileType=='doc' && fileEntity && fileId) {
             const res = await this.socket.joinDoc(fileId);
             const content = res.docLines.join('\n');
+            const doc = fileEntity as DocumentEntity;
+            doc.version = res.version;
+            doc.cache = String.raw(content);
             return new TextEncoder().encode(content);
         } else if (fileType=='file' && fileId) {
             const serverName = uri.authority;
@@ -316,7 +327,43 @@ class VirtualFileSystem {
         if (fileType && fileType!=='doc') {
             return this.createFile(uri, content, true);
         }
-        //TODO: write file incrementally via `applyOtUpdate`
+        if (fileType && fileType=='doc' && fileEntity) {
+            const doc = fileEntity as DocumentEntity;
+            if (doc.version && doc.cache) {
+                const update = {
+                    doc: doc.name,
+                    lastV: doc.lastVersion,
+                    v: doc.version + 1,
+                    // Reference: services/web/frontend/js/vendor/libs/sharejs.js#L1288
+                    hash: (()=>{
+                        if (!doc.mtime || Date.now()-doc.mtime>5000) {
+                            doc.mtime = Date.now();
+                            return require('crypto').createHash('sha1').update(
+                                "blob " + doc.cache.length + "\x00" + doc.cache
+                            ).digest('hex');
+                        }
+                    })() as string,
+                    op: (()=>{
+                        const _content = new TextDecoder().decode(content); //FIXME: raw content?
+                        return Diff.diffChars(doc.cache, _content)
+                                    .map((part) => {
+                                        if (part.count) {
+                                            return {
+                                                p: part.count,
+                                                i: part.added ? part.value : undefined,
+                                                d: part.added ? part.value : undefined,
+                                            }
+                                        }
+                                    })
+                                    .filter(x => x) as any;
+                    })(),
+                };
+                await this.socket.applyOtUpdate(doc._id, update);
+                //
+                doc.lastVersion = doc.version;
+                doc.version += 1;
+            }
+        }
     }
 
     async mkdir(uri: vscode.Uri) {

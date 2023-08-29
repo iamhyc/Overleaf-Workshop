@@ -3,7 +3,7 @@ import * as https from 'https';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
-import { DocumentEntity, FileType, FolderEntity } from '../provider/remoteFileSystemProvider';
+import { FileEntity, FileType, FolderEntity } from '../provider/remoteFileSystemProvider';
 
 
 export interface Identity {
@@ -37,7 +37,7 @@ export interface ResponseSchema {
     message?: string;
     identity?: Identity;
     projects?: ProjectPersist[];
-    entity?: DocumentEntity;
+    entity?: FileEntity;
 }
 
 export class BaseAPI {

@@ -1,14 +1,14 @@
 import { Identity, BaseAPI } from './base';
-import { DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../provider/remoteFileSystemProvider';
+import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../provider/remoteFileSystemProvider';
 
 export interface UpdateSchema {
     doc: string, //doc id
-    op: Array<{
+    op: {
         p: number, //position
-        d?: string, //delete
-        u: boolean, //update version or not
         i?: string, //insert
-    }>
+        d?: string, //delete
+        u?: boolean, //isUndo
+    }[],
     v: number, //doc version number
     lastV?: number, //last version number
     hash?: string, //(not needed if lastV is provided)
@@ -29,7 +29,7 @@ export interface OnlineUserSchema {
 }
 
 export interface EventsHandler {
-    onFileCreated?: (parentFolderId:string, type:FileType, entity:DocumentEntity) => void,
+    onFileCreated?: (parentFolderId:string, type:FileType, entity:FileEntity) => void,
     onFileRenamed?: (entityId:string, newName:string) => void,
     onFileRemoved?: (entityId:string) => void,
     onFileMoved?: (entityId:string, newParentFolderId:string) => void,
