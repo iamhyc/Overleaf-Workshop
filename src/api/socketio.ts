@@ -3,7 +3,7 @@ import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, Proj
 
 export interface UpdateSchema {
     doc: string, //doc id
-    op: {
+    op?: {
         p: number, //position
         i?: string, //insert
         d?: string, //delete
@@ -33,6 +33,7 @@ export interface EventsHandler {
     onFileRenamed?: (entityId:string, newName:string) => void,
     onFileRemoved?: (entityId:string) => void,
     onFileMoved?: (entityId:string, newParentFolderId:string) => void,
+    onFileChanged?: (update:UpdateSchema) => void,
 }
 
 export class SocketIOAPI {
@@ -109,6 +110,11 @@ export class SocketIOAPI {
                 case handlers.onFileMoved:
                     this.socket.on('reciveEntityMove', (entityId:string, folderId:string) => {
                         handler(entityId, folderId);
+                    });
+                    break;
+                case handlers.onFileChanged:
+                    this.socket.on('otUpdateApplied', (update: UpdateSchema) => {
+                        handler(update);
                     });
                     break;
                 default:

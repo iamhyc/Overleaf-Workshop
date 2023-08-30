@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SocketIOAPI } from '../api/socketio';
+import { SocketIOAPI, UpdateSchema } from '../api/socketio';
 import { GlobalStateManager } from '../utils/globalStateManager';
 import { BaseAPI } from '../api/base';
 import { assert } from 'console';
@@ -259,6 +259,17 @@ class VirtualFileSystem {
                     ]);
                 }
             },
+            onFileChanged: (update:UpdateSchema) => {
+                const doc = this._resolveById(update.doc)?.fileEntity as DocumentEntity;
+                if (update.v===doc.version && !update.op) {
+                    return; //hey Boomerang
+                } else if (update.v-1===doc.version && update.op) {
+                    //TODO: create the patch from `op` and apply to the `doc`
+                } else {
+                    //FIXME: cope with out-of-order or contradictory
+                    throw new Error(`${doc.name}: ${doc._id}@${doc.version} inconsistent with ${update.v}`);
+                }
+            }
         });
     }
 

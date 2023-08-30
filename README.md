@@ -35,15 +35,15 @@ The following overleaf (sharelatex) versions provided on [Docker Hub](https://hu
   - [x] Request: `joinProject`, `joinDoc`, `leaveDoc`
   - [x] Request: `applyOtUpdate`
   - [x] Request: `clientTracking.getConnectedUsers`
-  - [ ] Request: `clientTracking.updatePosition`
-  - [ ] Event: `otUpdateApplied`
+  - [x] Request: `clientTracking.updatePosition`
+  - [x] Event: `otUpdateApplied`
   - [x] Event: `reciveNewDoc`, `reciveNewFile`, `reciveNewFolder`
   - [x] Event: `reciveEntityRename`, `removeEntity`, `reciveEntityMove`
   - [ ] Event: `clientTracking.clientUpdated`, `clientTracking.clientDisconnected`
   - [ ] Event: `compilerUpdated`
   - [ ] Event: `projectNameUpdated`
 - Open project as virtual workspace
-  - [ ] sync remote project via `FileSystemProvider`
+  - [x] sync remote project via `FileSystemProvider`
   - [ ] support local syntax check (via other extension)
   - [ ] compile project: 1) on save, 2) on `ctrl+alt+b`
   - [ ] display "build icon" on status bar
