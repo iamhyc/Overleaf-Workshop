@@ -61,4 +61,4 @@ The following overleaf (sharelatex) versions provided on [Docker Hub](https://hu
 
 ### References
 
-- Overleaf Official Logos, [link](https://www.overleaf.com/for/partners/jlogos)
+- Overleaf Official Logos, [link](https://www.overleaf.com/for/partners/logos)
