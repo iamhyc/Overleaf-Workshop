@@ -25,16 +25,16 @@ The following overleaf (sharelatex) versions provided on [Docker Hub](https://hu
 - REST API (Overleaf Web Route List, [webapi.md](./docs/webapi.md))
   - [x] Login / Logout server
   - [x] List projects
-  - [ ] Compile project
-  - [ ] Get project build output (PDF)
-  - [ ] Jump between "code" and "pdf"
-  - [ ] Get file history updates and diff
+  - [x] Compile project
+  - [x] Get project build output (PDF)
+  - [x] Jump between "code" and "pdf"
   - [x] Download original files
+  - [ ] Get file history updates and diff
 - WebSocket API
   - [x] Init websocket connection
   - [x] Request: `joinProject`, `joinDoc`, `leaveDoc`
   - [x] Request: `applyOtUpdate`
-  - [ ] Request: `clientTracking.getConnectedUsers`
+  - [x] Request: `clientTracking.getConnectedUsers`
   - [ ] Request: `clientTracking.updatePosition`
   - [ ] Event: `otUpdateApplied`
   - [x] Event: `reciveNewDoc`, `reciveNewFile`, `reciveNewFolder`

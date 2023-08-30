@@ -31,6 +31,22 @@ export interface CompileResponseSchema {
     enableHybridPdfDownload: boolean;
 }
 
+export interface syncPdfResponseSchema {
+    file: string,
+    line: number,
+    column: number
+}
+
+export interface syncCodeResponseSchema {
+    pdf: Array<{
+        page: number,
+        h: number,
+        v: number,
+        width: number,
+        height: number,
+    }>
+}
+
 export interface ResponseSchema {
     type: 'success' | 'error';
     raw?: ArrayBuffer;
@@ -38,6 +54,10 @@ export interface ResponseSchema {
     identity?: Identity;
     projects?: ProjectPersist[];
     entity?: FileEntity;
+    compile?: CompileResponseSchema;
+    content?: Uint8Array;
+    syncPdf?: syncPdfResponseSchema;
+    syncCode?: syncCodeResponseSchema;
 }
 
 export class BaseAPI {
@@ -366,6 +386,103 @@ export class BaseAPI {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
             };
+        }
+    }
+
+    async compile(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}/compile?auto_compile=true`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+            body: JSON.stringify({
+                check: "silent",
+                draft: false,
+                incrementalCompilesEnabled: true,
+                rootDoc_id: null,
+                stopOnFirstError: false
+            })
+        });
+
+        if (res.status==200) {
+            return {
+                type: 'success',
+                compile: await res.json()
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            }
+        }
+    }
+
+    async getFileFromClsi(identity:Identity, url:string, compileGroup:string) {
+        let content = "";
+        while(true) {
+            const res = await fetch(this.url+url, {
+                method: 'GET', redirect: 'manual', agent: this.agent,
+                headers: {
+                    'Connection': 'keep-alive',
+                    'Cookie': identity.cookies.split(';')[0],
+                }
+            });
+            if (res.status===206) {
+                content += await res.text();
+            } else {
+                break;
+            }
+        };
+        return {
+            type: 'success',
+            content: content
+        };
+    }
+
+    async proxySyncPdf(identity:Identity, projectId:string, page:number, h:number, v:number) {
+        const res = await fetch(this.url+`project/${projectId}/sync/pdf?page=${page}&h=${h}&v=${v}`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            }
+        });
+
+        if (res.status==200) {
+            return {
+                type: 'success',
+                syncPdf: await res.json()
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            }
+        }
+    }
+
+    async proxySyncCode(identity:Identity, projectId:string, file:string, line:number, column:number) {
+        const res = await fetch(this.url+`project/${projectId}/sync/code?file=${file}&line=${line}&column=${column}`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            }
+        });
+
+        if (res.status==200) {
+            return {
+                type: 'success',
+                syncCode: await res.json()
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            }
         }
     }
 }
