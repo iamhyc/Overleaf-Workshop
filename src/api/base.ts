@@ -263,7 +263,6 @@ export class BaseAPI {
         formData.append('name', fileName);
         formData.append('type', require('mime-types').lookup(fileName));
         formData.append('qqfile', fileStream, {filename: fileName});
-
         const res = await fetch(this.url+`project/${projectId}/upload?folder_id=${parentFolderId}`, {
             method: 'POST', redirect: 'manual', agent: this.agent,
             headers: {
@@ -274,6 +273,7 @@ export class BaseAPI {
             },
             body: formData
         });
+
 
         if (res.status===200) {
             const {success, entity_id, entity_type} = await res.json() as any;
@@ -373,9 +373,8 @@ export class BaseAPI {
                 'Cookie': identity.cookies.split(';')[0],
                 'X-Csrf-Token': identity.csrfToken,
             },
-            body: JSON.stringify({parent_folder_id:newParentFolderId})
+            body: JSON.stringify({folder_id:newParentFolderId})
         });
-
         if (res.status==204) {
             return {
                 type: 'success',
