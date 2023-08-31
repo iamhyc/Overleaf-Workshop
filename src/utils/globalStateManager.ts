@@ -31,10 +31,12 @@ export class GlobalStateManager {
 
     static getServers(context:vscode.ExtensionContext) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        return Object.values(persists).map(persist => { return {
-            server: persist,
-            api: new BaseAPI(persist.url),
-        }});
+        return Object.values(persists).map(persist => {
+            return {
+                server: persist,
+                api: new BaseAPI(persist.url),
+            };
+        });
     }
 
     static addServer(context:vscode.ExtensionContext, name:string, url:string): boolean {
@@ -106,7 +108,7 @@ export class GlobalStateManager {
             const res = await api.userProjects(server.login.identity);
             if (res.type==='success' && res.projects!==undefined) {
                 Object.values(res.projects).forEach(project => {
-                    project._userId = (server.login as any).userId
+                    project._userId = (server.login as any).userId;
                 });
                 server.login.projects = res.projects;
                 context.globalState.update(keyServerPersists, persists);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import * as http from 'http';
 import * as https from 'https';
 import * as fs from 'fs';
@@ -280,7 +281,7 @@ export class BaseAPI {
             return {
                 type: 'success',
                 entity: {_type:entity_type, _id:entity_id, name:fileName}
-            }
+            };
         } else {
             return {
                 type: 'error',
@@ -328,7 +329,7 @@ export class BaseAPI {
             },
         });
 
-        if (res.status==204) {
+        if (res.status===204) {
             return {
                 type: 'success',
             };
@@ -352,7 +353,7 @@ export class BaseAPI {
             body: JSON.stringify({name:newName})
         });
 
-        if (res.status==204) {
+        if (res.status===204) {
             return {
                 type: 'success',
             };
@@ -375,7 +376,7 @@ export class BaseAPI {
             },
             body: JSON.stringify({folder_id:newParentFolderId})
         });
-        if (res.status==204) {
+        if (res.status===204) {
             return {
                 type: 'success',
             };
@@ -406,7 +407,7 @@ export class BaseAPI {
             })
         });
 
-        if (res.status==200) {
+        if (res.status===200) {
             return {
                 type: 'success',
                 compile: await res.json()
@@ -415,7 +416,7 @@ export class BaseAPI {
             return {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
-            }
+            };
         }
     }
 
@@ -450,7 +451,7 @@ export class BaseAPI {
             }
         });
 
-        if (res.status==200) {
+        if (res.status===200) {
             return {
                 type: 'success',
                 syncPdf: await res.json()
@@ -459,7 +460,7 @@ export class BaseAPI {
             return {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
-            }
+            };
         }
     }
 
@@ -472,7 +473,7 @@ export class BaseAPI {
             }
         });
 
-        if (res.status==200) {
+        if (res.status===200) {
             return {
                 type: 'success',
                 syncCode: await res.json()
@@ -481,7 +482,7 @@ export class BaseAPI {
             return {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
-            }
+            };
         }
     }
 }

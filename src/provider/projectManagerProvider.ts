@@ -88,7 +88,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                     // check if url is valid
                     const _url = new URL(url);
                     if (!(_url.protocol==='http:' || _url.protocol==='https:')) {
-                        throw new Error()
+                        throw new Error('Invalid protocol.');
                     }
                     if (GlobalStateManager.addServer(this.context, _url.host, _url.href)) {
                         this.refresh();
@@ -125,7 +125,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                             } else {
                                 vscode.window.showErrorMessage('Login failed.');
                             }
-                        })
+                        });
                     }
                 });
             }
@@ -138,8 +138,9 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             if (answer === "Yes") {
                 GlobalStateManager.logoutServer(this.context, server.api, server.name)
                 .then(success => {
-                    if (success)
+                    if (success) {
                         this.refresh();
+                    }
                 });
             }
         });

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
 import { SocketIOAPI, UpdateSchema } from '../api/socketio';
 import { GlobalStateManager } from '../utils/globalStateManager';
@@ -116,7 +117,7 @@ class VirtualFileSystem {
         }, {});
         const [userId, projectId] = [query.user, query.project];
         const path = uri.path;
-        return {userId, projectId, path}
+        return {userId, projectId, path};
     }
 
     private _resolveUri(uri: vscode.Uri) {
@@ -188,7 +189,7 @@ class VirtualFileSystem {
             for (let i = 0; i < root.folders.length; i++) {
                 const folder = root.folders[i];
                 const res = this._resolveById(entityId, folder, path+folder.name+'/');
-                if (res) return res;
+                if (res) { return res; }
             }
         }
         return undefined;
@@ -306,7 +307,7 @@ class VirtualFileSystem {
     async openFile(uri: vscode.Uri): Promise<Uint8Array> {
         const {fileType, fileEntity, fileId} = this._resolveUri(uri);
         // resolve as doc
-        if (fileType=='doc' && fileEntity && fileId) {
+        if (fileType==='doc' && fileEntity && fileId) {
             const doc = fileEntity as DocumentEntity;
             if (doc.cache) {
                 const content = JSON.parse(doc.cache);
@@ -318,7 +319,7 @@ class VirtualFileSystem {
                 doc.cache = JSON.stringify(content);
                 return new TextEncoder().encode(content);
             }
-        } else if (fileType=='file' && fileId) {
+        } else if (fileType==='file' && fileId) {
             const serverName = uri.authority;
             const res = await GlobalStateManager.getProjectFile(this.context, this.api, serverName, this.projectId, fileId);
             return new Uint8Array(res);
@@ -343,7 +344,7 @@ class VirtualFileSystem {
         if (fileType && fileType!=='doc') {
             return this.createFile(uri, content, true);
         }
-        if (fileType && fileType=='doc' && fileEntity) {
+        if (fileType && fileType==='doc' && fileEntity) {
             const doc = fileEntity as DocumentEntity;
             const _content = JSON.stringify(new TextDecoder().decode(content));
 
@@ -369,7 +370,7 @@ class VirtualFileSystem {
                                                 p: part.count,
                                                 i: part.added ? part.value : undefined,
                                                 d: part.added ? part.value : undefined,
-                                            }
+                                            };
                                         }
                                     })
                                     .filter(x => x) as any;
@@ -413,7 +414,7 @@ class VirtualFileSystem {
         if (oldPath.fileType && oldPath.fileId && oldPath.fileEntity) {
             // delete existence firstly
             if (newPath.fileType && newPath.fileEntity) {
-                if (!force) return;
+                if (!force) { return; }
                 await this.remove(newUri, true);
                 this.removeEntity(newPath.parentFolder, newPath.fileType, newPath.fileEntity);
             }
