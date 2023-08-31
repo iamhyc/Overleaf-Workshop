@@ -259,15 +259,15 @@ export class BaseAPI {
     async uploadFile(identity:Identity, projectId:string, parentFolderId:string, fileName:string, fileContent:Uint8Array) {
         const fileStream = require('stream').Readable.from(fileContent);
         const formData = new (require('form-data'))();
+        const fileType = require('mime-types').lookup(fileName);
         formData.append('targetFolderId', parentFolderId);
         formData.append('name', fileName);
-        formData.append('type', require('mime-types').lookup(fileName));
+        formData.append('type', fileType? fileType : 'text/plain');
         formData.append('qqfile', fileStream, {filename: fileName});
         const res = await fetch(this.url+`project/${projectId}/upload?folder_id=${parentFolderId}`, {
             method: 'POST', redirect: 'manual', agent: this.agent,
             headers: {
                 'Connection': 'keep-alive',
-                'Content-Type': 'multipart/form-data',
                 'Cookie': identity.cookies.split(';')[0],
                 'X-Csrf-Token': identity.csrfToken,
             },
