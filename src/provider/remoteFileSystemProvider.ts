@@ -307,12 +307,17 @@ class VirtualFileSystem {
         const {fileType, fileEntity, fileId} = this._resolveUri(uri);
         // resolve as doc
         if (fileType=='doc' && fileEntity && fileId) {
-            const res = await this.socket.joinDoc(fileId);
-            const content = res.docLines.join('\n');
             const doc = fileEntity as DocumentEntity;
-            doc.version = res.version;
-            doc.cache = String.raw(content);
-            return new TextEncoder().encode(content);
+            if (doc.cache) {
+                const content = JSON.parse(doc.cache);
+                return new TextEncoder().encode(content);
+            } else {
+                const res = await this.socket.joinDoc(fileId);
+                const content = res.docLines.join('\n');
+                doc.version = res.version;
+                doc.cache = JSON.stringify(content);
+                return new TextEncoder().encode(content);
+            }
         } else if (fileType=='file' && fileId) {
             const serverName = uri.authority;
             const res = await GlobalStateManager.getProjectFile(this.context, this.api, serverName, this.projectId, fileId);
@@ -340,6 +345,8 @@ class VirtualFileSystem {
         }
         if (fileType && fileType=='doc' && fileEntity) {
             const doc = fileEntity as DocumentEntity;
+            const _content = JSON.stringify(new TextDecoder().decode(content));
+
             if (doc.version && doc.cache) {
                 const update = {
                     doc: doc.name,
@@ -355,7 +362,6 @@ class VirtualFileSystem {
                         }
                     })() as string,
                     op: (()=>{
-                        const _content = new TextDecoder().decode(content); //FIXME: raw content?
                         return Diff.diffChars(doc.cache, _content)
                                     .map((part) => {
                                         if (part.count) {
@@ -371,6 +377,7 @@ class VirtualFileSystem {
                 };
                 await this.socket.applyOtUpdate(doc._id, update);
                 //
+                doc.cache = _content;
                 doc.lastVersion = doc.version;
                 doc.version += 1;
             }
