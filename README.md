@@ -6,6 +6,19 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
 [demo.webm](https://github.com/iamhyc/Overleaf-Workshop/assets/9068301/eb298b9b-0d08-4200-a61a-9df96692bc02)
 
+### Features
+
+- Login overleaf servers
+
+- Open overleaf projects
+
+- View and edit overleaf files
+
+
+### Milestones
+
+Please refer to this issue: [Towards v1.0](https://github.com/iamhyc/Overleaf-Workshop/issues/3)
+
 ### Compatibility
 
 The following overleaf (sharelatex) versions provided on [Docker Hub](https://hub.docker.com/r/sharelatex/sharelatex) have been tested:
@@ -20,45 +33,7 @@ The following overleaf (sharelatex) versions provided on [Docker Hub](https://hu
 - [ ] [sharelatex/sharelatex:3.0](https://hub.docker.com/layers/sharelatex/sharelatex/3.0/images/sha256-a36e54c66ef62fdee736ce2229289aa261b44f083a9fd553cf8264500612db27?context=explore) (archived)
 
 
-### TODO
-
-- REST API (Overleaf Web Route List, [webapi.md](./docs/webapi.md))
-  - [x] Login / Logout server
-  - [x] List projects
-  - [x] Compile project
-  - [x] Get project build output (PDF)
-  - [x] Jump between "code" and "pdf"
-  - [x] Download original files
-  - [ ] Get file history updates and diff
-- WebSocket API
-  - [x] Init websocket connection
-  - [x] Request: `joinProject`, `joinDoc`, `leaveDoc`
-  - [x] Request: `applyOtUpdate`
-  - [x] Request: `clientTracking.getConnectedUsers`
-  - [x] Request: `clientTracking.updatePosition`
-  - [x] Event: `otUpdateApplied`
-  - [x] Event: `reciveNewDoc`, `reciveNewFile`, `reciveNewFolder`
-  - [x] Event: `reciveEntityRename`, `removeEntity`, `reciveEntityMove`
-  - [ ] Event: `clientTracking.clientUpdated`, `clientTracking.clientDisconnected`
-  - [ ] Event: `compilerUpdated`
-  - [ ] Event: `projectNameUpdated`
-- Open project as virtual workspace
-  - [x] sync remote project via `FileSystemProvider`
-  - [ ] support local syntax check (via other extension)
-  - [ ] compile project: 1) on save, 2) on `ctrl+alt+b`
-  - [ ] display "build icon" on status bar
-  - [ ] intellisense via `metadata`
-  - [ ] local snippet macro and grammar linting
-- Collaboration
-  - [ ] Display online users on side bar
-  - [ ] Display multiple colored selections (via `setDecorations`)
-  - [ ] send/receive chat message
-- Miscs
-  - [ ] support project-specific settings:
-    > "Compiler", "Main document", "Spell check", "Dictionary"
-  - [ ] support local git bridge
-
-
 ### References
 
-- Overleaf Official Logos, [link](https://www.overleaf.com/for/partners/logos)
+- [Overleaf Official Logos](https://www.overleaf.com/for/partners/logos)
+- [Overleaf Web Route List](./docs/webapi.md)
