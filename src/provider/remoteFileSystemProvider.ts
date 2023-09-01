@@ -265,13 +265,13 @@ class VirtualFileSystem {
             },
             onFileChanged: (update:UpdateSchema) => {
                 const doc = this._resolveById(update.doc)?.fileEntity as DocumentEntity;
-                if (update.v===doc.version && !update.op) {
+                if (!update.op || update.v===doc.version) {
                     return; //hey Boomerang
                 } else if (update.v-1===doc.version && update.op) {
                     //TODO: create the patch from `op` and apply to the `doc`
                 } else {
                     //FIXME: cope with out-of-order or contradictory
-                    throw new Error(`${doc.name}: ${doc._id}@${doc.version} inconsistent with ${update.v}`);
+                    // throw new Error(`${doc.name}: ${doc._id}@${doc.version} inconsistent with ${update.v}`);
                 }
             }
         });
@@ -313,13 +313,13 @@ class VirtualFileSystem {
         if (fileType==='doc' && fileEntity && fileId) {
             const doc = fileEntity as DocumentEntity;
             if (doc.cache) {
-                const content = JSON.parse(doc.cache);
+                const content = doc.cache;
                 return new TextEncoder().encode(content);
             } else {
                 const res = await this.socket.joinDoc(fileId);
                 const content = res.docLines.join('\n');
                 doc.version = res.version;
-                doc.cache = JSON.stringify(content);
+                doc.cache = content;
                 return new TextEncoder().encode(content);
             }
         } else if (fileType==='file' && fileId) {
@@ -358,30 +358,35 @@ class VirtualFileSystem {
         // if exists and is doc --> update
         if (fileType && fileType==='doc' && fileEntity) {
             const doc = fileEntity as DocumentEntity;
-            const _content = JSON.stringify(new TextDecoder().decode(content));
-            if (doc.version && doc.cache) {
+            const _content = new TextDecoder().decode(content);
+            if (doc.version && doc.cache!==undefined) {
                 const update = {
-                    doc: doc.name,
+                    doc: doc._id,
                     lastV: doc.lastVersion,
-                    v: doc.version + 1,
+                    v: doc.version,
                     // Reference: services/web/frontend/js/vendor/libs/sharejs.js#L1288
                     hash: (()=>{
                         if (!doc.mtime || Date.now()-doc.mtime>5000) {
                             doc.mtime = Date.now();
                             return require('crypto').createHash('sha1').update(
-                                "blob " + doc.cache.length + "\x00" + doc.cache
+                                "blob " + _content.length + "\x00" + _content
                             ).digest('hex');
                         }
                     })() as string,
                     op: (()=>{
+                        let currentPos = 0;
                         return Diff.diffChars(doc.cache, _content)
                                     .map((part) => {
                                         if (part.count) {
-                                            return {
-                                                p: part.count,
-                                                i: part.added ? part.value : undefined,
-                                                d: part.added ? part.value : undefined,
-                                            };
+                                            const incCount = part.removed? 0 : part.count;
+                                            currentPos += incCount;
+                                            if (part.added || part.removed) {
+                                                return {
+                                                    p: currentPos - incCount,
+                                                    i: part.added ?  part.value  : undefined,
+                                                    d: part.removed ?  part.value : undefined,
+                                                };
+                                            }
                                         }
                                     })
                                     .filter(x => x) as any;
