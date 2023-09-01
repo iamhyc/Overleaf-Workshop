@@ -1,8 +1,7 @@
 .vscode/**
-node_modules/**
 .vscode-test/**
 src/**
-out/**
+patches/**
 .gitignore
 .yarnrc
 **/tsconfig.json
