@@ -1,23 +1,28 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
 import { SocketIOAPI, UpdateSchema } from '../api/socketio';
+import { OUTPUT_FOLDER_NAME } from '../consts';
 import { GlobalStateManager } from '../utils/globalStateManager';
 import { BaseAPI } from '../api/base';
 import { assert } from 'console';
 import * as Diff from 'diff';
 
-export type FileType = 'doc' | 'file' | 'folder';
-export type FolderKey = 'docs' | 'fileRefs' | 'folders';
+const _OUTPUTS_ID = '';
+
+export type FileType = 'doc' | 'file' | 'folder' | 'outputs';
+export type FolderKey = 'docs' | 'fileRefs' | 'folders' | 'outputs';
 const FolderKeys: {[_type:string]: FolderKey} = {
     'doc': 'docs',
     'file': 'fileRefs',
-    'folder': 'folders'
+    'folder': 'folders',
+    'outputs': 'outputs',
 };
 
 export interface FileEntity {
     _id: string,
     name: string,
     _type?: string,
+    readonly?: boolean,
 }
 
 export interface DocumentEntity extends FileEntity {
@@ -32,10 +37,18 @@ export interface FileRefEntity extends FileEntity {
     created: string,
 }
 
+export interface OutputFileEntity extends FileEntity {
+    path: string, //output file name
+    url: string, // `project/${projectId}/user/${userId}/output/${build}/output/${path}`
+    type: string, //output file type (postfix)
+    build: string, //build id
+}
+
 export interface FolderEntity extends FileEntity {
     docs: Array<DocumentEntity>,
     fileRefs: Array<FileRefEntity>,
     folders: Array<FolderEntity>,
+    outputs?: Array<OutputFileEntity>,
 }
 
 export interface MemberEntity {
@@ -72,12 +85,14 @@ export class File implements vscode.FileStat {
     ctime: number;
     mtime: number;
     size: number;
-    constructor(name: string, type: vscode.FileType, ctime?: number) {
+    permissions?: vscode.FilePermission;
+    constructor(name: string, type: vscode.FileType, ctime?: number, permissions?:vscode.FilePermission) {
         this.type = type;
         this.name = name;
         this.ctime = ctime || Date.now();
         this.mtime = Date.now();
         this.size = 0;
+        this.permissions = permissions;
     }
 }
 
@@ -115,6 +130,12 @@ class VirtualFileSystem {
         this.remoteWatch();
         return this.socket.joinProject(this.projectId).then((project:ProjectEntity) => {
             this.root = project;
+            GlobalStateManager.compileProjectEntity(this.context, this.api, this.serverName, this.projectId)
+            .then((res) => {
+                if (res) {
+                     this.updateOutputs(res.outputFiles);
+                }
+            });
         });
     }
 
@@ -152,7 +173,7 @@ class VirtualFileSystem {
         // resolve file
         const [fileEntity, fileType] = (() => {
             for (const _type of Object.keys(FolderKeys)) {
-                let entity = parentFolder[ FolderKeys[_type] ].find((entity) => entity.name === fileName);
+                let entity = parentFolder[ FolderKeys[_type] ]?.find((entity) => entity.name === fileName);
                 if (fileName==='' && _type==='folder') { entity = parentFolder; }
                 if (entity) {
                     return [entity, _type as FileType];
@@ -179,7 +200,7 @@ class VirtualFileSystem {
             for (const _type of Object.keys(FolderKeys)) {
                 const key = FolderKeys[_type];
                 if (key==='folders') { continue; }
-                const entity = root[key].find((entity) => entity._id === entityId);
+                const entity = root[key]?.find((entity) => entity._id === entityId);
                 if (entity) {
                     return {parentFolder: root, fileType: _type as FileType, fileEntity: entity, path:path+entity.name};
                 }
@@ -195,22 +216,22 @@ class VirtualFileSystem {
 
     private insertEntity(parentFolder: FolderEntity, fileType:FileType, entity: FileEntity) {
         const key = FolderKeys[fileType];
-        parentFolder[key].push(entity as any);
+        parentFolder[key]?.push(entity as any);
     }
 
     private removeEntity(parentFolder: FolderEntity, fileType:FileType, entity: FileEntity) {
         const key = FolderKeys[fileType];
-        const index = parentFolder[key].findIndex((e) => e._id === entity._id);
-        if (index>=0) {
-            parentFolder[key].splice(index, 1);
+        const index = parentFolder[key]?.findIndex((e) => e._id === entity._id);
+        if (index && index>=0) {
+            parentFolder[key]?.splice(index, 1);
         }
     }
 
     private removeEntityById(parentFolder: FolderEntity, fileType:FileType, entityId: string, recursive?:boolean) {
         const key = FolderKeys[fileType];
-        const index = parentFolder[key].findIndex((e) => e._id === entityId);
-        if (index>=0) {
-            parentFolder[key].splice(index, 1);
+        const index = parentFolder[key]?.findIndex((e) => e._id === entityId);
+        if (index && index>=0) {
+            parentFolder[key]?.splice(index, 1);
         }
     }
 
@@ -291,14 +312,15 @@ class VirtualFileSystem {
     }
 
     resolve(uri: vscode.Uri): File {
-        const {fileName, fileType} = this._resolveUri(uri);
+        const {fileName, fileEntity, fileType} = this._resolveUri(uri);
+        const readonly = fileEntity?.readonly ? vscode.FilePermission.Readonly : undefined;
         switch (fileType) {
             case undefined:
                 throw vscode.FileSystemError.FileNotFound(uri);
             case 'folder':
-                return new File(fileName, vscode.FileType.Directory);
+                return new File(fileName, vscode.FileType.Directory, undefined, readonly);
             default:
-                return new File(fileName, vscode.FileType.File);
+                return new File(fileName, vscode.FileType.File, undefined, readonly);
         }
     }
 
@@ -309,7 +331,7 @@ class VirtualFileSystem {
         if (folder) {
             Object.values(FolderKeys).forEach((key) => {
                 const _type = key==='folders'? vscode.FileType.Directory : vscode.FileType.File;
-                folder[key].forEach((entity) => {
+                folder[key]?.forEach((entity) => {
                     results.push([entity.name, _type]);
                 });
             });
@@ -335,6 +357,18 @@ class VirtualFileSystem {
                 doc.cache = content;
                 return new TextEncoder().encode(content);
             }
+        } else if (fileType==='outputs') {
+            return GlobalStateManager.authenticate(this.context, this.serverName)
+            .then((identity) => {
+                return this.api.getFileFromClsi(identity, (fileEntity as OutputFileEntity).url, 'standard')
+                .then((res) => {
+                    if (res.type==='success') {
+                        return new TextEncoder().encode(res.content);
+                    } else {
+                        return new Uint8Array(0);
+                    }
+                });
+            });
         } else {
             const res = await GlobalStateManager.getProjectFile(this.context, this.api, this.serverName, this.projectId, fileEntity._id);
             return new Uint8Array(res);
@@ -452,6 +486,29 @@ class VirtualFileSystem {
                 this.insertEntity(newPath.parentFolder, oldPath.fileType, newEntity);
                 this.removeEntity(oldPath.parentFolder, oldPath.fileType, oldPath.fileEntity);
             }
+        }
+    }
+
+    async updateOutputs(outputs: Array<OutputFileEntity>) {
+        if (this.root) {
+            const rootFolder = this.root.rootFolder[0];
+            this.removeEntityById(rootFolder, 'folder', _OUTPUTS_ID);
+            this.insertEntity(rootFolder, 'folder', {
+                _id: _OUTPUTS_ID,
+                name: OUTPUT_FOLDER_NAME,
+                readonly: true,
+                docs: [], fileRefs: [], folders:[],
+                outputs: outputs.map((file) => {
+                    file._id = _OUTPUTS_ID;
+                    file.name=file.path;
+                    file.readonly=true;
+                    return file;
+                })
+            } as FolderEntity);
+            this.notify([
+                {type:vscode.FileChangeType.Deleted, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME)},
+                {type:vscode.FileChangeType.Created, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME)}
+            ]);
         }
     }
 }

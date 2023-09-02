@@ -124,6 +124,14 @@ export class GlobalStateManager {
         }
     }
 
+    static authenticate(context:vscode.ExtensionContext, name:string) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+        return server.login!==undefined ?
+                Promise.resolve(server.login.identity):
+                Promise.reject();
+    }
+
     static async getProjectFile(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileId:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
@@ -230,6 +238,25 @@ export class GlobalStateManager {
             }
         } else {
             return false;
+        }
+    }
+
+    static async compileProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[name];
+
+        if (server.login!==undefined) {
+            const res = await api.compile(server.login.identity, projectId);
+            if (res.type==='success') {
+                return res.compile;
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
+                return undefined;
+            }
+        } else {
+            return undefined;
         }
     }
 

@@ -4,7 +4,7 @@ import * as https from 'https';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
-import { FileEntity, FileType, FolderEntity } from '../provider/remoteFileSystemProvider';
+import { FileEntity, FileType, FolderEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
 
 
 export interface Identity {
@@ -15,12 +15,7 @@ export interface Identity {
 export interface CompileResponseSchema {
     status: 'success' | 'error';
     compileGroup: string;
-    outputFiles: Array<{
-        path: string, //output file name
-        url: string, // `project/${projectId}/user/${userId}/output/${build}/output/${path}`
-        type: string, //output file type (postfix)
-        build: string, //build id
-    }>;
+    outputFiles: Array<OutputFileEntity>;
     stats: {
         "latexmk-errors":number, "pdf-size":number,
         "latex-runs":number, "latex-runs-with-errors":number,
@@ -430,7 +425,11 @@ export class BaseAPI {
                     'Cookie': identity.cookies.split(';')[0],
                 }
             });
-            if (res.status===206) {
+            if (res.status===200) {
+                content += await res.text();
+                break;
+            }
+            else if (res.status===206) {
                 content += await res.text();
             } else {
                 break;
