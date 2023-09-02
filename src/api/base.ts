@@ -260,10 +260,10 @@ export class BaseAPI {
     async uploadFile(identity:Identity, projectId:string, parentFolderId:string, fileName:string, fileContent:Uint8Array) {
         const fileStream = require('stream').Readable.from(fileContent);
         const formData = new (require('form-data'))();
-        const fileType = require('mime-types').lookup(fileName);
+        const mimeType = require('mime-types').lookup(fileName);
         formData.append('targetFolderId', parentFolderId);
         formData.append('name', fileName);
-        formData.append('type', fileType? fileType : 'text/plain');
+        formData.append('type', mimeType? mimeType : 'text/plain');
         formData.append('qqfile', fileStream, {filename: fileName});
         const res = await fetch(this.url+`project/${projectId}/upload?folder_id=${parentFolderId}`, {
             method: 'POST', redirect: 'manual', agent: this.agent,
@@ -309,7 +309,7 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                entity: (await res.json() as any),
+                entity: (await res.json() as FolderEntity),
             };
         } else {
             return {
@@ -410,7 +410,7 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                compile: await res.json()
+                compile: await res.json() as CompileResponseSchema
             };
         } else {
             return {

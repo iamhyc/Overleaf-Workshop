@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { Identity, ResponseSchema, BaseAPI } from '../api/base';
 import { SocketIOAPI } from '../api/socketio';
-import { FolderEntity } from '../provider/remoteFileSystemProvider';
+import { FileType, FolderEntity } from '../provider/remoteFileSystemProvider';
 
 const keyServerPersists: string = 'overleaf-servers';
 
@@ -176,7 +176,7 @@ export class GlobalStateManager {
         return;
     }
 
-    static async deleteProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileType:any, fileId:string) {
+    static async deleteProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileType:FileType, fileId:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
