@@ -13,6 +13,11 @@ export interface UpdateSchema {
     v: number, //doc version number
     lastV?: number, //last version number
     hash?: string, //(not needed if lastV is provided)
+    meta?: {
+        source: string, //socketio client id
+        ts: number, //unix timestamp
+        user_id: string,
+    }
 }
 
 export interface OnlineUserSchema {

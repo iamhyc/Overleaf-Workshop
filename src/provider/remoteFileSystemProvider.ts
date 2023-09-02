@@ -264,11 +264,26 @@ class VirtualFileSystem {
                 }
             },
             onFileChanged: (update:UpdateSchema) => {
-                const doc = this._resolveById(update.doc)?.fileEntity as DocumentEntity;
-                if (!update.op || update.v===doc.version) {
-                    return; //hey Boomerang
-                } else if (update.v-1===doc.version && update.op) {
-                    //TODO: create the patch from `op` and apply to the `doc`
+                const res = this._resolveById(update.doc);
+                if (res===undefined) { return; }
+
+                const doc = res.fileEntity as DocumentEntity;
+                if (update.v===doc.version) {
+                    doc.version += 1;
+                    if (update.op && doc.cache) {
+                        let content = doc.cache;
+                        update.op.forEach((op) => {
+                            if (op.i) {
+                                content = content.slice(0, op.p) + op.i + content.slice(op.p);
+                            } else if (op.d) {
+                                content = content.slice(0, op.p) + content.slice(op.p+op.d.length);
+                            }
+                        });
+                        doc.cache = content;
+                        this.notify([
+                            {type: vscode.FileChangeType.Changed, uri: vscode.Uri.parse(this.origin+res.path)}
+                        ]);
+                    }
                 } else {
                     //FIXME: cope with out-of-order or contradictory
                     // throw new Error(`${doc.name}: ${doc._id}@${doc.version} inconsistent with ${update.v}`);
@@ -396,10 +411,8 @@ class VirtualFileSystem {
                 })(),
             };
             await this.socket.applyOtUpdate(doc._id, update);
-            //
             doc.cache = _content;
             doc.lastVersion = doc.version;
-            doc.version += 1;
         }
     }
 
