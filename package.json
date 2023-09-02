@@ -122,16 +122,19 @@
   },
   "scripts": {
     "postinstall": "patch-package",
-    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
-    "esbuild": "npm run esbuild-base -- --sourcemap",
-    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "test-compile": "tsc -p ./"
+    "test": "node ./out/test/runTest.js"
+  },
+  "dependencies": {
+    "diff": "^5.1.0",
+    "form-data": "^4.0.0",
+    "mime-types": "^2.1.35",
+    "node-fetch": "^2.6.13",
+    "socket.io-client": "github:overleaf/socket.io-client#0.9.17-overleaf-5"
   },
   "devDependencies": {
     "@types/diff": "^5.0.3",
@@ -144,16 +147,10 @@
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "@typescript-eslint/parser": "^5.59.8",
     "@vscode/test-electron": "^2.3.2",
-    "diff": "^5.1.0",
-    "esbuild": "^0.18.14",
     "eslint": "^8.41.0",
-    "form-data": "^4.0.0",
     "glob": "^8.1.0",
-    "mime-types": "^2.1.35",
     "mocha": "^10.2.0",
-    "node-fetch": "^2.6.13",
     "patch-package": "^7.0.2",
-    "socket.io-client": "github:overleaf/socket.io-client#0.9.17-overleaf-5",
     "typescript": "^5.1.3"
   }
 }
