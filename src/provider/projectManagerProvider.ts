@@ -60,7 +60,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                 const _promise = GlobalStateManager.fetchServerProjects(this.context, element.api, element.name);
                 return _promise.then(projects => {
                     const projectItems = projects.map(project => {
-                        const uri = `${ROOT_NAME}://${element.name}?user=${project._userId}&project=${project._id}`;
+                        const uri = `${ROOT_NAME}://${element.name}/${project.name}?user=${project._userId}&project=${project._id}`;
                         const name = project.name;
                         return new ProjectItem(uri, name);
                     });
@@ -152,11 +152,13 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
 
     openProjectInCurrentWindow(project: ProjectItem) {
         const uri = vscode.Uri.parse(project.uri);
-        vscode.workspace.updateWorkspaceFolders(0, 0, { uri: uri });
+        vscode.commands.executeCommand('remoteFileSystem.prefetch', uri)
+        .then(() => vscode.commands.executeCommand('vscode.openFolder', uri, false));
     }
 
     openProjectInNewWindow(project: ProjectItem) {
         const uri = vscode.Uri.parse(project.uri);
-        vscode.commands.executeCommand('vscode.openFolder', uri, true);
+        vscode.commands.executeCommand('remoteFileSystem.prefetch', uri)
+        .then(() => vscode.commands.executeCommand('vscode.openFolder', uri, true));
     }
 }

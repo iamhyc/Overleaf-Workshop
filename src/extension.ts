@@ -10,6 +10,9 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.workspace.registerFileSystemProvider(ROOT_NAME, remoteFileSystemProvider, { isCaseSensitive: true })
     );
+    vscode.commands.registerCommand('remoteFileSystem.prefetch', (uri: vscode.Uri) => {
+        remoteFileSystemProvider.prefetch(uri);
+    });
 
     // Register: ProjectManagerProvider on Activitybar
     const projectManagerProvider = new ProjectManagerProvider(context);

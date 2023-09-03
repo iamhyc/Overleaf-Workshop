@@ -155,7 +155,7 @@ class VirtualFileSystem {
             const path = uri.path;
             if (this.root) {
                 let currentFolder = this.root.rootFolder[0];
-                const pathParts = path.split('/').slice(1);
+                const pathParts = path.split('/').slice(2);
                 for (let i = 0; i < pathParts.length-1; i++) {
                     const folderName = pathParts[i];
                     const folder = currentFolder.folders.find((folder) => folder.name === folderName);
@@ -174,7 +174,7 @@ class VirtualFileSystem {
         const [fileEntity, fileType] = (() => {
             for (const _type of Object.keys(FolderKeys)) {
                 let entity = parentFolder[ FolderKeys[_type] ]?.find((entity) => entity.name === fileName);
-                if (fileName==='' && _type==='folder') { entity = parentFolder; }
+                if (!fileName && _type==='folder') { entity = parentFolder; }
                 if (entity) {
                     return [entity, _type as FileType];
                 }
@@ -533,6 +533,10 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
             this.vfss[ uri.query ] = vfs;
             return vfs.init().then(() => vfs);
         }
+    }
+
+    prefetch(uri: vscode.Uri): Promise<void> {
+        return this.getVFS(uri).then(() => {return;});
     }
 
     notify(events :vscode.FileChangeEvent[]) {
