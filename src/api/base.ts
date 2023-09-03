@@ -231,25 +231,29 @@ export class BaseAPI {
     }
 
     async getFile(identity:Identity, projectId:string, fileId:string) {
-        const res = await fetch(this.url+`project/${projectId}/file/${fileId}`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
+        let content: Buffer[] = [];
+        while(true) {
+            const res = await fetch(this.url+`project/${projectId}/file/${fileId}`, {
+                method: 'GET', redirect: 'manual', agent: this.agent,
+                headers: {
+                    'Connection': 'keep-alive',
+                    'Cookie': identity.cookies.split(';')[0],
+                }
+            });
+            if (res.status===200) {
+                content.push(await res.buffer());
+                break;
             }
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                raw: await res.arrayBuffer()
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+            else if (res.status===206) {
+                content.push(await res.buffer());
+            } else {
+                break;
+            }
+        };
+        return {
+            type: 'success',
+            content: new Uint8Array( Buffer.concat(content) )
+        };
     }
 
     async uploadFile(identity:Identity, projectId:string, parentFolderId:string, fileName:string, fileContent:Uint8Array) {
@@ -416,7 +420,7 @@ export class BaseAPI {
     }
 
     async getFileFromClsi(identity:Identity, url:string, compileGroup:string) {
-        let content = "";
+        let content: Buffer[] = [];
         while(true) {
             const res = await fetch(this.url+url, {
                 method: 'GET', redirect: 'manual', agent: this.agent,
@@ -426,18 +430,18 @@ export class BaseAPI {
                 }
             });
             if (res.status===200) {
-                content += await res.text();
+                content.push(await res.buffer());
                 break;
             }
             else if (res.status===206) {
-                content += await res.text();
+                content.push(await res.buffer());
             } else {
                 break;
             }
         };
         return {
             type: 'success',
-            content: content
+            content: new Uint8Array( Buffer.concat(content) )
         };
     }
 

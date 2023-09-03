@@ -138,16 +138,13 @@ export class GlobalStateManager {
 
         if (server.login!==undefined) {
             const res = await api.getFile(server.login.identity, projectId, fileId);
-            if (res.type==='success' && res.raw!==undefined) {
-                return res.raw;
+            if (res.type==='success' && res.content!==undefined) {
+                return res.content;
             } else {
-                if (res.message!==undefined) {
-                    vscode.window.showErrorMessage(res.message);
-                }
-                return new ArrayBuffer(0);
+                return new Uint8Array(0);
             }
         } else {
-            return new ArrayBuffer(0);
+            return new Uint8Array(0);
         }
     }
 

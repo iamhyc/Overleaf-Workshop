@@ -367,15 +367,14 @@ class VirtualFileSystem {
                 return this.api.getFileFromClsi(identity, (fileEntity as OutputFileEntity).url, 'standard')
                 .then((res) => {
                     if (res.type==='success') {
-                        return new TextEncoder().encode(res.content);
+                        return res.content;
                     } else {
                         return new Uint8Array(0);
                     }
                 });
             });
         } else {
-            const res = await GlobalStateManager.getProjectFile(this.context, this.api, this.serverName, this.projectId, fileEntity._id);
-            return new Uint8Array(res);
+            return await GlobalStateManager.getProjectFile(this.context, this.api, this.serverName, this.projectId, fileEntity._id);
         }
     }
 
