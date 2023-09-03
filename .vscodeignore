@@ -2,6 +2,7 @@
 .vscode-test/**
 src/**
 patches/**
+docs/**
 .gitignore
 .yarnrc
 **/tsconfig.json
