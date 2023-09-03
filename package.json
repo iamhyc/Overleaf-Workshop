@@ -22,7 +22,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onFileSystem:overleaf-workshop"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [

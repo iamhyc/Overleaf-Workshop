@@ -109,7 +109,7 @@ class VirtualFileSystem {
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
         const {userId,projectId,path} = this.parseUri(uri);
-        this.origin = uri.scheme + '://' + uri.authority;
+        this.origin = uri.scheme + '://' + uri.authority + '/' + uri.path.split('/')[1];
         this.serverName = uri.authority;
         this.userId = userId;
         this.projectId = projectId;
@@ -130,6 +130,9 @@ class VirtualFileSystem {
         this.remoteWatch();
         return this.socket.joinProject(this.projectId).then((project:ProjectEntity) => {
             this.root = project;
+            this.notify([
+                {type:vscode.FileChangeType.Created, uri:vscode.Uri.parse(this.origin)},
+            ]);
             GlobalStateManager.compileProjectEntity(this.context, this.api, this.serverName, this.projectId)
             .then((res) => {
                 if (res) {

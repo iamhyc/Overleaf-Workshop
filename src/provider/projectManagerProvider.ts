@@ -153,12 +153,19 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     openProjectInCurrentWindow(project: ProjectItem) {
         const uri = vscode.Uri.parse(project.uri);
         vscode.commands.executeCommand('remoteFileSystem.prefetch', uri)
-        .then(() => vscode.commands.executeCommand('vscode.openFolder', uri, false));
+        .then(() => {
+            vscode.commands.executeCommand('vscode.openFolder', uri, false);
+            vscode.commands.executeCommand('workbench.view.explorer');
+        });
     }
 
     openProjectInNewWindow(project: ProjectItem) {
         const uri = vscode.Uri.parse(project.uri);
         vscode.commands.executeCommand('remoteFileSystem.prefetch', uri)
-        .then(() => vscode.commands.executeCommand('vscode.openFolder', uri, true));
+        .then(() => {
+            vscode.commands.executeCommand('vscode.openFolder', uri, true);
+            vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+            vscode.commands.executeCommand('workbench.view.explorer');
+        });
     }
 }
