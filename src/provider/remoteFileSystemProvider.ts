@@ -108,8 +108,8 @@ class VirtualFileSystem {
     private notify: (events:vscode.FileChangeEvent[])=>void;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
-        const {userId,projectId,path} = this.parseUri(uri);
-        this.origin = uri.scheme + '://' + uri.authority + '/' + uri.path.split('/')[1];
+        const {userId,projectId,projectName} = this.parseUri(uri);
+        this.origin = `${uri.scheme}://${uri.authority}/${projectName}`;
         this.serverName = uri.authority;
         this.userId = userId;
         this.projectId = projectId;
@@ -148,17 +148,18 @@ class VirtualFileSystem {
             return {...acc, [key]:value};
         }, {});
         const [userId, projectId] = [query.user, query.project];
-        const path = uri.path;
-        return {userId, projectId, path};
+        const _pathParts = uri.path.split('/');
+        const projectName = _pathParts[1];
+        const pathParts = _pathParts.splice(2);
+        return {userId, projectId, projectName, pathParts};
     }
 
     private _resolveUri(uri: vscode.Uri) {
         // resolve path
         const [parentFolder, fileName] = (() => {
-            const path = uri.path;
+            const {pathParts} = this.parseUri(uri);
             if (this.root) {
                 let currentFolder = this.root.rootFolder[0];
-                const pathParts = path.split('/').slice(2);
                 for (let i = 0; i < pathParts.length-1; i++) {
                     const folderName = pathParts[i];
                     const folder = currentFolder.folders.find((folder) => folder.name === folderName);
