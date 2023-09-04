@@ -101,7 +101,7 @@ class VirtualFileSystem {
     private context: vscode.ExtensionContext;
     private api: BaseAPI;
     private socket: SocketIOAPI;
-    private origin: string;
+    private origin: vscode.Uri;
     private serverName: string;
     private userId: string;
     private projectId: string;
@@ -110,7 +110,9 @@ class VirtualFileSystem {
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
         const {userId,projectId,projectName} = this.parseUri(uri);
-        this.origin = `${uri.scheme}://${uri.authority}/${projectName}`;
+        this.origin = vscode.Uri.from({
+            scheme: uri.scheme, authority: uri.authority, path: '/'+projectName, query: uri.query
+        });
         this.serverName = uri.authority;
         this.userId = userId;
         this.projectId = projectId;
@@ -132,7 +134,7 @@ class VirtualFileSystem {
         return this.socket.joinProject(this.projectId).then((project:ProjectEntity) => {
             this.root = project;
             this.notify([
-                {type:vscode.FileChangeType.Created, uri:vscode.Uri.parse(this.origin)},
+                {type:vscode.FileChangeType.Created, uri:this.origin},
             ]);
         });
     }
@@ -221,16 +223,22 @@ class VirtualFileSystem {
     private removeEntity(parentFolder: FolderEntity, fileType:FileType, entity: FileEntity) {
         const key = FolderKeys[fileType];
         const index = parentFolder[key]?.findIndex((e) => e._id === entity._id);
-        if (index && index>=0) {
+        if (index!==undefined && index>=0) {
             parentFolder[key]?.splice(index, 1);
+            return true;
+        } else {
+            return false;
         }
     }
 
     private removeEntityById(parentFolder: FolderEntity, fileType:FileType, entityId: string, recursive?:boolean) {
         const key = FolderKeys[fileType];
         const index = parentFolder[key]?.findIndex((e) => e._id === entityId);
-        if (index && index>=0) {
+        if (index!==undefined && index>=0) {
             parentFolder[key]?.splice(index, 1);
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -242,7 +250,7 @@ class VirtualFileSystem {
                     const {fileEntity} = res;
                     this.insertEntity(fileEntity as FolderEntity, type, entity);
                     this.notify([
-                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.parse(this.origin+res.path)}
+                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.joinPath(this.origin, res.path)}
                     ]);
                 }
             },
@@ -253,8 +261,8 @@ class VirtualFileSystem {
                     const oldName = fileEntity.name;
                     fileEntity.name = newName;
                     this.notify([
-                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.parse(this.origin+res.path)},
-                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.parse(this.origin+res.path.replace(oldName, newName))}
+                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.joinPath(this.origin, res.path)},
+                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.joinPath(this.origin, res.path.replace(oldName, newName))}
                     ]);
                 }
             },
@@ -264,7 +272,7 @@ class VirtualFileSystem {
                     const {parentFolder, fileType, fileEntity} = res;
                     this.removeEntity(parentFolder, fileType, fileEntity);
                     this.notify([
-                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.parse(this.origin+res.path)}
+                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.joinPath(this.origin, res.path)}
                     ]);
                 }
             },
@@ -276,8 +284,8 @@ class VirtualFileSystem {
                     this.insertEntity(newParentFolder, oldPath.fileType, oldPath.fileEntity);
                     this.removeEntity(oldPath.parentFolder, oldPath.fileType, oldPath.fileEntity);
                     this.notify([
-                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.parse(this.origin+oldPath.path)},
-                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.parse(this.origin+newPath.path+'/'+oldPath.fileEntity.name)}
+                        {type: vscode.FileChangeType.Deleted, uri: vscode.Uri.joinPath(this.origin, oldPath.path)},
+                        {type: vscode.FileChangeType.Created, uri: vscode.Uri.joinPath(this.origin, newPath.path, oldPath.fileEntity.name)}
                     ]);
                 }
             },
@@ -299,7 +307,7 @@ class VirtualFileSystem {
                         });
                         doc.cache = content;
                         this.notify([
-                            {type: vscode.FileChangeType.Changed, uri: vscode.Uri.parse(this.origin+res.path)}
+                            {type: vscode.FileChangeType.Changed, uri: vscode.Uri.joinPath(this.origin, res.path)}
                         ]);
                     }
                     this.isDirty = true;
@@ -507,7 +515,12 @@ class VirtualFileSystem {
     async updateOutputs(outputs: Array<OutputFileEntity>) {
         if (this.root) {
             const rootFolder = this.root.rootFolder[0];
-            this.removeEntityById(rootFolder, 'folder', __OUTPUTS_ID);
+            if (this.removeEntityById(rootFolder, 'folder', __OUTPUTS_ID)) {
+                this.notify([
+                    {type:vscode.FileChangeType.Deleted, uri:vscode.Uri.joinPath(this.origin, OUTPUT_FOLDER_NAME)}
+                ]);
+            }
+
             this.insertEntity(rootFolder, 'folder', {
                 _id: __OUTPUTS_ID,
                 name: OUTPUT_FOLDER_NAME,
@@ -521,10 +534,9 @@ class VirtualFileSystem {
                 })
             } as FolderEntity);
             this.notify([
-                {type:vscode.FileChangeType.Deleted, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME)},
-                {type:vscode.FileChangeType.Created, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME)},
+                {type:vscode.FileChangeType.Created, uri:vscode.Uri.joinPath(this.origin, OUTPUT_FOLDER_NAME)},
                 ...(outputs.map((file) => {
-                    return {type:vscode.FileChangeType.Changed, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME+'/'+file.path)};
+                    return {type:vscode.FileChangeType.Changed, uri:vscode.Uri.joinPath(this.origin, OUTPUT_FOLDER_NAME, file.path)};
                 }))
             ]);
         }
