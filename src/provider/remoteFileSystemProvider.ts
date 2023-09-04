@@ -302,6 +302,7 @@ class VirtualFileSystem {
                             {type: vscode.FileChangeType.Changed, uri: vscode.Uri.parse(this.origin+res.path)}
                         ]);
                     }
+                    this.isDirty = true;
                 } else {
                     //FIXME: cope with out-of-order or contradictory
                     // throw new Error(`${doc.name}: ${doc._id}@${doc.version} inconsistent with ${update.v}`);
@@ -440,7 +441,6 @@ class VirtualFileSystem {
             await this.socket.applyOtUpdate(doc._id, update);
             doc.cache = _content;
             doc.lastVersion = doc.version;
-            this.isDirty = true;
         }
     }
 
@@ -490,11 +490,11 @@ class VirtualFileSystem {
 
     async compile() {
         if (this.root && this.isDirty) {
+            this.isDirty = false;
             return GlobalStateManager.compileProjectEntity(this.context, this.api, this.serverName, this.projectId)
             .then((res) => {
                 if (res) {
                     this.updateOutputs(res.outputFiles);
-                    this.isDirty = false;
                     return true;
                 } else {
                     return false;
