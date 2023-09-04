@@ -421,6 +421,7 @@ export class BaseAPI {
 
     async getFileFromClsi(identity:Identity, url:string, compileGroup:string) {
         let content: Buffer[] = [];
+        url = url.replace(/^\/+/g, '');
         while(true) {
             const res = await fetch(this.url+url, {
                 method: 'GET', redirect: 'manual', agent: this.agent,
