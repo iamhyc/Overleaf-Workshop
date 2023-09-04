@@ -133,10 +133,27 @@
           "group": "inline"
         }
       ]
-    }
+    },
+    "customEditors": [
+      {
+        "viewType": "overleaf-workshop-pdf-viewer",
+        "displayName": "Overleaf Workshop PDF Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.pdf",
+            "scheme": "overleaf-workshop"
+          },
+          {
+            "filenamePattern": "*.PDF",
+            "scheme": "overleaf-workshop"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
   },
   "scripts": {
-    "postinstall": "patch-package",
+    "postinstall": "patch-package; ncp node_modules/pdfjs-dist/build/pdf.min.js src/views/vendor/pdf.min.js",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -149,6 +166,7 @@
     "form-data": "^4.0.0",
     "mime-types": "^2.1.35",
     "node-fetch": "^2.6.13",
+    "pdfjs-dist": "^3.10.111",
     "socket.io-client": "github:overleaf/socket.io-client#0.9.17-overleaf-5"
   },
   "devDependencies": {
@@ -165,6 +183,7 @@
     "eslint": "^8.41.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
+    "ncp": "^2.0.0",
     "patch-package": "^7.0.2",
     "typescript": "^5.1.3"
   }

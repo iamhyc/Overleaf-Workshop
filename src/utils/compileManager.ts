@@ -39,7 +39,7 @@ export class CompileManager {
     }
 
     compile() {
-        const res = this.update('$(sync~spin)');
+        const res = this.update('$(sync~spin) Compiling');
         if (res) {
             this.vfsm.prefetch(res)
             .then((vfs) => vfs.compile() )
