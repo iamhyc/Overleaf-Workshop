@@ -4,4 +4,4 @@ node_modules
 out
 *.vsix
 
-src/**/vendor/**
+**/vendor/**

@@ -2,7 +2,7 @@
   "name": "overleaf-workshop",
   "displayName": "Overleaf-Workshop",
   "description": "Open Overleaf/ShareLaTex projects in vscode, with full collaboration support.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "icon": "resources/icons/app_icon.png",
   "author": {
     "name": "iamhyc",
@@ -153,7 +153,7 @@
     ]
   },
   "scripts": {
-    "postinstall": "patch-package; ncp node_modules/pdfjs-dist/build/pdf.min.js src/views/vendor/pdf.min.js",
+    "postinstall": "patch-package; ncp node_modules/pdfjs-dist/build/pdf.min.js views/vendor/pdf.min.js",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -166,7 +166,6 @@
     "form-data": "^4.0.0",
     "mime-types": "^2.1.35",
     "node-fetch": "^2.6.13",
-    "pdfjs-dist": "^3.10.111",
     "socket.io-client": "github:overleaf/socket.io-client#0.9.17-overleaf-5"
   },
   "devDependencies": {
@@ -185,6 +184,7 @@
     "mocha": "^10.2.0",
     "ncp": "^2.0.0",
     "patch-package": "^7.0.2",
+    "pdfjs-dist": "^3.10.111",
     "typescript": "^5.1.3"
   }
 }

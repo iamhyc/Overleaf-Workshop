@@ -10,9 +10,9 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo01-login.gif" height=300px/>
 
-- In-time Compiling and Previewing
+<!-- - On-the-fly Compiling and Previewing
 
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo02-compile.gif" height=300px/>
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo02-compile.gif" height=300px/> -->
 
 
 ### Milestones
