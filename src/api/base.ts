@@ -27,13 +27,13 @@ export interface CompileResponseSchema {
     enableHybridPdfDownload: boolean;
 }
 
-export interface syncPdfResponseSchema {
+export interface SyncPdfResponseSchema {
     file: string,
     line: number,
     column: number
 }
 
-export interface syncCodeResponseSchema {
+export interface SyncCodeResponseSchema {
     pdf: Array<{
         page: number,
         h: number,
@@ -52,8 +52,8 @@ export interface ResponseSchema {
     entity?: FileEntity;
     compile?: CompileResponseSchema;
     content?: Uint8Array;
-    syncPdf?: syncPdfResponseSchema;
-    syncCode?: syncCodeResponseSchema;
+    syncPdf?: SyncPdfResponseSchema;
+    syncCode?: SyncCodeResponseSchema;
 }
 
 export class BaseAPI {
@@ -458,7 +458,7 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                syncPdf: await res.json()
+                syncPdf: (await res.json() as SyncPdfResponseSchema)
             };
         } else {
             return {
@@ -480,7 +480,7 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                syncCode: await res.json()
+                syncCode: (await res.json() as SyncCodeResponseSchema)
             };
         } else {
             return {
