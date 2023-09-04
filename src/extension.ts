@@ -4,6 +4,7 @@ import { ROOT_NAME, ELEGANT_NAME } from './consts';
 import { RemoteFileSystemProvider } from './provider/remoteFileSystemProvider';
 import { ProjectManagerProvider } from './provider/projectManagerProvider';
 import { CompileManager } from './utils/compileManager';
+import { PdfViewEditorProvider } from './provider/pdfViewEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register: RemoteFileSystemProvider
@@ -14,6 +15,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('remoteFileSystem.prefetch', (uri: vscode.Uri) => {
         remoteFileSystemProvider.prefetch(uri);
     });
+
+    // Register: PdfViewEditorProvider
+    const pdfViewEditorProvider = new PdfViewEditorProvider(context);
+    context.subscriptions.push(
+        vscode.window.registerCustomEditorProvider('overleaf-workshop.pdfViewer', pdfViewEditorProvider)
+    );
 
     // Register: ProjectManagerProvider on Activitybar
     const projectManagerProvider = new ProjectManagerProvider(context);
@@ -46,5 +53,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push( ...compileManager.triggers() );
     context.subscriptions.push(vscode.commands.registerCommand('compileManager.compile', () => {
         compileManager.compile();
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('compileManager.viewPdf', () => {
+        compileManager.openPdf();
     }));
 }

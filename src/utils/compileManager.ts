@@ -58,4 +58,14 @@ export class CompileManager {
             });
         }
     }
+
+    openPdf() {
+        const uri = this.check();
+        if (uri) {
+            const pdfUri = uri.with({
+                path: uri.path.replace(/\/[^\/]*$/, `/${ROOT_NAME}/output.pdf`)
+            });
+            vscode.commands.executeCommand('vscode.open', pdfUri, vscode.ViewColumn.Two);
+        }
+    }
 }

@@ -67,6 +67,11 @@
         "command": "compileManager.compile",
         "title": "Compile Project",
         "category": "Overleaf-Workshop"
+      },
+      {
+        "command": "compileManager.viewPdf",
+        "title": "View Compiled PDF",
+        "category": "Overleaf-Workshop"
       }
     ],
     "keybindings": [
@@ -74,6 +79,12 @@
         "key": "ctrl+alt+b",
         "mac": "cmd+alt+b",
         "command": "compileManager.compile",
+        "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
+      },
+      {
+        "key": "ctrl+alt+v",
+        "max": "cmd+vlt+v",
+        "command": "compileManager.viewPdf",
         "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
       }
     ],
@@ -136,7 +147,7 @@
     },
     "customEditors": [
       {
-        "viewType": "overleaf-workshop-pdf-viewer",
+        "viewType": "overleaf-workshop.pdfViewer",
         "displayName": "Overleaf Workshop PDF Viewer",
         "selector": [
           {
