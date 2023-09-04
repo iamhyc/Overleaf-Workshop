@@ -62,6 +62,19 @@
         "command": "projectManager.openProjectInNewWindow",
         "title": "Open Project in New Window ...",
         "icon": "$(empty-window)"
+      },
+      {
+        "command": "compileManager.compile",
+        "title": "Compile Project",
+        "category": "Overleaf-Workshop"
+      }
+    ],
+    "keybindings": [
+      {
+        "key": "ctrl+alt+b",
+        "mac": "cmd+alt+b",
+        "command": "compileManager.compile",
+        "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
       }
     ],
     "viewsContainers": {

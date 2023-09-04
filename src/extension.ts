@@ -3,6 +3,7 @@ import { ROOT_NAME, ELEGANT_NAME } from './consts';
 
 import { RemoteFileSystemProvider } from './provider/remoteFileSystemProvider';
 import { ProjectManagerProvider } from './provider/projectManagerProvider';
+import { CompileManager } from './utils/compileManager';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register: RemoteFileSystemProvider
@@ -39,9 +40,11 @@ export function activate(context: vscode.ExtensionContext) {
         projectManagerProvider.openProjectInNewWindow(item);
     });
 
-    // Register: commands shortcuts
-    let disposable = vscode.commands.registerCommand(`${ROOT_NAME}.helloWorld`, () => {
-        vscode.window.showInformationMessage(`Hello World from ${ELEGANT_NAME}!`);
-    });
-    context.subscriptions.push(disposable);
+    // Register: CompileManager on Statusbar
+    const compileManager = new CompileManager(remoteFileSystemProvider);
+    context.subscriptions.push( compileManager.status );
+    context.subscriptions.push( ...compileManager.triggers() );
+    context.subscriptions.push(vscode.commands.registerCommand('compileManager.compile', () => {
+        compileManager.compile();
+    }));
 }

@@ -7,7 +7,7 @@ import { BaseAPI } from '../api/base';
 import { assert } from 'console';
 import * as Diff from 'diff';
 
-const _OUTPUTS_ID = '';
+const __OUTPUTS_ID = 'overleaf-workshop-outputs';
 
 export type FileType = 'doc' | 'file' | 'folder' | 'outputs';
 export type FolderKey = 'docs' | 'fileRefs' | 'folders' | 'outputs';
@@ -105,6 +105,7 @@ class VirtualFileSystem {
     private serverName: string;
     private userId: string;
     private projectId: string;
+    private isDirty: boolean = true;
     private notify: (events:vscode.FileChangeEvent[])=>void;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
@@ -133,12 +134,6 @@ class VirtualFileSystem {
             this.notify([
                 {type:vscode.FileChangeType.Created, uri:vscode.Uri.parse(this.origin)},
             ]);
-            GlobalStateManager.compileProjectEntity(this.context, this.api, this.serverName, this.projectId)
-            .then((res) => {
-                if (res) {
-                     this.updateOutputs(res.outputFiles);
-                }
-            });
         });
     }
 
@@ -445,6 +440,7 @@ class VirtualFileSystem {
             await this.socket.applyOtUpdate(doc._id, update);
             doc.cache = _content;
             doc.lastVersion = doc.version;
+            this.isDirty = true;
         }
     }
 
@@ -492,17 +488,33 @@ class VirtualFileSystem {
         }
     }
 
+    async compile() {
+        if (this.root && this.isDirty) {
+            return GlobalStateManager.compileProjectEntity(this.context, this.api, this.serverName, this.projectId)
+            .then((res) => {
+                if (res) {
+                    this.updateOutputs(res.outputFiles);
+                    this.isDirty = false;
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+        }
+        return Promise.resolve(true);
+    }
+
     async updateOutputs(outputs: Array<OutputFileEntity>) {
         if (this.root) {
             const rootFolder = this.root.rootFolder[0];
-            this.removeEntityById(rootFolder, 'folder', _OUTPUTS_ID);
+            this.removeEntityById(rootFolder, 'folder', __OUTPUTS_ID);
             this.insertEntity(rootFolder, 'folder', {
-                _id: _OUTPUTS_ID,
+                _id: __OUTPUTS_ID,
                 name: OUTPUT_FOLDER_NAME,
                 readonly: true,
                 docs: [], fileRefs: [], folders:[],
                 outputs: outputs.map((file) => {
-                    file._id = _OUTPUTS_ID;
+                    file._id = __OUTPUTS_ID;
                     file.name=file.path;
                     file.readonly=true;
                     return file;
@@ -510,7 +522,10 @@ class VirtualFileSystem {
             } as FolderEntity);
             this.notify([
                 {type:vscode.FileChangeType.Deleted, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME)},
-                {type:vscode.FileChangeType.Created, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME)}
+                {type:vscode.FileChangeType.Created, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME)},
+                ...(outputs.map((file) => {
+                    return {type:vscode.FileChangeType.Changed, uri:vscode.Uri.parse(this.origin+'/'+OUTPUT_FOLDER_NAME+'/'+file.path)};
+                }))
             ]);
         }
     }
@@ -538,8 +553,8 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
         }
     }
 
-    prefetch(uri: vscode.Uri): Promise<void> {
-        return this.getVFS(uri).then(() => {return;});
+    prefetch(uri: vscode.Uri): Promise<VirtualFileSystem> {
+        return this.getVFS(uri).then((vfs) => {return vfs;});
     }
 
     notify(events :vscode.FileChangeEvent[]) {
