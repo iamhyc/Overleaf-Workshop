@@ -136,6 +136,7 @@ class VirtualFileSystem {
             this.notify([
                 {type:vscode.FileChangeType.Created, uri:this.origin},
             ]);
+            this.compile();
         });
     }
 

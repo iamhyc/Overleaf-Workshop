@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { RemoteFileSystemProvider } from '../provider/remoteFileSystemProvider';
-import { ROOT_NAME, ELEGANT_NAME } from '../consts';
+import { ROOT_NAME, ELEGANT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 
 export class CompileManager {
     readonly status: vscode.StatusBarItem;
@@ -13,7 +13,7 @@ export class CompileManager {
         this.update('$(alert)', `${ELEGANT_NAME}: No Results`);
     }
 
-    check(uri?: vscode.Uri) {
+    static check(uri?: vscode.Uri) {
         uri = uri || vscode.window.activeTextEditor?.document.uri;
         return uri?.scheme === ROOT_NAME ? uri : undefined;
     }
@@ -21,13 +21,13 @@ export class CompileManager {
     triggers() {
         return [
             vscode.workspace.onDidSaveTextDocument((e) => {
-                this.check.bind(this)(e.uri) && e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i) && this.compile();
+                CompileManager.check.bind(this)(e.uri) && e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i) && this.compile();
             }),
         ];
     }
 
     update(text: string, tooltip?: string) {
-        const uri = this.check();
+        const uri = CompileManager.check();
         if (uri) {
             this.status.text = text;
             this.status.tooltip = tooltip;
@@ -59,11 +59,12 @@ export class CompileManager {
         }
     }
 
-    openPdf() {
-        const uri = this.check();
+    static openPdf() {
+        const uri = CompileManager.check();
         if (uri) {
+            const rootPath = uri.path.split('/', 2)[1];
             const pdfUri = uri.with({
-                path: uri.path.replace(/\/[^\/]*$/, `/${ROOT_NAME}/output.pdf`)
+                path: `/${rootPath}/${OUTPUT_FOLDER_NAME}/output.pdf`,
             });
             vscode.commands.executeCommand('vscode.open', pdfUri, vscode.ViewColumn.Two);
         }

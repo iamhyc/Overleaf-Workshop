@@ -164,7 +164,7 @@
     ]
   },
   "scripts": {
-    "postinstall": "patch-package; ncp node_modules/pdfjs-dist/build/pdf.min.js views/vendor/pdf.min.js",
+    "postinstall": "patch-package; copyfiles -f node_modules/pdfjs-dist/build/*.min.js views/vendor",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -190,10 +190,10 @@
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "@typescript-eslint/parser": "^5.59.8",
     "@vscode/test-electron": "^2.3.2",
+    "copyfiles": "^2.4.1",
     "eslint": "^8.41.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
-    "ncp": "^2.0.0",
     "patch-package": "^7.0.2",
     "pdfjs-dist": "^3.10.111",
     "typescript": "^5.1.3"

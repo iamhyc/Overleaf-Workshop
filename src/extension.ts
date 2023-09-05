@@ -19,7 +19,12 @@ export function activate(context: vscode.ExtensionContext) {
     // Register: PdfViewEditorProvider
     const pdfViewEditorProvider = new PdfViewEditorProvider(context);
     context.subscriptions.push(
-        vscode.window.registerCustomEditorProvider('overleaf-workshop.pdfViewer', pdfViewEditorProvider)
+        vscode.window.registerCustomEditorProvider('overleaf-workshop.pdfViewer', pdfViewEditorProvider, {
+            webviewOptions: {
+                retainContextWhenHidden: true,
+            },
+            supportsMultipleEditorsPerDocument: false,
+        })
     );
 
     // Register: ProjectManagerProvider on Activitybar
@@ -55,6 +60,6 @@ export function activate(context: vscode.ExtensionContext) {
         compileManager.compile();
     }));
     context.subscriptions.push(vscode.commands.registerCommand('compileManager.viewPdf', () => {
-        compileManager.openPdf();
+        CompileManager.openPdf();
     }));
 }
