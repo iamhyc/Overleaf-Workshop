@@ -151,12 +151,13 @@
         "displayName": "Overleaf Workshop PDF Viewer",
         "selector": [
           {
-            "filenamePattern": "*.pdf",
-            "scheme": "overleaf-workshop"
+            "filenamePattern": "**/output.pdf"
           },
           {
-            "filenamePattern": "*.PDF",
-            "scheme": "overleaf-workshop"
+            "filenamePattern": "*.pdf"
+          },
+          {
+            "filenamePattern": "*.PDF"
           }
         ],
         "priority": "default"
