@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>PDF Viewer</title>
+    <style>
+        html, body {
+            background-color: #FFFFFF;
+            margin: 0;
+            padding: 0;
+        }
+        #viewContainer {
+            overflow: auto;
+            position: absolute;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="vendor/pdf_viewer.css">
+</head>
+<body>
+    <div id="viewContainer">
+        <div id="viewer" class="pdfViewer"></div>
+    </div>
+    <script src="vendor/pdf.min.js"></script>
+    <script src="vendor/pdf_viewer.js"></script>
+    <script src="vscode-pdf-viewer.js"></script>
+</body>
+</html>

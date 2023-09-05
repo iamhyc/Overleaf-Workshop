@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
-import { RemoteFileSystemProvider } from '../provider/remoteFileSystemProvider';
+import { RemoteFileSystemProvider, parseUri } from '../provider/remoteFileSystemProvider';
 import { ROOT_NAME, ELEGANT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
+import { PdfDocument } from '../provider/pdfViewEditorProvider';
+
+export const pdfViewRecord:{
+    [key:string]: {doc:PdfDocument, webviewPanel:vscode.WebviewPanel}[],
+} = {};
 
 export class CompileManager {
     readonly status: vscode.StatusBarItem;
@@ -39,14 +44,18 @@ export class CompileManager {
     }
 
     compile() {
-        const res = this.update('$(sync~spin) Compiling');
-        if (res) {
-            this.vfsm.prefetch(res)
+        const uri = this.update('$(sync~spin) Compiling');
+        if (uri) {
+            this.vfsm.prefetch(uri)
             .then((vfs) => vfs.compile() )
             .then((res) => {
                 switch (res) {
                     case true:
                         this.update('$(check)', `${ELEGANT_NAME}: Compile Success`);
+                        const {identifier} = parseUri(uri);
+                        pdfViewRecord[identifier].forEach((record) => {
+                            record.doc.refresh();
+                        });
                         break;
                     case false:
                         this.update('$(x)', `${ELEGANT_NAME}: Compile Failed`);
@@ -68,5 +77,13 @@ export class CompileManager {
             });
             vscode.commands.executeCommand('vscode.open', pdfUri, vscode.ViewColumn.Two);
         }
+    }
+
+    static syncCode() {
+
+    }
+
+    static syncPdf() {
+
     }
 }

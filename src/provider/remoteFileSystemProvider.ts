@@ -96,6 +96,19 @@ export class File implements vscode.FileStat {
     }
 }
 
+export function parseUri(uri: vscode.Uri) {
+    const query:any = uri.query.split('&').reduce((acc, v) => {
+        const [key,value] = v.split('=');
+        return {...acc, [key]:value};
+    }, {});
+    const [userId, projectId] = [query.user, query.project];
+    const _pathParts = uri.path.split('/');
+    const projectName = _pathParts[1];
+    const pathParts = _pathParts.splice(2);
+    const identifier = `${userId}/${projectId}/${projectName}`;
+    return {userId, projectId, projectName, identifier, pathParts};
+}
+
 class VirtualFileSystem {
     private root?: ProjectEntity;
     private context: vscode.ExtensionContext;
@@ -109,7 +122,7 @@ class VirtualFileSystem {
     private notify: (events:vscode.FileChangeEvent[])=>void;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
-        const {userId,projectId,projectName} = this.parseUri(uri);
+        const {userId,projectId,projectName} = parseUri(uri);
         this.origin = vscode.Uri.from({
             scheme: uri.scheme, authority: uri.authority, path: '/'+projectName, query: uri.query
         });
@@ -140,22 +153,10 @@ class VirtualFileSystem {
         });
     }
 
-    private parseUri(uri: vscode.Uri) {
-        const query:any = uri.query.split('&').reduce((acc, v) => {
-            const [key,value] = v.split('=');
-            return {...acc, [key]:value};
-        }, {});
-        const [userId, projectId] = [query.user, query.project];
-        const _pathParts = uri.path.split('/');
-        const projectName = _pathParts[1];
-        const pathParts = _pathParts.splice(2);
-        return {userId, projectId, projectName, pathParts};
-    }
-
     private _resolveUri(uri: vscode.Uri) {
         // resolve path
         const [parentFolder, fileName] = (() => {
-            const {pathParts} = this.parseUri(uri);
+            const {pathParts} = parseUri(uri);
             if (this.root) {
                 let currentFolder = this.root.rootFolder[0];
                 for (let i = 0; i < pathParts.length-1; i++) {

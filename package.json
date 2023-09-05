@@ -164,7 +164,7 @@
     ]
   },
   "scripts": {
-    "postinstall": "patch-package; copyfiles -f node_modules/pdfjs-dist/build/*.min.js views/vendor",
+    "postinstall": "patch-package; copyfiles -f node_modules/pdfjs-dist/build/pdf*.min.js node_modules/pdfjs-dist/web/pdf_viewer.js node_modules/pdfjs-dist/web/pdf_viewer.css views/vendor",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
