@@ -79,14 +79,27 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
         });
     }
 
-    private async getHtmlForWebview(webview: vscode.Webview): Promise<string> {
-        const vendorJsPath = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'views', 'vendor'));
-        const commonJsPath = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'views', 'vscode-pdf-viewer.js'));
-        const htmlPath = vscode.Uri.joinPath(this.context.extensionUri, 'views', 'vscode-pdf-viewer.html');
-        let html = (await vscode.workspace.fs.readFile(htmlPath)).toString();
-        html = html.replace(/vendor\//g, vendorJsPath.toString()+'/');
-        html = html.replace('vscode-pdf-viewer.js', commonJsPath.toString());
+    private patchViewerHtml(webview: vscode.Webview, html: string): string {
+        const patchPath = (...path:string[]) => webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'views', ...path)).toString();
+
+        // adjust original path
+        html = html.replace('../build/pdf.js', patchPath('vendor','build','pdf.js'));
+        html = html.replace('viewer.css', patchPath('vendor','web','viewer.css'));
+        html = html.replace('viewer.js',  patchPath('vendor','web','viewer.js'));
+
+        // patch custom files
+        const workerScript = `<script src="${patchPath('vendor','build','pdf.worker.js')}"></script>`;
+        const customScript = `<script src="${patchPath('vscode-pdf-viewer.js')}"></script>`;
+        const customStyle = `<link rel="stylesheet" href="${patchPath('vscode-pdf-viewer.css')}" />`;
+        html = html.replace(/\<\/head\>/, `${workerScript}\n${customScript}\n${customStyle}\n</head>`);
+
         return html;
+    }
+
+    private async getHtmlForWebview(webview: vscode.Webview): Promise<string> {
+        const htmlPath = vscode.Uri.joinPath(this.context.extensionUri, 'views','vendor','web','viewer.html');
+        let html = (await vscode.workspace.fs.readFile(htmlPath)).toString();
+        return this.patchViewerHtml(webview, html);
     }
 
 }

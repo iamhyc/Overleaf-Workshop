@@ -9,3 +9,8 @@ docs/**
 **/.eslintrc.json
 **/*.map
 **/*.ts
+
+**/vendor/web/*.pdf
+**/vendor/web/cmaps
+**/vendor/web/locale
+**/vendor/web/standard_fonts

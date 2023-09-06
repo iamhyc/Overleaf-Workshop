@@ -176,7 +176,8 @@
     ]
   },
   "scripts": {
-    "postinstall": "patch-package; copyfiles -f node_modules/pdfjs-dist/build/pdf*.min.js node_modules/pdfjs-dist/web/pdf_viewer.js node_modules/pdfjs-dist/web/pdf_viewer.css views/vendor",
+    "download-pdfjs": "download -o views/vendor -e https://github.com/mozilla/pdf.js/releases/download/v3.10.111/pdfjs-3.10.111-dist.zip",
+    "postinstall": "patch-package; npm run download-pdfjs",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -203,11 +204,11 @@
     "@typescript-eslint/parser": "^5.59.8",
     "@vscode/test-electron": "^2.3.2",
     "copyfiles": "^2.4.1",
+    "download-cli": "^1.1.1",
     "eslint": "^8.41.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
     "patch-package": "^7.0.2",
-    "pdfjs-dist": "^3.10.111",
     "typescript": "^5.1.3"
   }
 }
