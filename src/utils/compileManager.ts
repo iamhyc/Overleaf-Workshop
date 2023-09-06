@@ -2,9 +2,12 @@ import * as vscode from 'vscode';
 import { RemoteFileSystemProvider, parseUri } from '../provider/remoteFileSystemProvider';
 import { ROOT_NAME, ELEGANT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 import { PdfDocument } from '../provider/pdfViewEditorProvider';
+import { SyncPdfResponseSchema } from '../api/base';
 
 export const pdfViewRecord:{
-    [key:string]: {doc:PdfDocument, webviewPanel:vscode.WebviewPanel}[],
+    [key:string]: {
+        [key:string]: {doc:PdfDocument, webviewPanel:vscode.WebviewPanel}
+    }
 } = {};
 
 export class CompileManager {
@@ -53,9 +56,9 @@ export class CompileManager {
                     case true:
                         this.update('$(check)', `${ELEGANT_NAME}: Compile Success`);
                         const {identifier} = parseUri(uri);
-                        pdfViewRecord[identifier].forEach((record) => {
-                            record.doc.refresh();
-                        });
+                        Object.values(pdfViewRecord[identifier]).forEach(
+                            (record) => record.doc.refresh()
+                        );
                         break;
                     case false:
                         this.update('$(x)', `${ELEGANT_NAME}: Compile Failed`);
@@ -68,7 +71,7 @@ export class CompileManager {
         }
     }
 
-    static openPdf() {
+    openPdf() {
         const uri = CompileManager.check();
         if (uri) {
             const rootPath = uri.path.split('/', 2)[1];
@@ -79,11 +82,53 @@ export class CompileManager {
         }
     }
 
-    static syncCode() {
-
+    syncCode() {
+        const uri = CompileManager.check();
+        if (uri && vscode.window.activeTextEditor) {
+            const {identifier, pathParts} = parseUri(uri);
+            const startPoint = vscode.window.activeTextEditor.selection.start;
+            const filePath = pathParts.join('/');
+            const line = startPoint.line;
+            const column = startPoint.character;
+            this.vfsm.prefetch(uri)
+            .then((vfs) => vfs.syncCode(filePath,line,column))
+            .then((res) => {
+                if (res) {
+                    const pdfPath = `${OUTPUT_FOLDER_NAME}/output.pdf`;
+                    const webview = pdfViewRecord[identifier][pdfPath].webviewPanel.webview;
+                    webview.postMessage({
+                        type: 'syncCode',
+                        content: res
+                    });
+                }
+            });
+        }
     }
 
-    static syncPdf() {
-
+    syncPdf(page:number, h:number, v:number) {
+        const uri = CompileManager.check();
+        if (uri) {
+            this.vfsm.prefetch(uri)
+            .then((vfs) => vfs.syncPdf(page, h, v))
+            .then((res) => {
+                if (res) {
+                    const {file,line,column} = res;
+                    const {projectName} = parseUri(uri);
+                    const fileUri = uri.with({path: `/${projectName}/${file}`});
+                    // get doc by fileUri
+                    vscode.workspace.openTextDocument(fileUri)
+                    .then((doc) => {
+                        if (vscode.window.activeTextEditor) {
+                            let selections = vscode.window.activeTextEditor.selections;
+                            selections = selections.map((sel, index) => {
+                                return index===0?
+                                new vscode.Selection(line,column,line,column)
+                                : sel;
+                            });
+                        }
+                    });
+                }
+            });
+        }
     }
 }

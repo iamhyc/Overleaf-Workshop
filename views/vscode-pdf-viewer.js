@@ -24,7 +24,7 @@
         switch (message.type) {
             case 'update':
                 updatePdf(message.content);
-            case 'syncPdf':
+            case 'syncCode':
                 break;
             default:
                 break;

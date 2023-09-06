@@ -458,7 +458,7 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                syncPdf: (await res.json() as SyncPdfResponseSchema)
+                syncPdf: (await res.json() as any).code as SyncPdfResponseSchema
             };
         } else {
             return {
@@ -480,7 +480,7 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                syncCode: (await res.json() as SyncCodeResponseSchema)
+                syncCode: (await res.json() as any).pdf as SyncCodeResponseSchema
             };
         } else {
             return {

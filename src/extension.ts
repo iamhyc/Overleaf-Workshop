@@ -60,6 +60,12 @@ export function activate(context: vscode.ExtensionContext) {
         compileManager.compile();
     }));
     context.subscriptions.push(vscode.commands.registerCommand('compileManager.viewPdf', () => {
-        CompileManager.openPdf();
+        compileManager.openPdf();
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('compileManager.syncCode', () => {
+        compileManager.syncCode();
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('compileManager.syncPdf', (page,h,v) => {
+        compileManager.syncPdf(page,h,v);
     }));
 }

@@ -72,6 +72,11 @@
         "command": "compileManager.viewPdf",
         "title": "View Compiled PDF",
         "category": "Overleaf-Workshop"
+      },
+      {
+        "command": "compileManager.syncCode",
+        "title": "Jump to PDF",
+        "category": "Overleaf-Workshop"
       }
     ],
     "keybindings": [
@@ -83,8 +88,14 @@
       },
       {
         "key": "ctrl+alt+v",
-        "max": "cmd+vlt+v",
+        "mac": "cmd+vlt+v",
         "command": "compileManager.viewPdf",
+        "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
+      },
+      {
+        "key": "ctrl+alt+j",
+        "mac": "cmd+alt+j",
+        "command": "compileManager.syncCode",
         "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
       }
     ],

@@ -257,6 +257,32 @@ export class GlobalStateManager {
         }
     }
 
+    static async syncCode(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, filePath:string, line:number, column:number) {
+        const identity = await this.authenticate(context, name);
+        const res = await api.proxySyncCode(identity, projectId, filePath, line, column);
+        if (res.type==='success') {
+            return res.syncCode;
+        } else {
+            if (res.message!==undefined) {
+                vscode.window.showErrorMessage(res.message);
+            }
+            return undefined;
+        }
+    }
+
+    static async syncPdf(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, page:number, h:number, v:number) {
+        const identity = await this.authenticate(context, name);
+        const res = await api.proxySyncPdf(identity, projectId, page, h, v);
+        if (res.type==='success') {
+            return res.syncPdf;
+        } else {
+            if (res.message!==undefined) {
+                vscode.window.showErrorMessage(res.message);
+            }
+            return undefined;
+        }
+    }
+
     static initSocketIOAPI(context:vscode.ExtensionContext, name:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];

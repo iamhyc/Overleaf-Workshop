@@ -53,11 +53,12 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
     }
 
     async resolveCustomEditor(doc: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
-        const {identifier} = parseUri(doc.uri);
+        const {identifier,pathParts} = parseUri(doc.uri);
+        const filePath = pathParts.join('/');
         if (pdfViewRecord[identifier]) {
-            pdfViewRecord[identifier].push({doc, webviewPanel});
+            pdfViewRecord[identifier][filePath] = {doc, webviewPanel};
         } else {
-            pdfViewRecord[identifier] = [{doc, webviewPanel}];
+            pdfViewRecord[identifier] = {[filePath]:{doc, webviewPanel}};
         }
 
         doc.onDidChange(() => {
@@ -69,7 +70,8 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
         webviewPanel.webview.postMessage({type:'update', content:doc.cache.buffer});
         webviewPanel.webview.onDidReceiveMessage((e) => {
             switch (e.type) {
-                case 'syncCode':
+                case 'syncPdf':
+                    vscode.commands.executeCommand('compileManager.syncPdf', e.content);
                     break;
                 default:
                     break;

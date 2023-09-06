@@ -123,9 +123,7 @@ class VirtualFileSystem {
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
         const {userId,projectId,projectName} = parseUri(uri);
-        this.origin = vscode.Uri.from({
-            scheme: uri.scheme, authority: uri.authority, path: '/'+projectName, query: uri.query
-        });
+        this.origin = uri.with({path: '/'+projectName});
         this.serverName = uri.authority;
         this.userId = userId;
         this.projectId = projectId;
@@ -542,6 +540,14 @@ class VirtualFileSystem {
                 }))
             ]);
         }
+    }
+
+    async syncCode(filePath: string, line:number, column:number) {
+        return GlobalStateManager.syncCode(this.context, this.api, this.serverName, this.projectId, filePath, line, column);
+    }
+
+    async syncPdf(page:number, h:number, v:number) {
+        return GlobalStateManager.syncPdf(this.context, this.api, this.serverName, this.projectId, page, h, v);
     }
 }
 
