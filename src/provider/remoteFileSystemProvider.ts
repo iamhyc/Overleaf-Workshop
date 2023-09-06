@@ -120,6 +120,7 @@ class VirtualFileSystem {
     private projectId: string;
     private isDirty: boolean = true;
     private notify: (events:vscode.FileChangeEvent[])=>void;
+    private exceptions: vscode.Uri[] = [];
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
         const {userId,projectId,projectName} = parseUri(uri);
@@ -147,7 +148,20 @@ class VirtualFileSystem {
             this.notify([
                 {type:vscode.FileChangeType.Created, uri:this.origin},
             ]);
-            this.compile();
+
+            const res = this.exceptions.map((uri) => {
+                try {
+                    const {fileType} = this._resolveUri(uri);
+                    if (fileType && fileType!=='folder') {
+                        return vscode.commands.executeCommand('vscode.open', uri);
+                    }
+                } catch {}
+            }).filter(x => x) as Thenable<unknown>[];
+            this.exceptions = [];
+
+            Promise.all(res).then(() => {
+                vscode.commands.executeCommand('compileManager.compile');
+            });
         });
     }
 
@@ -169,6 +183,7 @@ class VirtualFileSystem {
                 const fileName = pathParts[pathParts.length-1];
                 return [currentFolder, fileName];
             }
+            this.exceptions.push(uri);
             throw vscode.FileSystemError.FileNotFound(uri);
         })();
         // resolve file
