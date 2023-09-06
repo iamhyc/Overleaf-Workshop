@@ -53,6 +53,9 @@ export class CompileManager {
             .then((vfs) => vfs.compile() )
             .then((res) => {
                 switch (res) {
+                    case undefined:
+                        this.update('$(check)', `${ELEGANT_NAME}: Compile Success`);
+                        break;
                     case true:
                         this.update('$(check)', `${ELEGANT_NAME}: Compile Success`);
                         const {identifier} = parseUri(uri);

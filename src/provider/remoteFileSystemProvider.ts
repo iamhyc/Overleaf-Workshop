@@ -321,11 +321,11 @@ class VirtualFileSystem {
                             }
                         });
                         doc.cache = content;
+                        this.isDirty = true;
                         this.notify([
                             {type: vscode.FileChangeType.Changed, uri: vscode.Uri.joinPath(this.origin, res.path)}
                         ]);
                     }
-                    this.isDirty = true;
                 } else {
                     //FIXME: cope with out-of-order or contradictory
                     // throw new Error(`${doc.name}: ${doc._id}@${doc.version} inconsistent with ${update.v}`);
@@ -461,6 +461,9 @@ class VirtualFileSystem {
                                 .filter(x => x) as any;
                 })(),
             };
+            if (update.op && update.op.length) {
+                this.isDirty = true;
+            }
             await this.socket.applyOtUpdate(doc._id, update);
             doc.cache = _content;
             doc.lastVersion = doc.version;
@@ -524,7 +527,7 @@ class VirtualFileSystem {
                 }
             });
         }
-        return Promise.resolve(true);
+        return Promise.resolve(undefined);
     }
 
     async updateOutputs(outputs: Array<OutputFileEntity>) {
