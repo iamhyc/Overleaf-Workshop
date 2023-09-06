@@ -19,7 +19,11 @@ export class PdfDocument implements vscode.CustomDocument {
     dispose() { }
 
     async refresh(): Promise<Uint8Array> {
-        this.cache = new Uint8Array(await vscode.workspace.fs.readFile(this.uri));
+        try {
+            this.cache = new Uint8Array(await vscode.workspace.fs.readFile(this.uri));
+        } catch {
+            this.cache = new Uint8Array();
+        }
         this._onDidChange.fire({content:this.cache});
         return this.cache;
     }
