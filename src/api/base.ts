@@ -447,18 +447,20 @@ export class BaseAPI {
     }
 
     async proxySyncPdf(identity:Identity, projectId:string, page:number, h:number, v:number) {
-        const res = await fetch(this.url+`project/${projectId}/sync/pdf?page=${page}&h=${h}&v=${v}`, {
+        const res = await fetch(this.url+`project/${projectId}/sync/pdf?page=${page}&h=${h.toFixed(2)}&v=${v.toFixed(2)}`, {
             method: 'GET', redirect: 'manual', agent: this.agent,
             headers: {
                 'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
                 'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
             }
         });
 
         if (res.status===200) {
             return {
                 type: 'success',
-                syncPdf: (await res.json() as any).code as SyncPdfResponseSchema
+                syncPdf: (await res.json() as any).code[0] as SyncPdfResponseSchema
             };
         } else {
             return {
