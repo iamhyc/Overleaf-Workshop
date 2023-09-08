@@ -31,9 +31,41 @@
     };
     // @ts-ignore
     const vscode = acquireVsCodeApi();
+    const pdfViewerState = {
+        currentScaleValue: 'auto',
+        pdfCursorTools: CursorTool.SELECT,
+        pdfViewerScrollMode: ScrollMode.VERTICAL,
+        pdfViewerSpreadMode: SpreadMode.NONE,
+        pdfSidebarView: SidebarView.NONE,
+        containerScrollLeft: 0,
+        containerScrollTop:  0,
+    };
+
+    function updatePdfViewerState() {
+        const pdfViewerState = vscode.getState() || pdfViewerState;
+        PDFViewerApplication.pdfViewer.currentScaleValue = pdfViewerState.currentScaleValue;
+        PDFViewerApplication.pdfCursorTools.switchTool( pdfViewerState.pdfCursorTools );
+        PDFViewerApplication.pdfViewer.scrollMode = pdfViewerState.pdfViewerScrollMode;
+        PDFViewerApplication.pdfViewer.spreadMode = pdfViewerState.pdfViewerSpreadMode;
+        PDFViewerApplication.pdfSidebar.setInitialView( pdfViewerState.pdfSidebarView );
+        PDFViewerApplication.pdfSidebar.switchView( pdfViewerState.pdfSidebarView );
+        document.getElementById('viewerContainer').scrollLeft = pdfViewerState.containerScrollLeft;
+        document.getElementById('viewerContainer').scrollTop = pdfViewerState.containerScrollTop;
+    }
+
+    function backupPdfViewerState() {
+        pdfViewerState.currentScaleValue = PDFViewerApplication.pdfViewer.currentScaleValue;
+        pdfViewerState.pdfViewerScrollMode = PDFViewerApplication.pdfViewer.scrollMode;
+        pdfViewerState.pdfViewerSpreadMode = pdfViewerState.pdfViewerSpreadMode;
+        pdfViewerState.pdfSidebarView = PDFViewerApplication.pdfSidebar.visibleView;
+        pdfViewerState.containerScrollLeft = document.getElementById('viewerContainer').scrollLeft || 0;
+        pdfViewerState.containerScrollTop = document.getElementById('viewerContainer').scrollTop || 0;
+        vscode.setState(pdfViewerState);
+    }
 
     async function updatePdf(pdf) {
         const doc = await pdfjsLib.getDocument(pdf).promise;
+        backupPdfViewerState();
         PDFViewerApplication.load(doc);
     }
 
@@ -41,15 +73,7 @@
         // init pdf.js configuration
         PDFViewerApplication.initializedPromise
         .then(() => {
-            const optsOnLoad = () => {
-                PDFViewerApplication.pdfViewer.currentScaleValue = 1.0;
-                PDFViewerApplication.pdfCursorTools.switchTool( CursorTool.SELECT );
-                PDFViewerApplication.pdfViewer.scrollMode = ScrollMode.VERTICAL;
-                PDFViewerApplication.pdfViewer.spreadMode = SpreadMode.NONE;
-                PDFViewerApplication.pdfSidebar.switchView( SidebarView.NONE );
-                PDFViewerApplication.eventBus.off('documentloaded', optsOnLoad);
-            };
-            PDFViewerApplication.eventBus.on('documentloaded', optsOnLoad);
+            PDFViewerApplication.eventBus.on('documentloaded', updatePdfViewerState);
         });
 
         // add message listener
@@ -60,7 +84,7 @@
                     updatePdf(message.content);
                 case 'syncCode':
                     // Reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/viewer/latexworkshop.ts#L306
-                    const _idx = Math.round(message.content.length / 2);
+                    const _idx = Math.ceil(message.content.length / 2) - 1;
                     const container = document.getElementById('viewerContainer');
                     const maxScrollX = window.innerWidth * 0.9;
                     const minScrollX = window.innerWidth * 0.1;
@@ -88,7 +112,6 @@
                     break;
             }
         });
-
 
         // add mouse double click listener
         window.addEventListener('dblclick', (e) => {
