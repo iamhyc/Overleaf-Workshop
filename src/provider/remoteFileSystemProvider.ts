@@ -120,7 +120,6 @@ class VirtualFileSystem {
     private projectId: string;
     private isDirty: boolean = true;
     private notify: (events:vscode.FileChangeEvent[])=>void;
-    private exceptions: vscode.Uri[] = [];
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
         const {userId,projectId,projectName} = parseUri(uri);
@@ -141,50 +140,36 @@ class VirtualFileSystem {
         }
     }
 
-    async init() {
-        this.remoteWatch();
-        return this.socket.joinProject(this.projectId).then((project:ProjectEntity) => {
-            this.root = project;
+    async init() : Promise<ProjectEntity> {
+        if (!this.root) {
+            this.remoteWatch();
+            this.root = await this.socket.joinProject(this.projectId) as ProjectEntity;
             this.notify([
                 {type:vscode.FileChangeType.Created, uri:this.origin},
             ]);
-
-            const res = this.exceptions.map((uri) => {
-                try {
-                    const {fileType} = this._resolveUri(uri);
-                    if (fileType && fileType!=='folder') {
-                        return vscode.commands.executeCommand('vscode.open', uri);
-                    }
-                } catch {}
-            }).filter(x => x) as Thenable<unknown>[];
-            this.exceptions = [];
-
-            Promise.all(res).then(() => {
-                vscode.commands.executeCommand('compileManager.compile');
-            });
-        });
+            vscode.commands.executeCommand('compileManager.compile');
+        }
+        return this.root;
     }
 
-    private _resolveUri(uri: vscode.Uri) {
+    private async _resolveUri(uri: vscode.Uri) {
         // resolve path
-        const [parentFolder, fileName] = (() => {
+        const [parentFolder, fileName] = await (async () => {
             const {pathParts} = parseUri(uri);
-            if (this.root) {
-                let currentFolder = this.root.rootFolder[0];
-                for (let i = 0; i < pathParts.length-1; i++) {
-                    const folderName = pathParts[i];
-                    const folder = currentFolder.folders.find((folder) => folder.name === folderName);
-                    if (folder) {
-                        currentFolder = folder;
-                    } else {
-                        throw vscode.FileSystemError.FileNotFound(uri);
-                    }
+            const root = await this.init();
+
+            let currentFolder = root.rootFolder[0];
+            for (let i = 0; i < pathParts.length-1; i++) {
+                const folderName = pathParts[i];
+                const folder = currentFolder.folders.find((folder) => folder.name === folderName);
+                if (folder) {
+                    currentFolder = folder;
+                } else {
+                    throw vscode.FileSystemError.FileNotFound(uri);
                 }
-                const fileName = pathParts[pathParts.length-1];
-                return [currentFolder, fileName];
             }
-            this.exceptions.push(uri);
-            throw vscode.FileSystemError.FileNotFound(uri);
+            const fileName = pathParts[pathParts.length-1];
+            return [currentFolder, fileName];
         })();
         // resolve file
         const [fileEntity, fileType] = (() => {
@@ -334,8 +319,8 @@ class VirtualFileSystem {
         });
     }
 
-    resolve(uri: vscode.Uri): File {
-        const {fileName, fileEntity, fileType} = this._resolveUri(uri);
+    async resolve(uri: vscode.Uri): Promise<File> {
+        const {fileName, fileEntity, fileType} = await this._resolveUri(uri);
         const readonly = fileEntity?.readonly ? vscode.FilePermission.Readonly : undefined;
         switch (fileType) {
             case undefined:
@@ -347,8 +332,8 @@ class VirtualFileSystem {
         }
     }
 
-    list(uri: vscode.Uri): [string, vscode.FileType][] {
-        const {fileEntity} = this._resolveUri(uri);
+    async list(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
+        const {fileEntity} = await this._resolveUri(uri);
         const folder = fileEntity as FolderEntity;
         let results:[string, vscode.FileType][] = [];
         if (folder) {
@@ -363,7 +348,7 @@ class VirtualFileSystem {
     }
 
     async openFile(uri: vscode.Uri): Promise<Uint8Array> {
-        const {fileType, fileEntity} = this._resolveUri(uri);
+        const {fileType, fileEntity} = await this._resolveUri(uri);
         if (!fileEntity) {
             throw vscode.FileSystemError.FileNotFound();
         }
@@ -398,7 +383,7 @@ class VirtualFileSystem {
     }
 
     async createFile(uri: vscode.Uri, content:Uint8Array, overwrite?:boolean) {
-        const {parentFolder, fileName, fileEntity} = this._resolveUri(uri);
+        const {parentFolder, fileName, fileEntity} = await this._resolveUri(uri);
         if (fileEntity && !overwrite) {
             throw vscode.FileSystemError.FileExists(uri);
         }
@@ -409,7 +394,7 @@ class VirtualFileSystem {
     }
 
     async writeFile(uri: vscode.Uri, content:Uint8Array, create:boolean, overwrite:boolean) {
-        const {fileType, fileEntity} = this._resolveUri(uri);
+        const {fileType, fileEntity} = await this._resolveUri(uri);
 
         // if non-exists --> create it
         if (!fileType && create) {
@@ -471,7 +456,7 @@ class VirtualFileSystem {
     }
 
     async mkdir(uri: vscode.Uri) {
-        const {parentFolder, fileName} = this._resolveUri(uri);
+        const {parentFolder, fileName} = await this._resolveUri(uri);
         const res = await GlobalStateManager.addProjectFolder(this.context, this.api, this.serverName, this.projectId, fileName, parentFolder._id);
         if (res) {
             this.insertEntity(parentFolder, 'folder', res);
@@ -479,7 +464,7 @@ class VirtualFileSystem {
     }
 
     async remove(uri: vscode.Uri, recursive: boolean) {
-        const {parentFolder, fileType, fileEntity} = this._resolveUri(uri);
+        const {parentFolder, fileType, fileEntity} = await this._resolveUri(uri);
         if (fileType && fileEntity) {
             const res = await GlobalStateManager.deleteProjectEntity(this.context, this.api, this.serverName, this.projectId, fileType, fileEntity._id);
             if (res) {
@@ -489,8 +474,8 @@ class VirtualFileSystem {
     }
 
     async rename(oldUri: vscode.Uri, newUri: vscode.Uri, force: boolean) {
-        const oldPath = this._resolveUri(oldUri);
-        const newPath = this._resolveUri(newUri);
+        const oldPath = await this._resolveUri(oldUri);
+        const newPath = await this._resolveUri(newUri);
 
         if (oldPath.fileType && oldPath.fileEntity && oldPath.fileEntity) {
             // delete existence firstly
@@ -587,7 +572,7 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
         } else {
             const vfs = new VirtualFileSystem(this.context, uri, this.notify.bind(this));
             this.vfss[ uri.query ] = vfs;
-            return vfs.init().then(() => vfs);
+            return Promise.resolve(vfs);
         }
     }
 

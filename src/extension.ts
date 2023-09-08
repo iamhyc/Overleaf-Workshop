@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register: PdfViewEditorProvider
     const pdfViewEditorProvider = new PdfViewEditorProvider(context);
     context.subscriptions.push(
-        vscode.window.registerCustomEditorProvider('overleaf-workshop.pdfViewer', pdfViewEditorProvider, {
+        vscode.window.registerCustomEditorProvider(`${ROOT_NAME}.pdfViewer`, pdfViewEditorProvider, {
             webviewOptions: {
                 retainContextWhenHidden: true,
             },

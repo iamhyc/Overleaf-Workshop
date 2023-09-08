@@ -82,7 +82,10 @@ export class CompileManager {
             const pdfUri = uri.with({
                 path: `/${rootPath}/${OUTPUT_FOLDER_NAME}/output.pdf`,
             });
-            vscode.commands.executeCommand('vscode.open', pdfUri, vscode.ViewColumn.Two);
+            vscode.commands.executeCommand('vscode.openWith', pdfUri,
+                `${ROOT_NAME}.pdfViewer`,
+                {preview:false, viewColumn: vscode.ViewColumn.Beside}
+            );
         }
     }
 
@@ -121,18 +124,18 @@ export class CompileManager {
                     const {projectName} = parseUri(uri);
                     const fileUri = uri.with({path: `/${projectName}/${file}`});
                     // get doc by fileUri
-                    vscode.workspace.openTextDocument(fileUri)
+                    const viewColumn = vscode.window.visibleTextEditors.at(-1)?.viewColumn || vscode.ViewColumn.Beside;
+                    vscode.commands.executeCommand('vscode.open', fileUri, {viewColumn})
                     .then((doc) => {
                         for (const editor of vscode.window.visibleTextEditors) {
                             if (editor.document.uri.toString()===fileUri.toString()) {
                                 const _identifier = r.identifier.replace(/\s+/g, '\\s+');
-                                const matchIndex = doc.lineAt(line-1).text.match(_identifier)?.index || 0;
+                                const matchIndex = editor.document.lineAt(line-1).text.match(_identifier)?.index || 0;
                                 editor.selections = editor.selections.map((sel, index) => {
                                     return index===0?
                                     new vscode.Selection(line-1,matchIndex,line-1,matchIndex)
                                     : sel;
                                 });
-                                vscode.window.showTextDocument(doc, {preview: false, viewColumn: editor.viewColumn});
                                 editor.revealRange(new vscode.Range(line-1,matchIndex,line-1,matchIndex), vscode.TextEditorRevealType.InCenter);
                                 break;
                             }
