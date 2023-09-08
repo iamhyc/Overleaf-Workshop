@@ -73,7 +73,9 @@
         // init pdf.js configuration
         PDFViewerApplication.initializedPromise
         .then(() => {
-            PDFViewerApplication.eventBus.on('documentloaded', updatePdfViewerState);
+            const {eventBus, _boundEvents} = PDFViewerApplication;
+            eventBus._off("beforeprint", _boundEvents.beforePrint);
+            eventBus.on('documentloaded', updatePdfViewerState);
         });
 
         // add message listener
