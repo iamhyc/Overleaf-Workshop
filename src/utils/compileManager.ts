@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { RemoteFileSystemProvider, parseUri } from '../provider/remoteFileSystemProvider';
 import { ROOT_NAME, ELEGANT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 import { PdfDocument } from '../provider/pdfViewEditorProvider';
-import { SyncPdfResponseSchema } from '../api/base';
+import { SyncCodeResponseSchema, SyncPdfResponseSchema } from '../api/base';
 
 export const pdfViewRecord:{
     [key:string]: {
@@ -23,6 +23,7 @@ export class CompileManager {
 
     static check(uri?: vscode.Uri) {
         uri = uri || vscode.window.activeTextEditor?.document.uri;
+        uri = uri || vscode.workspace.workspaceFolders?.[0].uri;
         return uri?.scheme === ROOT_NAME ? uri : undefined;
     }
 
@@ -99,6 +100,7 @@ export class CompileManager {
                 if (res) {
                     const pdfPath = `${OUTPUT_FOLDER_NAME}/output.pdf`;
                     const webview = pdfViewRecord[identifier][pdfPath].webviewPanel.webview;
+                    // get page
                     webview.postMessage({
                         type: 'syncCode',
                         content: res
@@ -108,11 +110,11 @@ export class CompileManager {
         }
     }
 
-    syncPdf(page:number, h:number, v:number) {
+    syncPdf(r:{page:number, h:number, v:number, identifier:string}) {
         const uri = CompileManager.check();
         if (uri) {
             this.vfsm.prefetch(uri)
-            .then((vfs) => vfs.syncPdf(page, h, v))
+            .then((vfs) => vfs.syncPdf(r.page, r.h, r.v))
             .then((res) => {
                 if (res) {
                     const {file,line,column} = res;
@@ -121,13 +123,19 @@ export class CompileManager {
                     // get doc by fileUri
                     vscode.workspace.openTextDocument(fileUri)
                     .then((doc) => {
-                        if (vscode.window.activeTextEditor) {
-                            let selections = vscode.window.activeTextEditor.selections;
-                            selections = selections.map((sel, index) => {
-                                return index===0?
-                                new vscode.Selection(line,column,line,column)
-                                : sel;
-                            });
+                        for (const editor of vscode.window.visibleTextEditors) {
+                            if (editor.document.uri.toString()===fileUri.toString()) {
+                                const _identifier = r.identifier.replace(/\s+/g, '\\s+');
+                                const matchIndex = doc.lineAt(line-1).text.match(_identifier)?.index || 0;
+                                editor.selections = editor.selections.map((sel, index) => {
+                                    return index===0?
+                                    new vscode.Selection(line-1,matchIndex,line-1,matchIndex)
+                                    : sel;
+                                });
+                                vscode.window.showTextDocument(doc, {preview: false, viewColumn: editor.viewColumn});
+                                editor.revealRange(new vscode.Range(line-1,matchIndex,line-1,matchIndex), vscode.TextEditorRevealType.InCenter);
+                                break;
+                            }
                         }
                     });
                 }

@@ -65,7 +65,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('compileManager.syncCode', () => {
         compileManager.syncCode();
     }));
-    context.subscriptions.push(vscode.commands.registerCommand('compileManager.syncPdf', (page,h,v) => {
-        compileManager.syncPdf(page,h,v);
+    context.subscriptions.push(vscode.commands.registerCommand('compileManager.syncPdf', (r) => {
+        compileManager.syncPdf(r);
     }));
 }

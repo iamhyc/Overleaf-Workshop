@@ -59,10 +59,56 @@
                 case 'update':
                     updatePdf(message.content);
                 case 'syncCode':
-                    break;
+                    // Reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/viewer/latexworkshop.ts#L306
+                    const _idx = Math.round(message.content.length / 2);
+                    const container = document.getElementById('viewerContainer');
+                    const maxScrollX = window.innerWidth * 0.9;
+                    const minScrollX = window.innerWidth * 0.1;
+                    const pageNum = message.content[_idx].page;
+                    const h = message.content[_idx].h;
+                    const v = message.content[_idx].v;
+                    const page = document.getElementsByClassName('page')[pageNum - 1];
+                    if (page === null || page === undefined) {
+                        return;
+                    }
+                    const {viewport} = PDFViewerApplication.pdfViewer.getPageView(pageNum - 1);
+                    let [left, top] = viewport.convertToPdfPoint(h , v);
+                    let scrollX = page.offsetLeft + left;
+                    scrollX = Math.min(scrollX, maxScrollX);
+                    scrollX = Math.max(scrollX, minScrollX);
+                    const scrollY = page.offsetTop + page.offsetHeight - top;
+                    if (PDFViewerApplication.pdfViewer.scrollMode === 1) {
+                        // horizontal scrolling
+                        container.scrollLeft = page.offsetLeft;
+                    } else {
+                        // vertical scrolling
+                        container.scrollTop = scrollY - document.body.offsetHeight * 0.4;
+                    }
                 default:
                     break;
             }
+        });
+
+
+        // add mouse double click listener
+        window.addEventListener('dblclick', (e) => {
+            const pageElem = e.target.parentElement.parentElement;
+            const pageNum = pageElem.getAttribute('data-page-number');
+            if (pageNum === null || pageNum === undefined) {
+                return;
+            }
+            //Reference: https://github.com/overleaf/overleaf/blob/main/services/web/frontend/js/features/pdf-preview/util/pdf-js-wrapper.js#L163
+            const pageCanvas = pageElem.querySelector('canvas');
+            const pageRect = pageCanvas.getBoundingClientRect();
+            const {viewport} = PDFViewerApplication.pdfViewer.getPageView(pageNum - 1);
+            const dx = e.clientX - pageRect.left;
+            const dy = e.clientY - pageRect.top;
+            let [left, top] = viewport.convertToPdfPoint(dx, dy);
+            top = viewport.viewBox[3] - top;
+            vscode.postMessage({
+                type: 'syncPdf',
+                content: { page: Number(pageNum), h: left, v: top, identifier: e.target.innerText},
+            });
         });
 
         // Display Error Message
