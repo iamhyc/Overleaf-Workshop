@@ -120,9 +120,10 @@ export class CompileManager {
             .then((vfs) => vfs.syncPdf(r.page, r.h, r.v))
             .then((res) => {
                 if (res) {
-                    const {file,line,column} = res;
                     const {projectName} = parseUri(uri);
-                    const fileUri = uri.with({path: `/${projectName}/${file}`});
+                    const {file,line,column} = res;
+                    const _file = file.match(/output\.[^\.]+$/) ? `${OUTPUT_FOLDER_NAME}/${file}` : file;
+                    const fileUri = uri.with({path: `/${projectName}/${_file}`});
                     // get doc by fileUri
                     const viewColumn = vscode.window.visibleTextEditors.at(-1)?.viewColumn || vscode.ViewColumn.Beside;
                     vscode.commands.executeCommand('vscode.open', fileUri, {viewColumn})
