@@ -69,32 +69,45 @@
         PDFViewerApplication.load(doc);
     }
 
-    // Reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/viewer/latexworkshop.ts#L306
     function syncCode(pdf) {
-        const _idx = Math.ceil(pdf.length / 2) - 1;
         const container = document.getElementById('viewerContainer');
         const maxScrollX = window.innerWidth * 0.9;
         const minScrollX = window.innerWidth * 0.1;
-        const pageNum = pdf[_idx].page;
-        const h = pdf[_idx].h;
-        const v = pdf[_idx].v;
-        const page = document.getElementsByClassName('page')[pageNum - 1];
-        if (page === null || page === undefined) {
+
+        const _idx = Math.ceil(pdf.length / 2) - 1;
+        const {page, h, v} = pdf[_idx];
+        const pageView = document.getElementsByClassName('page')[page - 1];
+        if (pageView === null || pageView === undefined) {
             return;
         }
-        const {viewport} = PDFViewerApplication.pdfViewer.getPageView(pageNum - 1);
-        let [left, top] = viewport.convertToPdfPoint(h , v);
-        let scrollX = page.offsetLeft + left;
+
+        //FIXME: scroll the viewer
+        //Reference: https://github.com/overleaf/overleaf/blob/main/services/web/frontend/js/features/pdf-preview/util/pdf-js-wrapper.js#L207
+        const {viewport} = PDFViewerApplication.pdfViewer.getPageView(page - 1);
+        let [left, top] = viewport.convertToPdfPoint(h, v);
+        let scrollX = pageView.offsetLeft + left;
         scrollX = Math.min(scrollX, maxScrollX);
         scrollX = Math.max(scrollX, minScrollX);
-        const scrollY = page.offsetTop + page.offsetHeight - top;
+        const scrollY = pageView.offsetTop + pageView.offsetHeight - top;
         if (PDFViewerApplication.pdfViewer.scrollMode === 1) {
             // horizontal scrolling
-            container.scrollLeft = page.offsetLeft;
+            container.scrollLeft = pageView.offsetLeft;
         } else {
             // vertical scrolling
             container.scrollTop = scrollY - document.body.offsetHeight * 0.4;
         }
+
+        //TODO: plot all the highlight blocks
+        const pageCanvas = document.querySelector('canvas');
+        const ctx = pageCanvas.getContext("2d");
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+        pdf.forEach(blk => {
+            const {page, h, v, width, height} = blk;
+            const {viewport} = PDFViewerApplication.pdfViewer.getPageView(page - 1);
+            const [x1, y1] = viewport.convertToViewportPoint(h, v);
+            const [x2, y2] = viewport.convertToViewportPoint(h+width, v+height);
+            ctx.fillRect(x1, y1-132, x2-x1, y2-y1);
+        });
     }
 
     //Reference: https://github.com/overleaf/overleaf/blob/main/services/web/frontend/js/features/pdf-preview/util/pdf-js-wrapper.js#L163
@@ -127,8 +140,10 @@
             switch (message.type) {
                 case 'update':
                     updatePdf(message.content);
+                    break;
                 case 'syncCode':
                     syncCode(message.content);
+                    break;
                 default:
                     break;
             }
