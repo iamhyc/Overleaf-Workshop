@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
 import { SocketIOAPI, UpdateSchema } from '../api/socketio';
-import { OUTPUT_FOLDER_NAME } from '../consts';
+import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { GlobalStateManager } from '../utils/globalStateManager';
 import { BaseAPI } from '../api/base';
 import { assert } from 'console';
 import * as Diff from 'diff';
 
-const __OUTPUTS_ID = 'overleaf-workshop-outputs';
+const __OUTPUTS_ID = `${ROOT_NAME}-outputs`;
 
 export type FileType = 'doc' | 'file' | 'folder' | 'outputs';
 export type FolderKey = 'docs' | 'fileRefs' | 'folders' | 'outputs';
