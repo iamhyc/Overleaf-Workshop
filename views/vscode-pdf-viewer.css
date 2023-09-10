@@ -17,3 +17,16 @@ html, body {
 #openFile, #print, #download {
     display: none;
 }
+
+#secondaryOpenFile,
+#secondaryPrint,
+#secondaryDownload {
+    display: none;
+}
+
+#theme-Default::before {
+    background-color: white;
+}
+#theme-Dark::before {
+    background-color: black;
+}

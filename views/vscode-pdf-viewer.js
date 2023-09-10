@@ -3,46 +3,32 @@
 
 // Reference: https://github.com/tomoki1207/vscode-pdfviewer/blob/main/lib/main.js
 (function(){
-    const CursorTool = {
-        SELECT: 0,
-        HAND: 1,
-        ZOOM: 2
+    const CursorTool = { SELECT:0, HAND:1, ZOOM:2 };
+    const SpreadMode = { UNKNOWN:-1, NONE:0, ODD:1, EVEN:2 };
+    const ScrollMode = { UNKNOWN:-1, VERTICAL:0, HORIZONTAL:1, WRAPPED:2, PAGE:3 };
+    const SidebarView = { UNKNOWN:-1, NONE:0, THUMBS:1, OUTLINE:2, ATTACHMENTS:3, LAYERS:4 };
+    const ColorTheme = {
+        'Default': {fontColor:'black', bgColor:'white'},
+        'Dark': {fontColor:'white', bgColor:'black'}
     };
-    const SpreadMode = {
-        UNKNOWN: -1,
-        NONE: 0,
-        ODD: 1,
-        EVEN: 2
-    };
-    const ScrollMode = {
-        UNKNOWN: -1,
-        VERTICAL: 0,
-        HORIZONTAL: 1,
-        WRAPPED: 2,
-        PAGE: 3
-    };
-    const SidebarView = {
-        UNKNOWN: -1,
-        NONE: 0,
-        THUMBS: 1,
-        OUTLINE: 2,
-        ATTACHMENTS: 3,
-        LAYERS: 4
-    };
+
     // @ts-ignore
     const vscode = acquireVsCodeApi();
     const pdfViewerState = {
+        colorTheme: 'Default',
+        containerScrollLeft: 0,
+        containerScrollTop:  0,
         currentScaleValue: 'auto',
         pdfCursorTools: CursorTool.SELECT,
         pdfViewerScrollMode: ScrollMode.VERTICAL,
         pdfViewerSpreadMode: SpreadMode.NONE,
         pdfSidebarView: SidebarView.NONE,
-        containerScrollLeft: 0,
-        containerScrollTop:  0,
     };
 
     function updatePdfViewerState() {
         const pdfViewerState = vscode.getState() || pdfViewerState;
+        pdfjsLib.ViewerFontColor = ColorTheme[pdfViewerState.colorTheme].fontColor;
+        pdfjsLib.ViewerBgColor = ColorTheme[pdfViewerState.colorTheme].bgColor;
         PDFViewerApplication.pdfViewer.currentScaleValue = pdfViewerState.currentScaleValue;
         PDFViewerApplication.pdfCursorTools.switchTool( pdfViewerState.pdfCursorTools );
         PDFViewerApplication.pdfViewer.scrollMode = pdfViewerState.pdfViewerScrollMode;
@@ -51,6 +37,7 @@
         PDFViewerApplication.pdfSidebar.switchView( pdfViewerState.pdfSidebarView );
         document.getElementById('viewerContainer').scrollLeft = pdfViewerState.containerScrollLeft;
         document.getElementById('viewerContainer').scrollTop = pdfViewerState.containerScrollTop;
+        PDFViewerApplication.pdfViewer.refresh();
     }
 
     function backupPdfViewerState() {
@@ -61,6 +48,34 @@
         pdfViewerState.containerScrollLeft = document.getElementById('viewerContainer').scrollLeft || 0;
         pdfViewerState.containerScrollTop = document.getElementById('viewerContainer').scrollTop || 0;
         vscode.setState(pdfViewerState);
+    }
+
+    function enableThemeToggleButton(){
+        // create toggle theme button
+        const button = document.createElement('button');
+        button.setAttribute('class', 'toolbarButton hiddenMediumView');
+        button.setAttribute('tabindex', '30');
+        //
+        const setAttribute = (theme) => {
+            pdfViewerState.colorTheme = theme;
+            button.innerHTML = `<span>${theme}</span>`;
+            button.setAttribute('title', `Theme: ${theme}`);
+            button.setAttribute('id', `theme-${theme}`);
+        };
+        button.addEventListener('click', () => {
+            if (button.innerText.match(/.*Default.*/)) {
+                setAttribute('Dark');
+            } else {
+                setAttribute('Default');
+            }
+            backupPdfViewerState();
+            updatePdfViewerState();
+        });
+        setAttribute('Default');
+        //
+        const container = document.getElementById('toolbarViewerRight');
+        const firstChild = document.getElementById('openFile');
+        container.insertBefore(button, firstChild);
     }
 
     async function updatePdf(pdf) {
@@ -119,6 +134,7 @@
             const {eventBus, _boundEvents} = PDFViewerApplication;
             eventBus._off("beforeprint", _boundEvents.beforePrint);
             eventBus.on('documentloaded', updatePdfViewerState);
+            enableThemeToggleButton();
         });
 
         // add message listener
@@ -127,8 +143,10 @@
             switch (message.type) {
                 case 'update':
                     updatePdf(message.content);
+                    break;
                 case 'syncCode':
                     syncCode(message.content);
+                    break;
                 default:
                     break;
             }
