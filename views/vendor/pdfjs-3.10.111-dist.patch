@@ -1,0 +1,69 @@
+diff --git a/build/pdf.js b/build/pdf.js
+index 8ec1e8f..c53f5ec 100644
+--- a/build/pdf.js
++++ b/build/pdf.js
+@@ -362,6 +362,11 @@ const PasswordResponses = {
+   INCORRECT_PASSWORD: 2
+ };
+ exports.PasswordResponses = PasswordResponses;
++const ViewerFontColor = '#000000';
++exports.ViewerFontColor = ViewerFontColor;
++const ViewerBgColor = '#ffffff';
++exports.ViewerBgColor = ViewerBgColor;
++
+ let verbosity = VerbosityLevel.WARNINGS;
+ function setVerbosityLevel(level) {
+   if (Number.isInteger(level)) {
+@@ -6797,7 +6802,7 @@ class CanvasGraphics {
+     const width = this.ctx.canvas.width;
+     const height = this.ctx.canvas.height;
+     const savedFillStyle = this.ctx.fillStyle;
+-    this.ctx.fillStyle = background || "#ffffff";
++    this.ctx.fillStyle = background || _util.ViewerBgColor;
+     this.ctx.fillRect(0, 0, width, height);
+     this.ctx.fillStyle = savedFillStyle;
+     if (transparency) {
+@@ -7605,7 +7610,10 @@ class CanvasGraphics {
+       }
+       if (this.contentVisible && (glyph.isInFont || font.missingFile)) {
+         if (simpleFillText && !accent) {
++          const _style = ctx.fillStyle;
++          ctx.fillStyle = _util.ViewerFontColor;
+           ctx.fillText(character, scaledX, scaledY);
++          ctx.fillStyle = _style;
+         } else {
+           this.paintChar(character, scaledX, scaledY, patternTransform);
+           if (accent) {
+@@ -8888,6 +8896,7 @@ GlobalWorkerOptions.workerPort = null;
+ GlobalWorkerOptions.workerSrc = "";
+ 
+ /***/ }),
++
+ /* 15 */
+ /***/ ((__unused_webpack_module, exports, __w_pdfjs_require__) => {
+ 
+@@ -17651,6 +17660,24 @@ Object.defineProperty(exports, "GlobalWorkerOptions", ({
+     return _worker_options.GlobalWorkerOptions;
+   }
+ }));
++Object.defineProperty(exports, "ViewerFontColor", ({
++  enumerable: true,
++  get: function () {
++    return _util.ViewerFontColor;
++  },
++  set: function (color) {
++    _util.ViewerFontColor = color;
++  }
++}));
++Object.defineProperty(exports, "ViewerBgColor", ({
++  enumerable: true,
++  get: function () {
++    return _util.ViewerBgColor;
++  },
++  set: function (color) {
++    _util.ViewerBgColor = color;
++  }
++}));
+ Object.defineProperty(exports, "ImageKind", ({
+   enumerable: true,
+   get: function () {

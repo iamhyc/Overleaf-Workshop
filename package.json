@@ -103,7 +103,7 @@
       "activitybar": [
         {
           "id": "overleaf-workshop",
-          "title": "Overleaf-Workshop",
+          "title": "Overleaf Workshop",
           "icon": "resources/icons/overleaf_bw.svg"
         }
       ]
@@ -176,7 +176,7 @@
     ]
   },
   "scripts": {
-    "download-pdfjs": "download -o views/vendor -e https://github.com/mozilla/pdf.js/releases/download/v3.10.111/pdfjs-3.10.111-dist.zip",
+    "download-pdfjs": "download -o views/vendor -e https://github.com/mozilla/pdf.js/releases/download/v3.10.111/pdfjs-3.10.111-dist.zip; cd views/vendor && patch -p1 < pdfjs-3.10.111-dist.patch",
     "postinstall": "patch-package; npm run download-pdfjs",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
