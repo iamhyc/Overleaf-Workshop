@@ -18,6 +18,10 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo03-synctex.gif" heigh=300px/>
 
+- View PDF in Bright/Dark Mode
+
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo04-dark-mode.gif" heigh=300px/>
+
 ### Milestones
 
 Please refer to this issue: [Towards v1.0](https://github.com/iamhyc/Overleaf-Workshop/issues/3)
