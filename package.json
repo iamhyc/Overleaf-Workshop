@@ -27,6 +27,35 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "tex",
+        "aliases": ["TeX","tex"],
+        "extensions": [".sty",".cls",".bbx",".cbx"],
+        "configuration": "syntax/vendor/languages/latex-language-configuration.json"
+      },
+      {
+        "id": "latex",
+        "aliases": ["LaTeX","latex"],
+        "extensions": [".tex",".ltx",".ctx"],
+        "configuration": "syntax/vendor/languages/latex-language-configuration.json"
+      },
+      {
+        "id": "bibtex",
+        "aliases": ["BibTeX","bibtex"],
+        "extensions": [".bib"]
+      },
+      {
+        "id": "cpp_embedded_latex",
+        "configuration": "syntax/vendor/languages/latex-cpp-embedded-language-configuration.json",
+        "aliases": []
+      },
+      {
+        "id": "markdown_latex_combined",
+        "configuration": "syntax/vendor/languages/markdown-latex-combined-language-configuration.json",
+        "aliases": []
+      }
+    ],
     "commands": [
       {
         "command": "projectManager.addServer",
@@ -177,7 +206,8 @@
   },
   "scripts": {
     "download-pdfjs": "download -o views/vendor -e https://github.com/mozilla/pdf.js/releases/download/v3.10.111/pdfjs-3.10.111-dist.zip; cd views/vendor && patch -p1 < pdfjs-3.10.111-dist.patch",
-    "postinstall": "patch-package; npm run download-pdfjs",
+    "download-latex-basics": "download -o syntax/vendor -s 1 -e https://github.com/jlelong/vscode-latex-basics/archive/refs/tags/v1.5.4.zip",
+    "postinstall": "patch-package; npm run download-pdfjs; npm run download-latex-basics",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -203,7 +233,6 @@
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "@typescript-eslint/parser": "^5.59.8",
     "@vscode/test-electron": "^2.3.2",
-    "copyfiles": "^2.4.1",
     "download-cli": "^1.1.1",
     "eslint": "^8.41.0",
     "glob": "^8.1.0",

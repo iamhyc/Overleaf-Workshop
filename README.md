@@ -44,3 +44,5 @@ The following overleaf (sharelatex) versions provided on [Docker Hub](https://hu
 
 - [Overleaf Official Logos](https://www.overleaf.com/for/partners/logos)
 - [Overleaf Web Route List](./docs/webapi.md)
+- [James-Yu/LaTeX-Workshop](https://github.com/James-Yu/LaTeX-Workshop)
+- [jlelong/vscode-latex-basics](https://github.com/jlelong/vscode-latex-basics/tags)
