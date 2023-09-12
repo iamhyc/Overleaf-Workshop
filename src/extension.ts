@@ -30,6 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register: ProjectManagerProvider on Activitybar
     const projectManagerProvider = new ProjectManagerProvider(context);
     vscode.window.registerTreeDataProvider('projectManager', projectManagerProvider);
+    //
     vscode.commands.registerCommand('projectManager.addServer', () => {
         projectManagerProvider.addServer();
     });
@@ -44,6 +45,28 @@ export function activate(context: vscode.ExtensionContext) {
     });
     vscode.commands.registerCommand('projectManager.refreshServer', (item) => {
         projectManagerProvider.refreshServer(item);
+    });
+    //
+    vscode.commands.registerCommand('projectManager.newProject', (item) => {
+        projectManagerProvider.newProject(item);
+    });
+    vscode.commands.registerCommand('projectManager.renameProject', (item) => {
+        projectManagerProvider.renameProject(item);
+    });
+    vscode.commands.registerCommand('projectManager.deleteProject', (item) => {
+        projectManagerProvider.deleteProject(item);
+    });
+    vscode.commands.registerCommand('projectManager.archiveProject', (item) => {
+        projectManagerProvider.archiveProject(item);
+    });
+    vscode.commands.registerCommand('projectManager.unarchiveProject', (item) => {
+        projectManagerProvider.unarchiveProject(item);
+    });
+    vscode.commands.registerCommand('projectManager.trashProject', (item) => {
+        projectManagerProvider.trashProject(item);
+    });
+    vscode.commands.registerCommand('projectManager.untrashProject', (item) => {
+        projectManagerProvider.untrashProject(item);
     });
     vscode.commands.registerCommand('projectManager.openProjectInCurrentWindow', (item) => {
         projectManagerProvider.openProjectInCurrentWindow(item);

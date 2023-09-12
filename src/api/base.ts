@@ -194,7 +194,7 @@ export class BaseAPI {
         }
     }
 
-    async userProjects(identity:Identity): Promise<ResponseSchema> {
+    async userProjectsJson(identity:Identity): Promise<ResponseSchema> {
         const res = await fetch(this.url+'api/project', {
             method: 'POST', redirect: 'manual', agent: this.agent,
             headers: {
@@ -263,7 +263,6 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                projects: (await res.json() as any).projects
             };
         } else {
             return {

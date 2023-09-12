@@ -110,7 +110,7 @@ export class GlobalStateManager {
         const server   = persists[name];
 
         if (server.login!==undefined) {
-            const res = await api.userProjects(server.login.identity);
+            const res = await api.userProjectsJson(server.login.identity);
             if (res.type==='success' && res.projects!==undefined) {
                 Object.values(res.projects).forEach(project => {
                     project.userId = (server.login as any).userId;
