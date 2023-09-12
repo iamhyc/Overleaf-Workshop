@@ -56,8 +56,8 @@ export interface MemberEntity {
     first_name: string,
     last_name?: string,
     email: string,
-    privileges: string,
-    signUpDate: string,
+    privileges?: string,
+    signUpDate?: string,
 }
 
 export interface ProjectEntity {

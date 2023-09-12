@@ -4,12 +4,18 @@ import * as https from 'https';
 import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
-import { FileEntity, FileType, FolderEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
+import { FileEntity, FileType, FolderEntity, MemberEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
 
 
 export interface Identity {
     csrfToken: string;
     cookies: string;
+}
+
+export interface NewProjectResponseSchema {
+    project_id: string,
+    owner_ref: string,
+    owner: MemberEntity
 }
 
 export interface CompileResponseSchema {
@@ -189,18 +195,189 @@ export class BaseAPI {
     }
 
     async userProjects(identity:Identity): Promise<ResponseSchema> {
-        const res = await fetch(this.url+'user/projects', {
-            method: 'GET', redirect: 'manual', agent: this.agent,
+        const res = await fetch(this.url+'api/project', {
+            method: 'POST', redirect: 'manual', agent: this.agent,
             headers: {
                 'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
                 'Cookie': identity.cookies.split(';')[0],
-            }
+            },
+            body: JSON.stringify({ _csrf: identity.csrfToken })
         });
 
         if (res.status===200) {
             return {
                 type: 'success',
                 projects: (await res.json() as any).projects
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async newProject(identity:Identity, projectName:string, template:'none'|'example') {
+        const res = await fetch(this.url+'project/new', {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                _csrf: identity.csrfToken,
+                projectName, template
+            })
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                message: (await res.json() as NewProjectResponseSchema).project_id
+            };
+        }
+        else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async renameProject(identity:Identity, projectId:string, newProjectName:string) {
+        const res = await fetch(this.url+`project/${projectId}/rename`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                _csrf: identity.csrfToken,
+                newProjectName
+            })
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                projects: (await res.json() as any).projects
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async deleteProject(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}`, {
+            method: 'DELETE', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            }
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async archiveProject(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}/archive`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            }
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async unarchiveProject(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}/archive`, {
+            method: 'DELETE', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            }
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async trashProject(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}/trash`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            }
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async untrashProject(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}/trash`, {
+            method: 'DELETE', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            }
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
             };
         } else {
             return {
