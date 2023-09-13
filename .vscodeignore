@@ -15,7 +15,7 @@ views/vendor/web/cmaps
 views/vendor/web/locale
 views/vendor/web/standard_fonts
 
-syntax/vendor/**
-!syntax/vendor/LICENSE*
-!syntax/vendor/README.md
-!syntax/vendor/languages/**
+data/vendor/**
+!data/vendor/LICENSE*
+!data/vendor/README.md
+!data/vendor/languages/**

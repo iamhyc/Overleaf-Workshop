@@ -1,0 +1,21 @@
+{
+  "common": [
+    "abstract", "align", "align*",
+    "center", "document", "equation", "equation*",
+    "gather", "gather*",
+    "multline", "multline*", "quote", "split",
+    "verbatim"
+  ],
+  "expanded": {
+    "array": "\\begin{array}{${1:cc}}\n\t$2 & $3 \\\\\n\t$4 & $5\n\\end{array}",
+    "enumerate": "\\begin{enumerate}\n\t\\item $1\n\\end{enumerate}",
+    "figure": "\\begin{figure}\n\t\\centering\n\t\\includegraphics{$1}\n\t\\caption{${2:Caption}}\n\t\\label{${3:fig:enter-label}}\n\\end{figure}",
+    "frame": "\\begin{frame}{${1:Frame Title}}\n\t$2\n\\end{frame}",
+    "itemize": "\\begin{itemize}\n\t\\item $1\n\\end{itemize}",
+    "minipage": "\\begin{minipage}{${1:width}}\n\t$2\n\\end{minipage}",
+    "pmatrix": "\\begin{pmatrix}\n\t$1 & $2 \\\\\n\t$3 & $4\n\\end{pmatrix}",
+    "tabbing": "\\begin{tabbing}\n\t\\hspace{\\${1:width}} \\= \\hspace{\\${2:width}} \\= \\kill\n\t$3\n\\end{tabbing}",
+    "table": "\\begin{table}[$1]\n\t\\centering\n\t\\begin{tabular}{${2:c|c}}\n\t\t$3 & $4 \\\\\n\t\t$5 & $6\n\t\\end{tabular}\n\t\\caption{${7:Caption}}\n\t\\label{${8:tab:my_label}}\n\\end{table}",
+    "tabular": "\\begin{tabular}{${1:c|c}}\n\t$2 & $3 \\\\\n\t$4 & $5\n\\end{tabular}"
+  }
+}

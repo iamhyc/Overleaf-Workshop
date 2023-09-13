@@ -1,0 +1,46 @@
+{
+  "bibtex": [
+    "abbrv",
+    "acm",
+    "alpha",
+    "apalike",
+    "ieeetr",
+    "plain",
+    "siam",
+    "unsrt"
+  ],
+  "natbib": [
+    "dinat",
+    "plainnat",
+    "abbrvnat",
+    "unsrtnat",
+    "rusnat",
+    "ksfh_nat"
+  ],
+  "biblatex": [
+    "numeric",
+    "alphabetic",
+    "authoryear",
+    "authortitle",
+    "verbose",
+    "reading",
+    "draft",
+    "authoryear-icomp",
+    "apa",
+    "bwl-FU",
+    "chem-acs",
+    "chem-angew",
+    "chem-biochem",
+    "chem-rsc",
+    "ieee",
+    "mla",
+    "musuos",
+    "nature",
+    "nejm",
+    "phys",
+    "science",
+    "geschichtsfrkl",
+    "oscola"
+  ],
+  "biblatex-contrib": []
+}
