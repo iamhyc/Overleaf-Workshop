@@ -5,6 +5,7 @@ import { RemoteFileSystemProvider } from './provider/remoteFileSystemProvider';
 import { ProjectManagerProvider } from './provider/projectManagerProvider';
 import { CompileManager } from './utils/compileManager';
 import { PdfViewEditorProvider } from './provider/pdfViewEditorProvider';
+import { LangIntellisenseProvider } from './provider/langIntellisenseProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register: RemoteFileSystemProvider
@@ -26,6 +27,10 @@ export function activate(context: vscode.ExtensionContext) {
             supportsMultipleEditorsPerDocument: false,
         })
     );
+
+    // Register: LangIntellisenseProvider
+    const langIntellisenseProvider = new LangIntellisenseProvider(remoteFileSystemProvider);
+    context.subscriptions.push( ...langIntellisenseProvider.triggers() );
 
     // Register: ProjectManagerProvider on Activitybar
     const projectManagerProvider = new ProjectManagerProvider(context);

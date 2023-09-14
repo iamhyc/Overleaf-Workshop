@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
 import { FileEntity, FileType, FolderEntity, MemberEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
+import { CompletionItem, MisspellingItem } from '../provider/langIntellisenseProvider';
 
 
 export interface Identity {
@@ -49,6 +50,18 @@ export interface SyncCodeResponseSchema {
     }>
 }
 
+export interface MetadataResponseScheme {
+    projectId: string,
+    projectMeta: {
+        [id:string]: {
+            labels: string[],
+            packages: {
+                [name:string]: CompletionItem[]
+            }
+        }
+    }
+}
+
 export interface ResponseSchema {
     type: 'success' | 'error';
     raw?: ArrayBuffer;
@@ -60,6 +73,8 @@ export interface ResponseSchema {
     content?: Uint8Array;
     syncPdf?: SyncPdfResponseSchema;
     syncCode?: SyncCodeResponseSchema;
+    meta?: MetadataResponseScheme;
+    misspellings?: MisspellingItem[];
 }
 
 export class BaseAPI {
@@ -593,6 +608,112 @@ export class BaseAPI {
                 message: `${res.status}: `+await res.text()
             };
         }
+    }
+
+    async indexAll(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}/references/indexAll`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                '_csrf': identity.csrfToken,
+                shouldBroadcast: false
+            }),
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async getMetadata(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}/metadata`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                meta: (await res.json as any) as MetadataResponseScheme
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async proxyRequestToSpellingApi(identity:Identity, userId:string, words: string[]) {
+        const res = await fetch(this.url+'spelling/check', {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                _csrf: identity.csrfToken,
+                language: 'en',
+                skipLearnedWords: true,
+                token: userId,
+                words
+            }),
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                misspellings: (await res.json() as any).misspellings as MisspellingItem[]
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async spellingControllerLearn(identity:Identity, userId:string, word: string) {
+        const res = await fetch(this.url+'spelling/learn', {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                _csrf: identity.csrfToken,
+                token: userId,
+                word
+            }),
+        });
+
+        if (res.status===204) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+
     }
 
     async getFileFromClsi(identity:Identity, url:string, compileGroup:string) {

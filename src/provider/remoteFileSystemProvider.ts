@@ -552,6 +552,27 @@ class VirtualFileSystem {
     async syncPdf(page:number, h:number, v:number) {
         return GlobalStateManager.syncPdf(this.context, this.api, this.serverName, this.projectId, page, h, v);
     }
+
+    async spellCheck(uri: vscode.Uri, words: string[]) {
+        const {fileType} = await this._resolveUri(uri);
+        if (fileType==='doc' || fileType==='file') {
+            const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+            const res = await this.api.proxyRequestToSpellingApi(identity, this.userId, words);
+            if (res.type==='success') {
+                return res.misspellings;
+            }
+        }
+    }
+
+    async spellLearn(uri: vscode.Uri, word: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.spellingControllerLearn(identity, this.userId, word);
+        if (res.type==='success') {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
 
 export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
