@@ -577,6 +577,16 @@ class VirtualFileSystem {
             return false;
         }
     }
+
+    async metadata() {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.getMetadata(identity, this.projectId);
+        if (res.type==='success') {
+            return res.meta?.projectMeta;
+        } else {
+            return undefined;
+        }
+    }
 }
 
 export class RemoteFileSystemProvider implements vscode.FileSystemProvider {

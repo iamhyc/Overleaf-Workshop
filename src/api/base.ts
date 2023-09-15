@@ -648,7 +648,7 @@ export class BaseAPI {
         if (res.status===200) {
             return {
                 type: 'success',
-                meta: (await res.json as any) as MetadataResponseScheme
+                meta: (await res.json() as any) as MetadataResponseScheme
             };
         } else {
             return {

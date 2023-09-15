@@ -33,7 +33,7 @@ abstract class IntellisenseProvider {
         const prefix = this.contextPrefix
                         .map(group => `\\\\(${group.join('|')})`)
                         .join('|');
-        const postfix = String.raw`(\[[^\]]*\])?\{([^\}]*)\}?$`;
+        const postfix = String.raw`(\[[^\]]*\])*\{([^\}]*)\}?$`;
         return new RegExp(`(?:${prefix})` + postfix);
     }
 }
@@ -395,7 +395,7 @@ class FilePathCompletionProvider extends IntellisenseProvider implements vscode.
     }
 }
 
-class ReferenceCompletionProvider extends IntellisenseProvider {
+class ReferenceCompletionProvider extends IntellisenseProvider implements vscode.CompletionItemProvider {
     protected readonly contextPrefix = [
         // group 0: reference
         ['\\w*ref'],
@@ -403,8 +403,53 @@ class ReferenceCompletionProvider extends IntellisenseProvider {
         ['cite'],
     ];
 
+    private parseMatch(match: RegExpMatchArray) {
+        const keywords = match.slice(1, -1);
+        const index = keywords.findIndex(x => x!==undefined);
+        const _match = (match.at(-1) as string).split(/(.*),([^,]*)/);
+        const partial = _match.length===1 ? _match[0] : _match[2];
+        return {index, partial};
+    }
+
+    private async getCompletionItems(uri:vscode.Uri, idx: number, partial:string): Promise<vscode.CompletionItem[]> {
+        const vfs = await this.vfsm.prefetch(uri);
+        switch (idx) {
+            case 0:
+                const res = await vfs.metadata();
+                if (res===undefined) { return []; };
+                return Object.values(res).map(({labels}) => {
+                    return labels.map(label => new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
+                }).flat();
+            case 1:
+                const bibUri = vfs.pathToUri(`${OUTPUT_FOLDER_NAME}/output.bbl`);
+                const content = new TextDecoder().decode( await vfs.openFile(bibUri) );
+                const regex = /\\bibitem\{([^\}]*)\}/g;
+                const items = new Array<vscode.CompletionItem>();
+                let match: RegExpExecArray | null;
+                while (match = regex.exec(content)) {
+                    const item = new vscode.CompletionItem(match[1], vscode.CompletionItemKind.Reference);
+                    items.push(item);
+                }
+                return items;
+            default:
+                return [];
+        }
+    }
+
+    provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList<vscode.CompletionItem>> {
+        const wordRange = document.getWordRangeAtPosition(position, this.contextRegex);
+        if (wordRange) {
+            const match = document.getText(wordRange).match(this.contextRegex);
+            const {index, partial} = this.parseMatch(match as RegExpMatchArray);
+            return this.getCompletionItems(document.uri, index, partial);
+        }
+        return Promise.resolve([]);
+    }
+
     triggers(): vscode.Disposable[] {
-        return [];
+        return [
+            vscode.languages.registerCompletionItemProvider(this.selector, this, '\\', '{', ','),
+        ];
     }
 }
 
