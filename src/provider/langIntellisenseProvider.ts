@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { ROOT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 import { RemoteFileSystemProvider } from './remoteFileSystemProvider';
 
+type PathFileType = 'text' | 'image' | 'bib';
+
 export interface CompletionItem {
     meta: string,
     score: number,
@@ -20,38 +22,16 @@ function* sRange(start:number, end:number) {
     }
 }
 
-class MisspellingCheckProvider {
+abstract class IntellisenseProvider {
+    protected selector = {scheme:ROOT_NAME};
+    constructor(protected readonly vfsm: RemoteFileSystemProvider) {}
+    abstract triggers(): vscode.Disposable[];
+}
+
+class MisspellingCheckProvider extends IntellisenseProvider implements vscode.CodeActionProvider {
     private learntWords: Set<string> = new Set();
     private suggestionCache: Map<string, string[]> = new Map();
     private diagnosticCollection = vscode.languages.createDiagnosticCollection(ROOT_NAME);
-    private misspellingActionsProvider = vscode.languages.registerCodeActionsProvider({scheme:ROOT_NAME},
-        new class implements vscode.CodeActionProvider {
-            constructor(private parent: MisspellingCheckProvider) {}
-            public provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeAction[]> {
-                const diagnostic = context.diagnostics[0];
-                const actions = this.parent.suggestionCache.get(diagnostic.code as string)
-                                ?.slice(0,8).map(suggestion => {
-                                    const action = new vscode.CodeAction(suggestion, vscode.CodeActionKind.QuickFix);
-                                    action.diagnostics = [diagnostic];
-                                    action.edit = new vscode.WorkspaceEdit();
-                                    action.edit.replace(document.uri, diagnostic.range, suggestion);
-                                    return action;
-                                });
-                //
-                const learnAction = new vscode.CodeAction('Add to Dictionary', vscode.CodeActionKind.QuickFix);
-                learnAction.diagnostics = [diagnostic];
-                learnAction.command = {
-                    title: 'Add to Dictionary',
-                    command: 'langIntellisense.learnSpelling',
-                    arguments: [document.uri, diagnostic.code as string],
-                };
-                actions?.push(learnAction);
-                //
-                return actions;
-            }
-        }(this));
-
-    constructor(private readonly vfsm: RemoteFileSystemProvider) {}
 
     private splitText(text: string) {
         return text.split(/([\W\d_]*\\[a-zA-Z]*|[\W\d_]+)/mug);
@@ -124,6 +104,29 @@ class MisspellingCheckProvider {
         this.diagnosticCollection.set(uri, diagnostics);
     }
 
+    provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeAction[]> {
+        const diagnostic = context.diagnostics[0];
+        const actions = this.suggestionCache.get(diagnostic.code as string)
+                        ?.slice(0,8).map(suggestion => {
+                            const action = new vscode.CodeAction(suggestion, vscode.CodeActionKind.QuickFix);
+                            action.diagnostics = [diagnostic];
+                            action.edit = new vscode.WorkspaceEdit();
+                            action.edit.replace(document.uri, diagnostic.range, suggestion);
+                            return action;
+                        });
+        //
+        const learnAction = new vscode.CodeAction('Add to Dictionary', vscode.CodeActionKind.QuickFix);
+        learnAction.diagnostics = [diagnostic];
+        learnAction.command = {
+            title: 'Add to Dictionary',
+            command: 'langIntellisense.learnSpelling',
+            arguments: [document.uri, diagnostic.code as string],
+        };
+        actions?.push(learnAction);
+        //
+        return actions;
+    }
+
     learnSpelling(uri:vscode.Uri, word: string) {
         this.vfsm.prefetch(uri).then(vfs => vfs.spellLearn(uri, word));
         this.learntWords.add(word);
@@ -136,7 +139,7 @@ class MisspellingCheckProvider {
             // the diagnostic collection
             this.diagnosticCollection,
             // the code action provider
-            this.misspellingActionsProvider,
+            vscode.languages.registerCodeActionsProvider(this.selector, this),
             // register learn spelling command
             vscode.commands.registerCommand('langIntellisense.learnSpelling', (uri: vscode.Uri, word: string) => {
                 this.learnSpelling(uri, word);
@@ -173,23 +176,160 @@ class MisspellingCheckProvider {
     }
 }
 
-// completions.includes: [path:string] <-- /\.(?:tex|txt)$/.test(path)
-// completions.graphics: [path:string] <-- /\.(eps|jpe?g|gif|png|tiff?|pdf|svg)$/.test(path)
-// completions.bibliographies: [path:string] <-- /\.bib$/.test(path)
-// "\\include{${path}}"
-// "\\input{${path}}"
-// "\\includegraphics{${path}}"
+class CommandCompletionProvider extends IntellisenseProvider {
+    triggers(): vscode.Disposable[] {
+        return [];
+    }
+}
 
-export class LangIntellisenseProvider {
+class ConstantCompletionProvider extends IntellisenseProvider {
+    // "\\documentclass[]{${1}}" <-- "/data/latex/class-names.json"
+    // "\\bibliographystyle{${1}}" <-- "/data/latex/bibliography-styles.json"
+    // "\\begin{${1}}" <-- "/data/latex/environments.json"
+    // "\\usepackage[]{${1}}" <-- "/data/latex/package-names.json"
+
+    triggers(): vscode.Disposable[] {
+        return [];
+    }
+}
+
+class FilePathCompletionProvider extends IntellisenseProvider implements vscode.CompletionItemProvider, vscode.DocumentLinkProvider {
+    private readonly fileRegex:{[K in PathFileType]:RegExp} = {
+        'text': /\.(?:tex|txt)$/,
+        'image': /\.(eps|jpe?g|gif|png|tiff?|pdf|svg)$/,
+        'bib': /\.bib$/
+    };
+    private readonly contextPrefix = [
+        // group 0: text file
+        ['include', 'input'],
+        // group 1: image file
+        ['includegraphics'],
+        // group 2: bib file
+        ['bibliography', 'addbibresource'],
+    ];
+
+    private get contextRegex() {
+        const prefix = this.contextPrefix
+                        .map(group => `\\\\(${group.join('|')})`)
+                        .join('|');
+        const postfix = String.raw`(\[[^\]]*\])?\{([^\}]*)\}?$`;
+        return new RegExp(`(?:${prefix})` + postfix);
+    }
+
+    private parseMatch(match: RegExpMatchArray) {
+        const keywords = match.slice(1, -1);
+        const path = match.at(-1) as string;
+        const type:PathFileType = keywords[0]? 'text' : keywords[1] ? 'image' : 'bib';
+        const offset = '\\'.length + (keywords[0]||keywords[1]||keywords[2]||'').length +'{'.length;
+        return {path, type, offset};
+    }
+
+    private async getCompletionItems(uri:vscode.Uri, path: string, type: PathFileType): Promise<vscode.CompletionItem[]> {
+        const matches = path.split(/(.*)\/([^\/]*)/);
+        const [parent, child] = (()=>{
+            if (matches.length === 1) {
+                return ['', matches[0]];
+            } else {
+                return [matches[1], matches[2]];
+            }
+        })();
+        const _regex = this.fileRegex[type];
+
+        const vfs = await this.vfsm.prefetch(uri);
+        const parentUri = vfs.pathToUri( ...parent.split('/') );
+        const files = await vfs.list(parentUri);
+
+        return files.map(([name, _type]) => {
+            if (_type===vscode.FileType.Directory && name!==OUTPUT_FOLDER_NAME) {
+                const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Folder);
+                return item;
+            } else if (_regex.test(name) && name.startsWith(child)) {
+                const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.File);
+                return item;
+            }
+        }).filter(x => x) as vscode.CompletionItem[];
+    }
+
+    private async getDocumentLinks(uri:vscode.Uri, document: vscode.TextDocument): Promise<vscode.DocumentLink[]> {
+        const text = document.getText();
+        const regex = new RegExp(this.contextRegex, 'mg');
+        const vfs = await this.vfsm.prefetch(uri);
+
+        const links:vscode.DocumentLink[] = [];
+        let match: RegExpExecArray | null;
+        while (match = regex.exec(text)) {
+            const {path,offset} = this.parseMatch(match);
+            const uri = vfs.pathToUri(path);
+            try {
+                await vfs.resolve(uri);
+                const range = new vscode.Range(
+                    document.positionAt(match.index + offset),
+                    document.positionAt(match.index + offset + path.length)
+                );
+                links.push(new vscode.DocumentLink(range, uri));
+            } catch {}
+        }
+        return links;
+    }
+
+    provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[]> {
+        const wordRange = document.getWordRangeAtPosition(position, this.contextRegex);
+        if (wordRange) {
+            const match = document.getText(wordRange).match(this.contextRegex);
+            const {path, type} = this.parseMatch(match as RegExpMatchArray);
+            return this.getCompletionItems(document.uri, path, type);
+        }
+        return Promise.resolve([]);
+    }
+
+    provideDocumentLinks(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.DocumentLink[]> {
+        return this.getDocumentLinks(document.uri, document);
+    }
+
+    triggers(): vscode.Disposable[] {
+        const selector = {...this.selector, pattern: '**/*.{tex,txt}'};
+        return [
+            // register completion provider
+            vscode.languages.registerCompletionItemProvider(selector, this, '{', '/'),
+            // register document link provider
+            vscode.languages.registerDocumentLinkProvider(selector, this),
+        ];
+    }
+}
+
+class ReferenceCompletionProvider extends IntellisenseProvider {
+
+    // "\\\w*ref{${1}}"
+    // "\\cite{${1}}"
+
+    triggers(): vscode.Disposable[] {
+        return [];
+    }
+}
+
+export class LangIntellisenseProvider extends IntellisenseProvider {
+    private commandCompletion: CommandCompletionProvider;
+    private constantCompletion: ConstantCompletionProvider;
+    private filePathCompletion: FilePathCompletionProvider;
     private misspellingCheck: MisspellingCheckProvider;
+    private referenceCompletion: ReferenceCompletionProvider;
 
-    constructor(private readonly vfsm: RemoteFileSystemProvider) {
+    constructor(vfsm: RemoteFileSystemProvider) {
+        super(vfsm);
+        this.commandCompletion = new CommandCompletionProvider(vfsm);
+        this.constantCompletion = new ConstantCompletionProvider(vfsm);
+        this.filePathCompletion = new FilePathCompletionProvider(vfsm);
         this.misspellingCheck = new MisspellingCheckProvider(vfsm);
+        this.referenceCompletion = new ReferenceCompletionProvider(vfsm);
     }
 
     triggers() {
         return [
+            ...this.commandCompletion.triggers(),
+            ...this.constantCompletion.triggers(),
+            ...this.filePathCompletion.triggers(),
             ...this.misspellingCheck.triggers(),
+            ...this.referenceCompletion.triggers(),
         ];
     }
 }

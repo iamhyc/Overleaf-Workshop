@@ -1,0 +1,1 @@
+Static data manually extracted from "overleaf/services/web/frontend/js/features/source-editor/languages".
