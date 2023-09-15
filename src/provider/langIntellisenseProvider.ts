@@ -24,14 +24,25 @@ function* sRange(start:number, end:number) {
 
 abstract class IntellisenseProvider {
     protected selector = {scheme:ROOT_NAME};
+    protected abstract readonly contextPrefix: string[][];
+
     constructor(protected readonly vfsm: RemoteFileSystemProvider) {}
     abstract triggers(): vscode.Disposable[];
+
+    protected get contextRegex() {
+        const prefix = this.contextPrefix
+                        .map(group => `\\\\(${group.join('|')})`)
+                        .join('|');
+        const postfix = String.raw`(\[[^\]]*\])?\{([^\}]*)\}?$`;
+        return new RegExp(`(?:${prefix})` + postfix);
+    }
 }
 
 class MisspellingCheckProvider extends IntellisenseProvider implements vscode.CodeActionProvider {
     private learntWords: Set<string> = new Set();
     private suggestionCache: Map<string, string[]> = new Map();
     private diagnosticCollection = vscode.languages.createDiagnosticCollection(ROOT_NAME);
+    protected readonly contextPrefix = [];
 
     private splitText(text: string) {
         return text.split(/([\W\d_]*\\[a-zA-Z]*|[\W\d_]+)/mug);
@@ -177,19 +188,111 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
 }
 
 class CommandCompletionProvider extends IntellisenseProvider {
+    protected readonly contextPrefix = [];
     triggers(): vscode.Disposable[] {
         return [];
     }
 }
 
-class ConstantCompletionProvider extends IntellisenseProvider {
-    // "\\documentclass[]{${1}}" <-- "/data/latex/class-names.json"
-    // "\\bibliographystyle{${1}}" <-- "/data/latex/bibliography-styles.json"
-    // "\\begin{${1}}" <-- "/data/latex/environments.json"
-    // "\\usepackage[]{${1}}" <-- "/data/latex/package-names.json"
+class ConstantCompletionProvider extends IntellisenseProvider implements vscode.CompletionItemProvider {
+    private readonly constantData = new Array(4);
+    protected readonly contextPrefix = [
+        // group 0, class names
+        ['documentclass'],
+        // group 1, bibliography styles
+        ['bibliographystyle'],
+        // group 2, environments
+        ['begin'],
+        // group 3, package names
+        ['usepackage'],
+    ];
+
+    constructor(
+        protected readonly vfsm: RemoteFileSystemProvider,
+        private readonly extensionUri: vscode.Uri) {
+        super(vfsm);
+    }
+
+    private async loadJson(path: string) {
+        const uri = vscode.Uri.joinPath(this.extensionUri, path);
+        const data = (await vscode.workspace.fs.readFile(uri)).toString();
+        return JSON.parse(data);
+    }
+
+    private async load(idx: number, force: boolean = false) {
+        if (!force && this.constantData[idx]!==undefined) { return; }
+        switch (idx) {
+            case 0:
+                const classNames = await this.loadJson('data/latex/class-names.json') as string[];
+                this.constantData[0] = classNames;
+                break;
+            case 1:
+                const bibStyles = (await this.loadJson('data/latex/bibliography-styles.json') as any)['biblatex'] as string[];
+                this.constantData[1] = bibStyles;
+                break;
+            case 3:
+                const packageNames = await this.loadJson('data/latex/package-names.json') as string[];
+                this.constantData[3] = packageNames;
+                break;
+            case 2:
+                const environments = await this.loadJson('data/latex/environments.json') as any;
+                this.constantData[2] = environments['expanded'] as {[K:string]:string};
+                (environments['common'] as string[]).forEach(x => {
+                    this.constantData[2][x] = `\\begin{${x}}\n\t$1\n\\end{${x}}`;
+                });
+                break;
+            default:
+                break;
+        }
+    }
+
+    private parseMatch(match: RegExpMatchArray) {
+        const keywords = match.slice(1, -1);
+        const partial = match.at(-1) as string;
+        const index = keywords.findIndex(x => x!==undefined);
+        const length = match[0].length;
+        return {index, partial, length};
+    }
+
+    private async getCompletionItems(idx: number, partial:string, wordRange:vscode.Range, wholeRange:vscode.Range): Promise<vscode.CompletionItem[]> {
+        await this.load(idx);
+        const constants = this.constantData[idx];
+        switch (idx) {
+            case 0:case 1:case 3:
+                return (constants as string[])
+                        .filter(x => x.startsWith(partial))
+                        .map(x => new vscode.CompletionItem(x, vscode.CompletionItemKind.Module));
+            case 2:
+                return Object.entries(constants as {[K:string]:string})
+                        .filter(([key, value]) => key.startsWith(partial))
+                        .map(([key, value]) => {
+                            const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Snippet);
+                            item.insertText = new vscode.SnippetString(value);
+                            item.range = wordRange;
+                            item.additionalTextEdits = [vscode.TextEdit.delete(wholeRange)];
+                            return item;
+                        });
+            default:
+                return [];
+        }
+    }
+
+    provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[]> {
+        const wordRange = document.getWordRangeAtPosition(position, this.contextRegex);
+        if (wordRange) {
+            const match = document.getText(wordRange).match(this.contextRegex);
+            const {index, partial, length} = this.parseMatch(match as RegExpMatchArray);
+            const afterRange = new vscode.Range(position, wordRange.end);
+            const wholeRange = new vscode.Range(wordRange.start, wordRange.start.translate(0, length));
+            return this.getCompletionItems(index, partial, afterRange, wholeRange);
+        }
+        return Promise.resolve([]);
+    }
 
     triggers(): vscode.Disposable[] {
-        return [];
+        return [
+            vscode.languages.registerCompletionItemProvider(this.selector, this, '\\', '{'),
+        ];
     }
 }
 
@@ -199,7 +302,7 @@ class FilePathCompletionProvider extends IntellisenseProvider implements vscode.
         'image': /\.(eps|jpe?g|gif|png|tiff?|pdf|svg)$/,
         'bib': /\.bib$/
     };
-    private readonly contextPrefix = [
+    protected readonly contextPrefix = [
         // group 0: text file
         ['include', 'input'],
         // group 1: image file
@@ -208,19 +311,14 @@ class FilePathCompletionProvider extends IntellisenseProvider implements vscode.
         ['bibliography', 'addbibresource'],
     ];
 
-    private get contextRegex() {
-        const prefix = this.contextPrefix
-                        .map(group => `\\\\(${group.join('|')})`)
-                        .join('|');
-        const postfix = String.raw`(\[[^\]]*\])?\{([^\}]*)\}?$`;
-        return new RegExp(`(?:${prefix})` + postfix);
-    }
-
     private parseMatch(match: RegExpMatchArray) {
         const keywords = match.slice(1, -1);
         const path = match.at(-1) as string;
         const type:PathFileType = keywords[0]? 'text' : keywords[1] ? 'image' : 'bib';
-        const offset = '\\'.length + (keywords[0]||keywords[1]||keywords[2]||'').length +'{'.length;
+        const offset = '\\'.length
+                        + (keywords[0]||keywords[1]||keywords[2]||'').length
+                        + (keywords.at(-1)||'').length
+                        +'{'.length;
         return {path, type, offset};
     }
 
@@ -298,9 +396,12 @@ class FilePathCompletionProvider extends IntellisenseProvider implements vscode.
 }
 
 class ReferenceCompletionProvider extends IntellisenseProvider {
-
-    // "\\\w*ref{${1}}"
-    // "\\cite{${1}}"
+    protected readonly contextPrefix = [
+        // group 0: reference
+        ['\\w*ref'],
+        // group 1: citation
+        ['cite'],
+    ];
 
     triggers(): vscode.Disposable[] {
         return [];
@@ -308,16 +409,17 @@ class ReferenceCompletionProvider extends IntellisenseProvider {
 }
 
 export class LangIntellisenseProvider extends IntellisenseProvider {
+    protected readonly contextPrefix = [];
     private commandCompletion: CommandCompletionProvider;
     private constantCompletion: ConstantCompletionProvider;
     private filePathCompletion: FilePathCompletionProvider;
     private misspellingCheck: MisspellingCheckProvider;
     private referenceCompletion: ReferenceCompletionProvider;
 
-    constructor(vfsm: RemoteFileSystemProvider) {
+    constructor(context: vscode.ExtensionContext, vfsm: RemoteFileSystemProvider) {
         super(vfsm);
         this.commandCompletion = new CommandCompletionProvider(vfsm);
-        this.constantCompletion = new ConstantCompletionProvider(vfsm);
+        this.constantCompletion = new ConstantCompletionProvider(vfsm, context.extensionUri);
         this.filePathCompletion = new FilePathCompletionProvider(vfsm);
         this.misspellingCheck = new MisspellingCheckProvider(vfsm);
         this.referenceCompletion = new ReferenceCompletionProvider(vfsm);
