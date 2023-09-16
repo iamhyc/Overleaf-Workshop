@@ -40,7 +40,7 @@ abstract class IntellisenseProvider {
 }
 
 class MisspellingCheckProvider extends IntellisenseProvider implements vscode.CodeActionProvider {
-    private learntWords: Set<string> = new Set();
+    private learnedWords?: Set<string>;
     private suggestionCache: Map<string, string[]> = new Map();
     private diagnosticCollection = vscode.languages.createDiagnosticCollection(ROOT_NAME);
     protected readonly contextPrefix = [];
@@ -50,15 +50,23 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
     }
 
     private async check(uri:vscode.Uri, changedText: string) {
+        // init learned words
+        if (this.learnedWords===undefined) {
+            const vfs = await this.vfsm.prefetch(uri);
+            const words = await vfs.getDictionary();
+            this.learnedWords = new Set(words);
+        }
+
+        // extract words
         const splits = this.splitText(changedText);
         const words = splits.filter((x, i) => i%2===0 && x.length>1)
                             .filter(x => !this.suggestionCache.has(x))
-                            .filter(x => !this.learntWords.has(x));
+                            .filter(x => !this.learnedWords?.has(x));
         if (words.length === 0) { return; }
         const uniqueWords = new Set(words);
         const uniqueWordsArray = [...uniqueWords];
 
-        // update suggestion cache and learnt words
+        // update suggestion cache and learned words
         const vfs = await this.vfsm.prefetch(uri);
         const misspellings = await vfs.spellCheck(uri, uniqueWordsArray);
         if (misspellings) {
@@ -67,7 +75,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
                 this.suggestionCache.set(uniqueWordsArray[misspelling.index], misspelling.suggestions);
             });
         }
-        uniqueWords.forEach(x => this.learntWords.add(x));
+        uniqueWords.forEach(x => this.learnedWords?.add(x));
 
         // restrict cache size
         if (this.suggestionCache.size > 1000) {
@@ -141,7 +149,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
 
     learnSpelling(uri:vscode.Uri, word: string) {
         this.vfsm.prefetch(uri).then(vfs => vfs.spellLearn(uri, word));
-        this.learntWords.add(word);
+        this.learnedWords?.add(word);
         this.suggestionCache.delete(word);
         this.updateDiagnostics(uri);
     }

@@ -578,6 +578,16 @@ class VirtualFileSystem {
         }
     }
 
+    async getDictionary() {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.getUserDictionary(identity, this.projectId);
+        if (res.type==='success') {
+            return res.dictionary;
+        } else {
+            return undefined;
+        }
+    }
+
     async metadata() {
         const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
         const res = await this.api.getMetadata(identity, this.projectId);

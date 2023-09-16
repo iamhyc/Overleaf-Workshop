@@ -73,6 +73,7 @@ export interface ResponseSchema {
     syncCode?: SyncCodeResponseSchema;
     meta?: MetadataResponseScheme;
     misspellings?: MisspellingItem[];
+    dictionary?: string[];
 }
 
 export class BaseAPI {
@@ -712,6 +713,31 @@ export class BaseAPI {
             };
         }
 
+    }
+
+    async getUserDictionary(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+        });
+
+        if (res.status===200) {
+            const body = await res.text();
+            const match = /<meta\s+name="ol-learnedWords"\s+data-type="json"\s+content="(\[(&quot;\w+&quot;,?)+\])">/.exec(body);
+            if (match) {
+                return {
+                    type: 'success',
+                    dictionary: JSON.parse(match[1].replace(/&quot;/g, '"')) as string[]
+                };
+            }
+        }
+        return {
+            type: 'error',
+            message: `${res.status}: `+await res.text()
+        };
     }
 
     async getFileFromClsi(identity:Identity, url:string, compileGroup:string) {
