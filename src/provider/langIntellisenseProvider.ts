@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
-import { RemoteFileSystemProvider } from './remoteFileSystemProvider';
+import { RemoteFileSystemProvider, parseUri } from './remoteFileSystemProvider';
 
 type PathFileType = 'text' | 'image' | 'bib';
 
-export interface CompletionItem {
+export type SnippetItemMap = {[K:string]: SnippetItem};
+export interface SnippetItem {
     meta: string,
     score: number,
     caption: string,
@@ -27,13 +28,13 @@ abstract class IntellisenseProvider {
     protected abstract readonly contextPrefix: string[][];
 
     constructor(protected readonly vfsm: RemoteFileSystemProvider) {}
-    abstract triggers(): vscode.Disposable[];
+    abstract get triggers(): vscode.Disposable[];
 
     protected get contextRegex() {
         const prefix = this.contextPrefix
                         .map(group => `\\\\(${group.join('|')})`)
                         .join('|');
-        const postfix = String.raw`(\[[^\]]*\])*\{([^\}]*)\}?$`;
+        const postfix = String.raw`(\[[^\]]*\])*\{([^\}\$]*)\}?$`;
         return new RegExp(`(?:${prefix})` + postfix);
     }
 }
@@ -145,7 +146,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
         this.updateDiagnostics(uri);
     }
 
-    triggers () {
+    get triggers () {
         return [
             // the diagnostic collection
             this.diagnosticCollection,
@@ -187,10 +188,154 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
     }
 }
 
-class CommandCompletionProvider extends IntellisenseProvider {
-    protected readonly contextPrefix = [];
-    triggers(): vscode.Disposable[] {
-        return [];
+class CommandCompletionProvider extends IntellisenseProvider implements vscode.CompletionItemProvider {
+    protected readonly contextPrefix = [['']];
+    private constantData?: SnippetItemMap;
+    private customData: {
+        [K:string]: {
+            metadata: SnippetItemMap,
+            commands: Map<string, SnippetItemMap>,
+        }
+    } = {};
+
+    constructor(
+        protected readonly vfsm: RemoteFileSystemProvider,
+        private readonly extensionUri: vscode.Uri) {
+        super(vfsm);
+    }
+
+    protected get contextRegex() {
+        return /\\\w*/;
+    }
+
+    private async loadJson(path: string) {
+        const uri = vscode.Uri.joinPath(this.extensionUri, path);
+        const data = (await vscode.workspace.fs.readFile(uri)).toString();
+        return JSON.parse(data);
+    }
+
+    private async loadMetadata(uri: vscode.Uri) {
+        const vfs = await this.vfsm.prefetch(uri);
+        const res = await vfs.metadata();
+        if (res===undefined) { return; };
+
+        let metadata:SnippetItemMap = {};
+        Object.values(res).forEach((data) => {
+            Object.values(data.packages).forEach((items) => {
+                items.forEach(item => {
+                    const {caption,snippet,meta,score} = item;
+                    metadata[caption] = {caption, snippet, meta, score};
+                });
+            });
+        });
+
+        return metadata;
+    }
+
+    private async loadCommands(uri: vscode.Uri) {
+        const regex = /\\(?:newcommand|renewcommand)\{\\(\w+)\}(\[(\d)\])?(\[(\d)\])?/g;
+        const vfs = await this.vfsm.prefetch(uri);
+        const content = new TextDecoder().decode( await vfs.openFile(uri) );
+
+        let commands: SnippetItemMap = {};
+        let match: RegExpExecArray | null;
+        while (match = regex.exec(content)) {
+            const caption = match[1];
+            const argc = Number(match[3]) || 0;
+            let args = '';
+            for (let i=1; i<=argc; i++) {
+                args += `{$${i}}`;
+            }
+            const title = `\\${caption}${'{}'.repeat(argc)}`;
+            const snippet = `\\${caption}${args}`;
+            const meta = 'cmd';
+            const score = 0.1;
+            commands[title] = {caption, snippet, meta, score};
+        }
+
+        return commands;
+    }
+
+    private async reloadCommands(uri: vscode.Uri) {
+        const vfs = await this.vfsm.prefetch(uri);
+        const rootFiles = await vfs.list(vfs.pathToUri('/'));
+
+        let commands: Map<string, SnippetItemMap> = new Map();
+        for (const [name, type] of rootFiles) {
+            if (type===vscode.FileType.File && name.endsWith('.tex')) {
+                const _uri = vfs.pathToUri(name);
+                const _commands = await this.loadCommands(vfs.pathToUri(name));
+                commands.set(name, _commands);
+            }
+        }
+        return commands;
+    }
+
+    private async load(uri: vscode.Uri, force: boolean = false) {
+        if (this.constantData===undefined) {
+            this.constantData = {};
+            const snippetsArray = await this.loadJson('data/latex/top-hundred-snippets.json') as any[];
+            for (const item of snippetsArray) {
+                const {caption,snippet,meta,score} = item;
+                this.constantData[caption] = {caption, snippet, meta, score};
+            }
+        }
+
+        const {identifier} = parseUri(uri);
+        if (this.customData[identifier]===undefined || force) {
+            this.customData[identifier] = {
+                metadata: await this.loadMetadata(uri) || {},
+                commands: await this.reloadCommands(uri) || {},
+            };
+        }
+    }
+
+    private async getCompletionItems(uri:vscode.Uri, partial:string, wholeRange:vscode.Range): Promise<vscode.CompletionItem[]> {
+        await this.load(uri);
+        const {identifier} = parseUri(uri);
+
+        let commands:SnippetItemMap = {};
+        this.customData[identifier].commands.forEach((item) => {
+            commands = {...item, ...commands};
+        });
+
+        const snippets = {
+                    ...this.constantData,
+                    ...this.customData[identifier].metadata,
+                    ...commands,
+                };
+        return Object.entries(snippets)
+                .map(([key, value]) => {
+                    const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Method);
+                    item.insertText = new vscode.SnippetString(value.snippet);
+                    item.additionalTextEdits = [vscode.TextEdit.delete(wholeRange)];
+                    item.detail = value.meta;
+                    item.sortText = value.score.toFixed(15).toString();
+                    return item;
+                });
+    }
+
+    provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[]> {
+        const wordRange = document.getWordRangeAtPosition(position, this.contextRegex);
+        if (wordRange) {
+            const partial = document.getText(wordRange);
+            return this.getCompletionItems(document.uri, partial, wordRange);
+        }
+        return Promise.resolve([]);
+    }
+
+    get triggers(): vscode.Disposable[] {
+        return [
+            vscode.languages.registerCompletionItemProvider(this.selector, this, '\\'),
+            // trigger on document save
+            vscode.workspace.onDidSaveTextDocument(async doc => {
+                if (doc.uri.scheme === ROOT_NAME && doc.uri.path.endsWith('.tex')) {
+                    const {identifier} = parseUri(doc.uri);
+                    const commands = await this.loadCommands(doc.uri);
+                    this.customData[identifier].commands.set(doc.uri.path, commands);
+                }
+            }),
+        ];
     }
 }
 
@@ -260,11 +405,9 @@ class ConstantCompletionProvider extends IntellisenseProvider implements vscode.
         switch (idx) {
             case 0:case 1:case 3:
                 return (constants as string[])
-                        .filter(x => x.startsWith(partial))
                         .map(x => new vscode.CompletionItem(x, vscode.CompletionItemKind.Module));
             case 2:
                 return Object.entries(constants as {[K:string]:string})
-                        .filter(([key, value]) => key.startsWith(partial))
                         .map(([key, value]) => {
                             const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Snippet);
                             item.insertText = new vscode.SnippetString(value);
@@ -289,7 +432,7 @@ class ConstantCompletionProvider extends IntellisenseProvider implements vscode.
         return Promise.resolve([]);
     }
 
-    triggers(): vscode.Disposable[] {
+    get triggers(): vscode.Disposable[] {
         return [
             vscode.languages.registerCompletionItemProvider(this.selector, this, '\\', '{'),
         ];
@@ -384,7 +527,7 @@ class FilePathCompletionProvider extends IntellisenseProvider implements vscode.
         return this.getDocumentLinks(document.uri, document);
     }
 
-    triggers(): vscode.Disposable[] {
+    get triggers(): vscode.Disposable[] {
         const selector = {...this.selector, pattern: '**/*.{tex,txt}'};
         return [
             // register completion provider
@@ -446,7 +589,7 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
         return Promise.resolve([]);
     }
 
-    triggers(): vscode.Disposable[] {
+    get triggers(): vscode.Disposable[] {
         return [
             vscode.languages.registerCompletionItemProvider(this.selector, this, '\\', '{', ','),
         ];
@@ -463,20 +606,20 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
 
     constructor(context: vscode.ExtensionContext, vfsm: RemoteFileSystemProvider) {
         super(vfsm);
-        this.commandCompletion = new CommandCompletionProvider(vfsm);
+        this.commandCompletion = new CommandCompletionProvider(vfsm, context.extensionUri);
         this.constantCompletion = new ConstantCompletionProvider(vfsm, context.extensionUri);
         this.filePathCompletion = new FilePathCompletionProvider(vfsm);
         this.misspellingCheck = new MisspellingCheckProvider(vfsm);
         this.referenceCompletion = new ReferenceCompletionProvider(vfsm);
     }
 
-    triggers() {
+    get triggers() {
         return [
-            ...this.commandCompletion.triggers(),
-            ...this.constantCompletion.triggers(),
-            ...this.filePathCompletion.triggers(),
-            ...this.misspellingCheck.triggers(),
-            ...this.referenceCompletion.triggers(),
+            ...this.commandCompletion.triggers,
+            ...this.constantCompletion.triggers,
+            ...this.filePathCompletion.triggers,
+            ...this.misspellingCheck.triggers,
+            ...this.referenceCompletion.triggers,
         ];
     }
 }

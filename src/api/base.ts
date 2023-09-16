@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
 import { FileEntity, FileType, FolderEntity, MemberEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
-import { CompletionItem, MisspellingItem } from '../provider/langIntellisenseProvider';
+import { MisspellingItem, SnippetItem } from '../provider/langIntellisenseProvider';
 
 
 export interface Identity {
@@ -55,9 +55,7 @@ export interface MetadataResponseScheme {
     projectMeta: {
         [id:string]: {
             labels: string[],
-            packages: {
-                [name:string]: CompletionItem[]
-            }
+            packages: {[K:string]: SnippetItem[]}
         }
     }
 }

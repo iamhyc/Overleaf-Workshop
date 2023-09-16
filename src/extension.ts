@@ -30,7 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register: LangIntellisenseProvider
     const langIntellisenseProvider = new LangIntellisenseProvider(context, remoteFileSystemProvider);
-    context.subscriptions.push( ...langIntellisenseProvider.triggers() );
+    context.subscriptions.push( ...langIntellisenseProvider.triggers );
 
     // Register: ProjectManagerProvider on Activitybar
     const projectManagerProvider = new ProjectManagerProvider(context);
