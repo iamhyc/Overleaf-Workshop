@@ -34,7 +34,7 @@ abstract class IntellisenseProvider {
         const prefix = this.contextPrefix
                         .map(group => `\\\\(${group.join('|')})`)
                         .join('|');
-        const postfix = String.raw`(\[[^\]]*\])*\{([^\}\$]*)\}?$`;
+        const postfix = String.raw`(\[[^\]]*\])*\{([^\}\$]*)\}?`;
         return new RegExp(`(?:${prefix})` + postfix);
     }
 }
@@ -416,6 +416,7 @@ class ConstantCompletionProvider extends IntellisenseProvider implements vscode.
                         .map(x => new vscode.CompletionItem(x, vscode.CompletionItemKind.Module));
             case 2:
                 return Object.entries(constants as {[K:string]:string})
+                        .filter(([key, value]) => key.startsWith(partial))
                         .map(([key, value]) => {
                             const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Snippet);
                             item.insertText = new vscode.SnippetString(value);
@@ -442,7 +443,7 @@ class ConstantCompletionProvider extends IntellisenseProvider implements vscode.
 
     get triggers(): vscode.Disposable[] {
         return [
-            vscode.languages.registerCompletionItemProvider(this.selector, this, '\\', '{'),
+            vscode.languages.registerCompletionItemProvider(this.selector, this, '{'),
         ];
     }
 }
@@ -491,9 +492,11 @@ class FilePathCompletionProvider extends IntellisenseProvider implements vscode.
         return files.map(([name, _type]) => {
             if (_type===vscode.FileType.Directory && name!==OUTPUT_FOLDER_NAME) {
                 const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Folder);
+                item.sortText = '\0' + name;
                 return item;
-            } else if (_regex.test(name) && name.startsWith(child)) {
+            } else if (_regex.test(name)) {
                 const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.File);
+                item.sortText = '\0' + name;
                 return item;
             }
         }).filter(x => x) as vscode.CompletionItem[];
@@ -599,7 +602,7 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
 
     get triggers(): vscode.Disposable[] {
         return [
-            vscode.languages.registerCompletionItemProvider(this.selector, this, '\\', '{', ','),
+            vscode.languages.registerCompletionItemProvider(this.selector, this, '{', ','),
         ];
     }
 }
