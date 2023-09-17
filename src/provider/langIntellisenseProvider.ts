@@ -178,15 +178,20 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
                     const uri = e.document.uri;
                     for (const event of e.contentChanges) {
                         // extract changed text
-                        let _range = e.document.validateRange(event.range);
-                        const startLine = _range.start.line;
-                        if (event.text.endsWith('\n')) {
-                            _range = _range.with({end: new vscode.Position(startLine+1, 0)});
-                        }
-                        const endLine = _range.end.line;
-                        const changedText = [...sRange(startLine, endLine)]
-                                            .map(i => e.document.lineAt(i).text).join(' ');
+                        const startLine = event.range.start.line-1;
+                        const [endLine, maxLength] = (() => {
+                            try {
+                                const _line = event.range.end.line;
+                                return [_line, e.document.lineAt(_line).text.length];
+                            } catch {
+                                return [event.range.end.line+1, 0];
+                            }
+                        })();
+                        let _range = new vscode.Range(startLine, 0, endLine, maxLength);
+                        _range = e.document.validateRange(_range);
                         // update diagnostics
+                        const changedText = [...sRange(_range.start.line, _range.end.line)]
+                                            .map(i => e.document.lineAt(i).text).join(' ');
                         await this.check( uri, changedText );
                         this.updateDiagnostics(uri, _range);
                     };
