@@ -440,7 +440,7 @@ class ConstantCompletionProvider extends IntellisenseProvider implements vscode.
             const match = document.getText(wordRange).match(this.contextRegex);
             const {index, partial, length} = this.parseMatch(match as RegExpMatchArray);
             const afterRange = new vscode.Range(position, wordRange.end);
-            const wholeRange = new vscode.Range(wordRange.start, wordRange.start.translate(0, length));
+            const wholeRange = new vscode.Range(wordRange.start, wordRange.start.translate(0, length-1));
             return this.getCompletionItems(index, partial, afterRange, wholeRange);
         }
         return Promise.resolve([]);
