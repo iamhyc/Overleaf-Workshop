@@ -1,6 +1,6 @@
 {
   "name": "overleaf-workshop",
-  "displayName": "Overleaf-Workshop",
+  "displayName": "Overleaf Workshop",
   "description": "Open Overleaf/ShareLaTex projects in vscode, with full collaboration support.",
   "version": "0.1.5",
   "icon": "resources/icons/app_icon.png",
@@ -130,17 +130,17 @@
       {
         "command": "compileManager.compile",
         "title": "Compile Project",
-        "category": "Overleaf-Workshop"
+        "category": "Overleaf Workshop"
       },
       {
         "command": "compileManager.viewPdf",
         "title": "View Compiled PDF",
-        "category": "Overleaf-Workshop"
+        "category": "Overleaf Workshop"
       },
       {
         "command": "compileManager.syncCode",
         "title": "Jump to PDF",
-        "category": "Overleaf-Workshop"
+        "category": "Overleaf Workshop"
       }
     ],
     "keybindings": [
