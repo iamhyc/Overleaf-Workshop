@@ -1,8 +1,7 @@
-diff --git a/build/pdf.js b/build/pdf.js
-index 8ec1e8f..c53f5ec 100644
---- a/build/pdf.js
+diff -u b/build/pdf.js b/build/pdf.js
+--- b/build/pdf.js
 +++ b/build/pdf.js
-@@ -362,6 +362,11 @@ const PasswordResponses = {
+@@ -362,6 +362,11 @@
    INCORRECT_PASSWORD: 2
  };
  exports.PasswordResponses = PasswordResponses;
@@ -14,7 +13,7 @@ index 8ec1e8f..c53f5ec 100644
  let verbosity = VerbosityLevel.WARNINGS;
  function setVerbosityLevel(level) {
    if (Number.isInteger(level)) {
-@@ -6797,7 +6802,7 @@ class CanvasGraphics {
+@@ -6797,7 +6802,7 @@
      const width = this.ctx.canvas.width;
      const height = this.ctx.canvas.height;
      const savedFillStyle = this.ctx.fillStyle;
@@ -23,18 +22,20 @@ index 8ec1e8f..c53f5ec 100644
      this.ctx.fillRect(0, 0, width, height);
      this.ctx.fillStyle = savedFillStyle;
      if (transparency) {
-@@ -7605,7 +7610,10 @@ class CanvasGraphics {
+@@ -7605,7 +7610,12 @@
        }
        if (this.contentVisible && (glyph.isInFont || font.missingFile)) {
          if (simpleFillText && !accent) {
 +          const _style = ctx.fillStyle;
-+          ctx.fillStyle = _util.ViewerFontColor;
++          if (ctx.fillStyle==='#000000') {
++            ctx.fillStyle = _util.ViewerFontColor;
++          }
            ctx.fillText(character, scaledX, scaledY);
 +          ctx.fillStyle = _style;
          } else {
            this.paintChar(character, scaledX, scaledY, patternTransform);
            if (accent) {
-@@ -8888,6 +8896,7 @@ GlobalWorkerOptions.workerPort = null;
+@@ -8888,6 +8898,7 @@
  GlobalWorkerOptions.workerSrc = "";
  
  /***/ }),
@@ -42,7 +43,7 @@ index 8ec1e8f..c53f5ec 100644
  /* 15 */
  /***/ ((__unused_webpack_module, exports, __w_pdfjs_require__) => {
  
-@@ -17651,6 +17660,24 @@ Object.defineProperty(exports, "GlobalWorkerOptions", ({
+@@ -17651,6 +17662,24 @@
      return _worker_options.GlobalWorkerOptions;
    }
  }));
