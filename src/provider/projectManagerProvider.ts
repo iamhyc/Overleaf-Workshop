@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
 import { GlobalStateManager, ProjectPersist } from '../utils/globalStateManager';
+import { WebviewAuthenticator } from '../utils/webviewAuthenticator';
 
 class DataItem extends vscode.TreeItem {
     constructor(
@@ -132,24 +133,41 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     loginServer(server: ServerItem) {
-        vscode.window.showInputBox({'placeHolder': 'Email'})
-        .then(email => {
-            if (email) {
-                vscode.window.showInputBox({'placeHolder': 'Password', 'password': true})
-                .then(password => {
-                    if (password) {
-                        GlobalStateManager.loginServer(this.context, server.api, server.name, {email, password})
-                        .then(success => {
-                            if (success) {
-                                this.refresh();
-                            } else {
-                                vscode.window.showErrorMessage('Login failed.');
-                            }
-                        });
+        const loginMethods = {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            'Login with password': () => {
+                vscode.window.showInputBox({'placeHolder': 'Email'})
+                .then(email => email ? Promise.resolve(email) : Promise.reject())
+                .then(email => 
+                    vscode.window.showInputBox({'placeHolder': 'Password', 'password': true})
+                    .then(password => {
+                        return password ? Promise.resolve([email,password]) : Promise.reject();
+                    })
+                )
+                .then(([email,password]) => 
+                    GlobalStateManager.loginServer(this.context, server.api, server.name, {email, password})
+                )
+                .then(success => {
+                    if (success) {
+                        this.refresh();
+                    } else {
+                        vscode.window.showErrorMessage('Login failed.');
                     }
                 });
-            }
-        });
+            },
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            'Login on webview': () => {
+                const authenticator = new WebviewAuthenticator(this.context.extensionUri);
+            },
+        };
+
+        vscode.window.showQuickPick(Object.keys(loginMethods), {
+            canPickMany:false, placeHolder:'Select the login method below.'})
+        .then(selection => {
+            if (selection===undefined) { return Promise.reject(); }
+            return Promise.resolve( (loginMethods as any)[selection] );
+        })
+        .then(method => method());
     }
 
     logoutServer(server: ServerItem) {
