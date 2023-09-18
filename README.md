@@ -1,6 +1,12 @@
-# Overleaf-Workshop
+# Overleaf Workshop
 
-**This project is in very early stage, stay tuned!**
+[![version](https://img.shields.io/visual-studio-marketplace/v/iamhyc.overleaf-workshop)](https://marketplace.visualstudio.com/items?itemName=iamhyc.overleaf-workshop)
+[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/iamhyc.overleaf-workshop)](https://marketplace.visualstudio.com/items?itemName=iamhyc.overleaf-workshop)
+[![updated](https://img.shields.io/visual-studio-marketplace/last-updated/iamhyc.overleaf-workshop)](https://marketplace.visualstudio.com/items?itemName=iamhyc.overleaf-workshop)
+[![release](https://img.shields.io/visual-studio-marketplace/release-date/iamhyc.overleaf-workshop)](https://vsmarketplacebadge.apphb.com/downloads-short/iamhyc.overleaf-workshop.svg)
+
+[![GitHub Repo stars](https://img.shields.io/github/stars/iamhyc/Overleaf-Workshop)](https://github.com/iamhyc/Overleaf-Workshop)
+**<-- Star this project on Github if you are in favor of [new features](https://github.com/iamhyc/Overleaf-Workshop/issues/3) !**
 
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
@@ -22,9 +28,6 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo04-dark-mode.gif" heigh=300px/>
 
-### Milestones
-
-Please refer to this issue: [Towards v1.0](https://github.com/iamhyc/Overleaf-Workshop/issues/3)
 
 ### Compatibility
 
