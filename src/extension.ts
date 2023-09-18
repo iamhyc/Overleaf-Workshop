@@ -83,7 +83,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register: CompileManager on Statusbar
     const compileManager = new CompileManager(remoteFileSystemProvider);
     context.subscriptions.push( compileManager.status );
-    context.subscriptions.push( ...compileManager.triggers );
+    context.subscriptions.push( ...compileManager.triggers() );
     context.subscriptions.push(vscode.commands.registerCommand('compileManager.compile', () => {
         compileManager.compile();
     }));
