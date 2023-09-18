@@ -9,7 +9,8 @@
     const SidebarView = { UNKNOWN:-1, NONE:0, THUMBS:1, OUTLINE:2, ATTACHMENTS:3, LAYERS:4 };
     const ColorTheme = {
         'Default': {fontColor:'black', bgColor:'white'},
-        'Dark': {fontColor:'white', bgColor:'black'}
+        'Light': {fontColor:'black', bgColor:'#F5F5DC'},
+        'Dark': {fontColor:'#FBF0D9', bgColor:'#1E1E1E'}
     };
 
     // @ts-ignore
@@ -55,23 +56,23 @@
         const button = document.createElement('button');
         button.setAttribute('class', 'toolbarButton hiddenMediumView');
         button.setAttribute('tabindex', '30');
-        //
-        const setAttribute = (theme) => {
+        // set button theme attribute
+        const setAttribute = (index) => {
+            const theme = Object.keys(ColorTheme)[index];
             pdfViewerState.colorTheme = theme;
             button.innerHTML = `<span>${theme}</span>`;
             button.setAttribute('title', `Theme: ${theme}`);
             button.setAttribute('id', `theme-${theme}`);
         };
         button.addEventListener('click', () => {
-            if (button.innerText.match(/.*Default.*/)) {
-                setAttribute('Dark');
-            } else {
-                setAttribute('Default');
-            }
+            const index = Number(button.getAttribute('theme-index'));
+            const next = (index + 1) % Object.keys(ColorTheme).length;
+            button.setAttribute('theme-index', next);
+            setAttribute(next);
             backupPdfViewerState();
             updatePdfViewerState();
         });
-        setAttribute('Default');
+        setAttribute(0);
         //
         const container = document.getElementById('toolbarViewerRight');
         const firstChild = document.getElementById('openFile');
