@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
-import { pdfViewRecord } from '../utils/compileManager';
+import { pdfViewRecord } from '../compile/compileManager';
 import { parseUri } from './remoteFileSystemProvider';
 
 export class PdfDocument implements vscode.CustomDocument {

@@ -3,7 +3,7 @@ import { ROOT_NAME, ELEGANT_NAME } from './consts';
 
 import { RemoteFileSystemProvider } from './provider/remoteFileSystemProvider';
 import { ProjectManagerProvider } from './provider/projectManagerProvider';
-import { CompileManager } from './utils/compileManager';
+import { CompileManager } from './compile/compileManager';
 import { PdfViewEditorProvider } from './provider/pdfViewEditorProvider';
 import { LangIntellisenseProvider } from './provider/langIntellisenseProvider';
 
