@@ -134,7 +134,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     loginServer(server: ServerItem) {
         const loginMethods = {
             // eslint-disable-next-line @typescript-eslint/naming-convention
-            'Login with Email': () => {
+            'Login with Password': () => {
                 vscode.window.showInputBox({'placeHolder': 'Email'})
                 .then(email => email ? Promise.resolve(email) : Promise.reject())
                 .then(email =>
