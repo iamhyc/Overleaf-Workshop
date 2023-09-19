@@ -568,6 +568,28 @@ export class BaseAPI {
         }
     }
 
+    async deleteAuxFiles(identity:Identity, projectId:string){
+        const res = await fetch(this.url+`project/${projectId}/output?`, {
+            method: 'DELETE', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+        });
+
+        if (res.status===204) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
     async renameEntity(identity:Identity, projectId:string, entityType:string, entityId:string, newName:string) {
         const res = await fetch(this.url+`project/${projectId}/${entityType}/${entityId}/rename`, {
             method: 'POST', redirect: 'manual', agent: this.agent,

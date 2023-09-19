@@ -506,7 +506,14 @@ class VirtualFileSystem {
     async compile() {
         if (this.root && this.isDirty) {
             this.isDirty = false;
-            return GlobalStateManager.compileProjectEntity(this.context, this.api, this.serverName, this.projectId)
+            let needCacheClearFirst = false;
+            try{
+                const temp = await this.resolve(this.pathToUri(OUTPUT_FOLDER_NAME, "output.log"));
+            }
+            catch (e){
+                needCacheClearFirst = true;
+            }
+            return GlobalStateManager.compileProjectEntity(this.context, this.api, this.serverName, this.projectId, needCacheClearFirst)
             .then((res) => {
                 if (res) {
                     this.updateOutputs(res.outputFiles);
