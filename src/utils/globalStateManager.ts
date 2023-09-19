@@ -71,7 +71,7 @@ export class GlobalStateManager {
         const server   = persists[name];
 
         if (server.login===undefined) {
-            const res = await api.passportLogin(auth.email, auth.password);
+            const res = auth.cookies ? await api.cookiesLogin(auth.cookies) : await api.passportLogin(auth.email, auth.password);
             if (res.type==='success' && res.identity!==undefined && res.message!==undefined) {
                 server.login = {
                     userId: res.message,

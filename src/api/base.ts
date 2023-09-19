@@ -100,12 +100,12 @@ export class BaseAPI {
         }
     }
 
-    private async getUserId(identity:Identity) {
+    private async getUserId(cookies:string) {
         const res = await fetch(this.url+'project', {
             method: 'GET', redirect:'manual', agent: this.agent,
             headers: {
                 'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
+                'Cookie': cookies.split(';')[0],
             }
         });
 
@@ -117,7 +117,7 @@ export class BaseAPI {
             const csrfToken = csrfTokenMatch[1];
             return {userId, csrfToken};
         } else {
-            throw new Error('Failed to get UserID.');
+            return undefined;
         }
     }
 
@@ -152,14 +152,7 @@ export class BaseAPI {
             const redirect = ((await res.text()).match(/Found. Redirecting to (.*)/) as any)[1];
             if (redirect==='/project') {
                 const cookies = res.headers.raw()['set-cookie'][0];
-                identity.cookies = cookies;
-                const {userId,csrfToken} = await this.getUserId(identity);
-                identity.csrfToken = csrfToken;
-                return {
-                    type: 'success',
-                    message: userId,
-                    identity: identity
-                };
+                return (await this.cookiesLogin(cookies));
             } else {
                 return {
                     type: 'error',
@@ -181,6 +174,24 @@ export class BaseAPI {
             return {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async cookiesLogin(cookies: string): Promise<ResponseSchema> {
+        const res = await this.getUserId(cookies);
+        if (res) {
+            const {userId,csrfToken} = res;
+            const identity:Identity = {cookies, csrfToken};
+            return {
+                type: 'success',
+                message: userId,
+                identity: identity
+            };
+        } else {
+            return {
+                type: 'error',
+                message: 'Failed to get User ID.'
             };
         }
     }
