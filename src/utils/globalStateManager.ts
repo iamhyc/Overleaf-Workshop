@@ -243,11 +243,13 @@ export class GlobalStateManager {
         }
     }
 
-    static async compileProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string) {
+    static async compileProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, needCacheClearFirst:boolean) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
-
         if (server.login!==undefined) {
+            if (needCacheClearFirst){
+                await api.deleteAuxFiles(server.login.identity, projectId);
+            }
             const res = await api.compile(server.login.identity, projectId);
             if (res.type==='success') {
                 return res.compile;
