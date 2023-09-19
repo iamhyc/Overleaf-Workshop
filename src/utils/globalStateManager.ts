@@ -9,12 +9,12 @@ export interface ProjectPersist {
     id: string;
     userId: string;
     name: string;
-    lastUpdated: string;
-    lastUpdatedBy: MemberEntity;
-    source: 'owner' | 'collaborator' | 'readOnly';
+    lastUpdated?: string;
+    lastUpdatedBy?: MemberEntity;
+    source?: 'owner' | 'collaborator' | 'readOnly';
     accessLevel: 'owner' | 'collaborator' | 'readOnly';
-    archived: boolean;
-    trashed: boolean;
+    archived?: boolean;
+    trashed?: boolean;
 }
 
 export interface ServerPersist {
@@ -110,7 +110,11 @@ export class GlobalStateManager {
         const server   = persists[name];
 
         if (server.login!==undefined) {
-            const res = await api.userProjectsJson(server.login.identity);
+            let res = await api.getProjectsJson(server.login.identity);
+            if (res.type!=='success') {
+                // fallback to `userProjectsJson`
+                res = await api.userProjectsJson(server.login.identity);
+            }
             if (res.type==='success' && res.projects!==undefined) {
                 Object.values(res.projects).forEach(project => {
                     project.userId = (server.login as any).userId;

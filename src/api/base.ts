@@ -220,6 +220,33 @@ export class BaseAPI {
     }
 
     async userProjectsJson(identity:Identity): Promise<ResponseSchema> {
+        const res = await fetch(this.url+'user/projects', {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            }
+        });
+
+        if (res.status===200) {
+            const projects = (await res.json() as any).projects as any[];
+            projects.forEach(project => {
+                project.id = project._id;
+                delete project._id;
+            });
+            return {
+                type: 'success',
+                projects: projects as ProjectPersist[]
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async getProjectsJson(identity:Identity): Promise<ResponseSchema> {
         const res = await fetch(this.url+'api/project', {
             method: 'POST', redirect: 'manual', agent: this.agent,
             headers: {
