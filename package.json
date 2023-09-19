@@ -2,13 +2,25 @@
   "name": "overleaf-workshop",
   "displayName": "Overleaf Workshop",
   "description": "Open Overleaf/ShareLaTex projects in vscode, with full collaboration support.",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "icon": "resources/icons/app_icon.png",
   "author": {
     "name": "iamhyc",
     "email": "sudofree@163.com"
   },
   "publisher": "iamhyc",
+  "contributors": [
+    {
+      "name": "iamhyc",
+      "email": "sudofree@163.com",
+      "url": "https://github.com/iamhyc"
+    },
+    {
+      "name": "QianrenLi",
+      "email": "liqr2022@mail.sustech.edu.cn",
+      "url": "https://github.com/QianrenLi"
+    }
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/iamhyc/overleaf-workshop"
