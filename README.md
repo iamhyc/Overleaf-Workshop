@@ -10,9 +10,14 @@
 
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
+> [!WARNING]
+> We currently focus on ONLY open-source **Overleaf Community Edition** support. **Overleaf Server Pro** or `https://www.overleaf.com` is not supported.
+
 ### Features
 
 - Login Server, Open Projects and Edit Files
+  > For captcha enabled servers or SSO login without password, please use `cookies` extracted from a logged-in browser.
+  > The format would be like: `sharelatex.sid=...` or `overleaf_session2=...`
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo01-login.gif" height=300px/>
 
