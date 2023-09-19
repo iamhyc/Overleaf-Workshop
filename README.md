@@ -33,6 +33,9 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo04-dark-mode.gif" heigh=300px/>
 
+- Spell Check, Auto Completion and Compile Messages
+
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo05-intellisense.png" heigh=300px/>
 
 ### Compatibility
 
