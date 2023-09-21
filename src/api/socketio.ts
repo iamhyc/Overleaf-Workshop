@@ -136,8 +136,8 @@ export class SocketIOAPI {
      * @param {string} projectId - The project id.
      * @returns {Promise}
      */
-    async joinProject(projectId:string): Promise<ProjectEntity> {
-        return this.emit('joinProject', {project_id: projectId})
+    async joinProject(project_id:string): Promise<ProjectEntity> {
+        return this.emit('joinProject', {project_id})
                 .then((returns:[ProjectEntity, string, number]) => {
                     const [project, permissionsLevel, protocolVersion] = returns;
                     return project;
@@ -199,8 +199,8 @@ export class SocketIOAPI {
      * @param {string} docId - The document id.
      * @returns {Promise}
      */
-    async updatePosition(docId:string, row:number, column:number) {
-        return this.emit('clientTracking.updatePosition', row, column, docId)
+    async updatePosition(doc_id:string, row:number, column:number) {
+        return this.emit('clientTracking.updatePosition', {row, column, doc_id})
             .then(() => {
                 return;
             });
