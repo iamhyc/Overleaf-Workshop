@@ -6,6 +6,7 @@ import { GlobalStateManager } from '../utils/globalStateManager';
 import { BaseAPI } from '../api/base';
 import { assert } from 'console';
 import * as Diff from 'diff';
+import { ClientManager } from '../collaboration/clientManager';
 
 const __OUTPUTS_ID = `${ROOT_NAME}-outputs`;
 
@@ -109,16 +110,18 @@ export function parseUri(uri: vscode.Uri) {
     return {userId, projectId, projectName, identifier, pathParts};
 }
 
-class VirtualFileSystem {
+export class VirtualFileSystem {
     private root?: ProjectEntity;
     private context: vscode.ExtensionContext;
     private api: BaseAPI;
     private socket: SocketIOAPI;
     private origin: vscode.Uri;
     private serverName: string;
+    private publicId?: string;
     private userId: string;
     private projectId: string;
     private isDirty: boolean = true;
+    private initializing?: Promise<ProjectEntity>;
     private notify: (events:vscode.FileChangeEvent[])=>void;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
@@ -141,18 +144,26 @@ class VirtualFileSystem {
     }
 
     async init() : Promise<ProjectEntity> {
-        if (!this.root) {
-            this.remoteWatch();
-            this.root = await this.socket.joinProject(this.projectId) as ProjectEntity;
-            this.notify([
-                {type:vscode.FileChangeType.Created, uri:this.origin},
-            ]);
-            vscode.commands.executeCommand('compileManager.compile');
+        if (this.root) {
+            return Promise.resolve(this.root);
         }
-        return this.root;
+
+        if (!this.initializing) {
+            this.remoteWatch();
+            this.initializing = this.socket.joinProject(this.projectId).then((project) => {
+                this.root = project;
+                new ClientManager(this, this.publicId||'', this.socket).triggers;
+                this.notify([
+                    {type:vscode.FileChangeType.Created, uri:this.origin},
+                ]);
+                vscode.commands.executeCommand('compileManager.compile');
+                return project;
+            });
+        }
+        return this.initializing;
     }
 
-    private async _resolveUri(uri: vscode.Uri) {
+    async _resolveUri(uri: vscode.Uri) {
         // resolve path
         const [parentFolder, fileName] = await (async () => {
             const {pathParts} = parseUri(uri);
@@ -185,7 +196,7 @@ class VirtualFileSystem {
         return {parentFolder, fileName, fileEntity, fileType};
     }
 
-    private _resolveById(entityId: string, root?: FolderEntity, path?:string):{
+    _resolveById(entityId: string, root?: FolderEntity, path?:string):{
         parentFolder: FolderEntity, fileEntity: FileEntity, fileType:FileType, path:string
     } | undefined {
         if (!this.root) {
@@ -244,6 +255,9 @@ class VirtualFileSystem {
 
     private remoteWatch() {
         this.socket.updateEventHandlers({
+            onConnectionAccepted: (publicId:string) => {
+                this.publicId = publicId;
+            },
             onFileCreated: (parentFolderId:string, type:FileType, entity:FileEntity) => {
                 const res = this._resolveById(parentFolderId);
                 if (res) {
@@ -668,5 +682,4 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
         assert( oldUri.authority===newUri.authority, 'Cannot rename across servers' );
         return this.getVFS(oldUri).then( vfs => vfs.rename(oldUri, newUri, options.overwrite) );
     }
-
 }

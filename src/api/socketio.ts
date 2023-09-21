@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Identity, BaseAPI } from './base';
 import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../provider/remoteFileSystemProvider';
+import { OnlineUserSchema, UpdateUserSchema } from '../collaboration/clientManager';
 
 export interface UpdateSchema {
     doc: string, //doc id
@@ -20,26 +21,16 @@ export interface UpdateSchema {
     }
 }
 
-export interface OnlineUserSchema {
-    last_updated_at: string, //unix timestamp
-    user_id: string,
-    first_name: string,
-    last_name?: string,
-    email: string,
-    cursorData: {
-        row:number, column:number, doc_id:string,
-    },
-    connected: boolean,
-    client_id: string,
-    client_age: number,
-}
-
 export interface EventsHandler {
     onFileCreated?: (parentFolderId:string, type:FileType, entity:FileEntity) => void,
     onFileRenamed?: (entityId:string, newName:string) => void,
     onFileRemoved?: (entityId:string) => void,
     onFileMoved?: (entityId:string, newParentFolderId:string) => void,
     onFileChanged?: (update:UpdateSchema) => void,
+    //
+    onConnectionAccepted?: (publicId:string) => void,
+    onClientUpdated?: (user:UpdateUserSchema) => void,
+    onClientDisconnected?: (id:string) => void,
 }
 
 export class SocketIOAPI {
@@ -77,9 +68,6 @@ export class SocketIOAPI {
         });
         this.socket.on('forceDisconnect', (message:string, delay=10) => {
             console.log('SocketIOAPI: forceDisconnect', message);
-        });
-        this.socket.on('connectionAccepted', (_:any, publicId:any) => {
-            console.log('SocketIOAPI: connectionAccepted', publicId);
         });
         this.socket.on('connectionRejected', (err:any) => {
             throw new Error(err);
@@ -123,6 +111,20 @@ export class SocketIOAPI {
                         handler(update);
                     });
                     break;
+                case handlers.onConnectionAccepted:
+                    this.socket.on('connectionAccepted', (_:any, publicId:any) => {
+                        handler(publicId);
+                    });
+                case handlers.onClientUpdated:
+                    this.socket.on('clientTracking.clientUpdated', (user:UpdateUserSchema) => {
+                        handler(user);
+                    });
+                    break;
+                case handlers.onClientDisconnected:
+                    this.socket.on('clientTracking.clientDisconnected', (id:string) => {
+                        handler(id);
+                    });
+                    break;
                 default:
                     break;
             }
@@ -134,7 +136,7 @@ export class SocketIOAPI {
      * @param {string} projectId - The project id.
      * @returns {Promise}
      */
-    async joinProject(projectId:string) {
+    async joinProject(projectId:string): Promise<ProjectEntity> {
         return this.emit('joinProject', {project_id: projectId})
                 .then((returns:[ProjectEntity, string, number]) => {
                     const [project, permissionsLevel, protocolVersion] = returns;
@@ -184,14 +186,14 @@ export class SocketIOAPI {
      * Reference: services/web/frontend/js/ide/online-users/OnlineUserManager.js#L42
      * @returns {Promise}
      */
-    async getConnectedUsers() {
-        return this.emit('getConnectedUsers')
-            .then((returns:[Array<OnlineUserSchema>]) => {
+    async getConnectedUsers(): Promise<OnlineUserSchema[]> {
+        return this.emit('clientTracking.getConnectedUsers')
+            .then((returns:[OnlineUserSchema[]]) => {
                 const [connectedUsers] = returns;
                 return connectedUsers;
             });
     }
-    
+
     /**
      * Reference: services/web/frontend/js/ide/online-users/OnlineUserManager.js#L150
      * @param {string} docId - The document id.
