@@ -120,7 +120,7 @@ export class CompileManager {
     ) {
         this.vfsm = vfsm;
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
-        this.update('$(alert)', `${ELEGANT_NAME}: No Results`);
+        this.update('$(alert)', {tooltip:`${ELEGANT_NAME}: No Results`, color:'#FFCC00'});
         this.diagnosticProvider = new CompileDiagnosticProvider(vfsm);
     }
 
@@ -139,11 +139,12 @@ export class CompileManager {
         ];
     }
 
-    update(text: string, tooltip?: string) {
+    update(text: string, options?:{tooltip?:string, color?:string}) {
         const uri = CompileManager.check();
         if (uri) {
             this.status.text = text;
-            this.status.tooltip = tooltip;
+            this.status.tooltip = options?.tooltip;
+            this.status.color = options?.color;
             this.status.show();
         } else {
             this.status.hide();
@@ -159,15 +160,15 @@ export class CompileManager {
                 .then((res) => {
                     switch (res) {
                         case undefined:
-                            this.update('$(check)', `${ELEGANT_NAME}: Compile Success`);
+                            this.update('$(check)', {tooltip:`${ELEGANT_NAME}: Compile Success`});
                             break;
                         case false:
-                            this.update('$(x)', `${ELEGANT_NAME}: Compile Failed`);
+                            this.update('$(x)', {tooltip:`${ELEGANT_NAME}: Compile Failed`, color:'#FF0000'});
                             break;
                         case true:
                             return true;
                         default:
-                            this.update('$(alert)', `${ELEGANT_NAME}: No Results`);
+                            this.update('$(alert)', {tooltip:`${ELEGANT_NAME}: No Results`, color:'#FFCC00'});
                             break;
                     }
                 })
@@ -178,9 +179,9 @@ export class CompileManager {
                 )
                 .then((hasError) => {
                     if (hasError) {
-                        this.update('$(x)', `${ELEGANT_NAME}: Compile Failed`);
+                        this.update('$(x)', {tooltip:`${ELEGANT_NAME}: Compile Failed`, color:'#FF0000'});
                     } else {
-                        this.update('$(check)', `${ELEGANT_NAME}: Compile Success`);
+                        this.update('$(check)', {tooltip:`${ELEGANT_NAME}: Compile Success`});
                     }
                     // refresh pdf
                     const { identifier } = parseUri(uri);

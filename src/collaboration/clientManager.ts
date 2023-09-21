@@ -2,6 +2,7 @@
 import * as vscode from 'vscode';
 import { SocketIOAPI } from '../api/socketio';
 import { VirtualFileSystem } from '../provider/remoteFileSystemProvider';
+import { ELEGANT_NAME } from '../consts';
 
 export interface UpdateUserSchema {
     id: string,
@@ -14,7 +15,7 @@ export interface UpdateUserSchema {
 
     last_updated_at?: number, //unix timestamp
     selection?: {
-        color: UserColor,
+        color: UserColors,
         hoverMessage: vscode.MarkdownString,
         decoration: vscode.TextEditorDecorationType,
         ranges: vscode.DecorationOptions[],
@@ -37,7 +38,7 @@ export interface OnlineUserSchema {
     user_id: string,
 }
 
-enum UserColor {
+enum UserColors {
     ORANGE = '#ff8000',
     PURPLE = '#8000ff',
     PINK = '#ff00ff',
@@ -64,16 +65,19 @@ enum UserColor {
 }
 
 function formatTime(timestamp:number) {
+    timestamp = Math.floor(timestamp / 1000);
     const hours = Math.floor(timestamp / 3600);
     const minutes = Math.floor(timestamp / 60) % 60;
-    const seconds = timestamp % 60;
+    const ten_seconds = Math.floor(timestamp % 60 / 10);
     const hoursStr = hours > 0 ? `${hours}h ` : '';
-    const minutesStr = minutes > 0 ? `${minutes}m ` : '';
-    const secondsStr = seconds > 0 ? `${seconds}s` : '';
+    const minutesStr = minutes > 0 ? `${minutes}m` : '';
+    const secondsStr = minutesStr==='' && ten_seconds > 0 ? `${ten_seconds*10}s` : '';
     return `${hoursStr}${minutesStr}${secondsStr}`;
 }
 
 export class ClientManager {
+    private activeExists: boolean = false;
+    private inactivateTask?: NodeJS.Timeout;
     private readonly status: vscode.StatusBarItem;
     private readonly onlineUsers: {[K:string]:UpdateUserSchema} = {};
 
@@ -83,6 +87,7 @@ export class ClientManager {
         private readonly socket: SocketIOAPI) {
         this.socket.updateEventHandlers({
             onClientUpdated: (user:UpdateUserSchema) => {
+                if (user.id !== this.publicId) { this.setStatusActive(); }
                 this.updatePosition(user.id, user.doc_id, user.row, user.column, user);
             },
             onClientDisconnected: (id:string) => {
@@ -109,11 +114,18 @@ export class ClientManager {
         });
 
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
-        this.status.command = 'collaboration.refreshStatus';
         this.updateStatus();
     }
 
-    jumpToUser(id: string) {
+    setStatusActive(timeout:number=10) {
+        this.inactivateTask && clearTimeout(this.inactivateTask);
+        this.inactivateTask = setTimeout(() => {
+            this.activeExists = false;
+        }, timeout*1000);
+        this.activeExists = true;
+    }
+
+    private jumpToUser(id: string) {
         const user = this.onlineUsers[id];
         const doc = this.vfs._resolveById(user.doc_id);
         const uri = doc ? this.vfs.pathToUri(doc.path) : undefined;
@@ -123,7 +135,7 @@ export class ClientManager {
         });
     }
 
-    refreshDecorations(visibleTextEditors: readonly vscode.TextEditor[]) {
+    private refreshDecorations(visibleTextEditors: readonly vscode.TextEditor[]) {
         Object.values(this.onlineUsers).forEach(user => {
             const doc = this.vfs._resolveById(user.doc_id);
             const uri = doc && this.vfs.pathToUri(doc.path);
@@ -133,7 +145,7 @@ export class ClientManager {
         });
     }
 
-    updatePosition(clientId:string, docId: string, row: number, column: number, details?:UpdateUserSchema) {
+    private updatePosition(clientId:string, docId: string, row: number, column: number, details?:UpdateUserSchema) {
         if (clientId === this.publicId) { return; }
 
         // update record
@@ -164,7 +176,7 @@ export class ClientManager {
         const newEditor = newUri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === newUri.toString());
         if (selection===undefined) {
             const length = Object.keys(this.onlineUsers).length;
-            const color = Object.values(UserColor)[length % Object.keys(UserColor).length];
+            const color = Object.values(UserColors)[length % Object.keys(UserColors).length];
             const decoration = vscode.window.createTextEditorDecorationType({
                 outline: `1px solid ${color}`,
                 overviewRulerColor: color,
@@ -189,12 +201,9 @@ export class ClientManager {
             }];
             newEditor?.setDecorations(selection.decoration, selection.ranges);
         }
-
-        // update status bar
-        this.updateStatus();
     }
 
-    removePosition(clientId:string) {
+    private removePosition(clientId:string) {
         const doc = this.vfs._resolveById(this.onlineUsers[clientId]?.doc_id);
         const uri = doc && this.vfs.pathToUri(doc.path);
         const editor = uri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString());
@@ -203,31 +212,34 @@ export class ClientManager {
         selection && editor?.setDecorations(selection.decoration, []);
         // delete record
         delete this.onlineUsers[clientId];
-        this.updateStatus();
     }
 
-    updateStatus() {
+    private updateStatus() {
         const count = Object.keys(this.onlineUsers).length;
         switch (count) {
             case undefined:
+                this.status.color = undefined;
                 this.status.text = '$(vm-outline)';
-                this.status.tooltip = 'Overleaf Collaboration: Not connected';
+                this.status.tooltip = `${ELEGANT_NAME}: Not connected`;
                 break;
             case 0:
+                this.status.color = undefined;
                 this.status.text = '$(vm-active)';
-                this.status.tooltip = 'Overleaf Collaboration: Online';
+                this.status.tooltip = `${ELEGANT_NAME}: Online`;
                 break;
             default:
+                this.status.color = this.activeExists ? '#00C04B' : undefined;
                 this.status.text = `$(vm-active) ${count}`;
                 const tooltip = new vscode.MarkdownString();
-                tooltip.appendMarkdown('Overleaf Collaboration: Online\n\n');
+                tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
                 Object.values(this.onlineUsers).forEach(user => {
                     const args = JSON.stringify([user.id]);
                     const commandUri = vscode.Uri.parse(`command:collaboration.jumpToUser?${encodeURIComponent(args)}`);
                     const userInfo = `[<span style="color:${user.selection?.color};"><b>${user.name}</b></span>](mailto:${user.email})`;
                     const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
                     const cursorInfo = user.row ? ` @ [${docPath}#L${user.row+1}](${commandUri})` : '';
-                    const timeInfo = user.last_updated_at ? formatTime(Math.floor((Date.now() - user.last_updated_at) / 1000))+' ago' : '';
+                    const since_last_update = user.last_updated_at ? formatTime(Date.now() - user.last_updated_at) : '';
+                    const timeInfo = since_last_update==='' ? 'Just now' : `${since_last_update} ago`;
                     tooltip.appendMarkdown(`${userInfo} ${cursorInfo} ${timeInfo}\n\n`);
                 });
                 tooltip.isTrusted = true;
@@ -236,6 +248,7 @@ export class ClientManager {
                 break;
         }
         this.status.show();
+        setTimeout(this.updateStatus.bind(this), 500);
     }
 
     get triggers() {
@@ -244,18 +257,16 @@ export class ClientManager {
             vscode.commands.registerCommand('collaboration.jumpToUser', (uid) => {
                 this.jumpToUser(uid);
             }),
-            vscode.commands.registerCommand('collaboration.refreshStatus', () => {
-                this.updateStatus();
-            }),
             // update this client's position
             vscode.window.onDidChangeTextEditorSelection(async e => {
+                if (e.kind===undefined) { return; }
                 const doc = await this.vfs._resolveUri(e.textEditor.document.uri);
                 const docId = doc?.fileEntity?._id;
                 if (docId) {
                     this.socket.updatePosition(docId, e.selections[0].active.line, e.selections[0].active.character);
                 }
             }),
-            //
+            // refresh decorations when editor is switched
             vscode.window.onDidChangeVisibleTextEditors(e => {
                 this.refreshDecorations(e);
             }),

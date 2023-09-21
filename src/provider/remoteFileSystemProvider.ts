@@ -122,6 +122,7 @@ export class VirtualFileSystem {
     private projectId: string;
     private isDirty: boolean = true;
     private initializing?: Promise<ProjectEntity>;
+    private clientManager?: ClientManager;
     private notify: (events:vscode.FileChangeEvent[])=>void;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
@@ -152,7 +153,8 @@ export class VirtualFileSystem {
             this.remoteWatch();
             this.initializing = this.socket.joinProject(this.projectId).then((project) => {
                 this.root = project;
-                new ClientManager(this, this.publicId||'', this.socket).triggers;
+                this.clientManager = new ClientManager(this, this.publicId||'', this.socket);
+                this.clientManager.triggers; // init and then dispose
                 this.notify([
                     {type:vscode.FileChangeType.Created, uri:this.origin},
                 ]);
