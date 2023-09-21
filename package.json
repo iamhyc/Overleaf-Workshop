@@ -130,6 +130,29 @@
         "icon": "$(go-to-file)"
       },
       {
+        "command": "projectManager.createTag",
+        "title": "Create New Tag"
+      },
+      {
+        "command": "projectManager.renameTag",
+        "title": "Rename Tag",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "projectManager.deleteTag",
+        "title": "Delete Tag",
+        "icon": "$(close-all)"
+      },
+      {
+        "command": "projectManager.addProjectToTag",
+        "title": "Move Project to Tag",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "projectManager.removeProjectFromTag",
+        "title": "Remove Project from Tag"
+      },
+      {
         "command": "projectManager.openProjectInCurrentWindow",
         "title": "Open Project in Current Window ...",
         "icon": "$(arrow-right)"
@@ -227,7 +250,7 @@
         },
         {
           "command": "projectManager.renameProject",
-          "when": "view == projectManager && viewItem == project"
+          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/"
         },
         {
           "command": "projectManager.deleteProject",
@@ -253,13 +276,35 @@
           "group": "inline@2"
         },
         {
+          "command": "projectManager.createTag",
+          "when": "view == projectManager && viewItem == server_login"
+        },
+        {
+          "command": "projectManager.renameTag",
+          "when": "view == projectManager && viewItem == tag",
+          "group": "inline@1"
+        },
+        {
+          "command": "projectManager.deleteTag",
+          "when": "view == projectManager && viewItem == tag",
+          "group": "inline@2"
+        },
+        {
+          "command": "projectManager.addProjectToTag",
+          "when": "view == projectManager && viewItem == project"
+        },
+        {
+          "command": "projectManager.removeProjectFromTag",
+          "when": "view == projectManager && viewItem == project_in_tag"
+        },
+        {
           "command": "projectManager.openProjectInCurrentWindow",
-          "when": "view == projectManager && viewItem == project",
+          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "inline@3"
         },
         {
           "command": "projectManager.openProjectInNewWindow",
-          "when": "view == projectManager && viewItem == project",
+          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "inline@4"
         }
       ]

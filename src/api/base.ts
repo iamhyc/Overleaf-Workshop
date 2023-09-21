@@ -60,6 +60,14 @@ export interface MetadataResponseScheme {
     }
 }
 
+export interface ProjectTagsResponseSchema {
+    __v: number,
+    _id: string,
+    name: string,
+    user_id: string,
+    project_ids: string[],
+}
+
 export interface ResponseSchema {
     type: 'success' | 'error';
     raw?: ArrayBuffer;
@@ -73,6 +81,7 @@ export interface ResponseSchema {
     syncCode?: SyncCodeResponseSchema;
     meta?: MetadataResponseScheme;
     misspellings?: MisspellingItem[];
+    tags?: ProjectTagsResponseSchema[];
     dictionary?: string[];
 }
 
@@ -864,6 +873,151 @@ export class BaseAPI {
             return {
                 type: 'success',
                 syncCode: (await res.json() as any).pdf as SyncCodeResponseSchema
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async getAllTags(identity:Identity) {
+        const res = await fetch(this.url+'tag', {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            }
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                tags: (await res.json() as any) as ProjectTagsResponseSchema[]
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async createTag(identity:Identity, name:string) {
+        const res = await fetch(this.url+'tag', {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                _csrf: identity.csrfToken,
+                name
+            })
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                tags: (await res.json() as any) as ProjectTagsResponseSchema[]
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async renameTag(identity:Identity, tagId:string, name:string) {
+        const res = await fetch(this.url+`tag/${tagId}/rename`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                _csrf: identity.csrfToken,
+                name
+            }),
+        });
+
+        if (res.status===204) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async deleteTag(identity:Identity, tagId:string) {
+        const res = await fetch(this.url+`tag/${tagId}`, {
+            method: 'DELETE', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+        });
+
+        if (res.status===204) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async addProjectToTag(identity:Identity, tagId:string, projectId:string) {
+        const res = await fetch(this.url+`tag/${tagId}/project/${projectId}`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                _csrf: identity.csrfToken,
+            })
+        });
+
+        if (res.status===204) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async removeProjectFromTag(identity:Identity, tagId:string, projectId:string) {
+        const res = await fetch(this.url+`tag/${tagId}/project/${projectId}`, {
+            method: 'DELETE', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+        });
+
+        if (res.status===204) {
+            return {
+                type: 'success',
             };
         } else {
             return {

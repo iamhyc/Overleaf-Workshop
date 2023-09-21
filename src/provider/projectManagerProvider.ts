@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
 import { GlobalStateManager, ProjectPersist } from '../utils/globalStateManager';
+import { ProjectTagsResponseSchema } from '../api/base';
 
 class DataItem extends vscode.TreeItem {
     constructor(
@@ -12,23 +13,38 @@ class DataItem extends vscode.TreeItem {
 }
 
 class ServerItem extends DataItem {
+    tags?: {name:string, id:string}[];
     constructor(
         readonly api: any,
         public readonly name: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
         super(name, collapsibleState);
-        this.api = api;
         this.iconPath = new vscode.ThemeIcon('vm');
         this.contextValue = collapsibleState===vscode.TreeItemCollapsibleState.None ? 'server_no_login' : 'server_login';
     }
 }
 
+class TagItem extends DataItem {
+    constructor(
+        readonly api: any,
+        public readonly serverName: string,
+        public readonly id: string,
+        public readonly name: string,
+        readonly projects: ProjectItem[],
+    ) {
+        super(name, vscode.TreeItemCollapsibleState.Collapsed);
+        this.iconPath = new vscode.ThemeIcon('folder');
+        this.contextValue = 'tag';
+    }
+}
+
 class ProjectItem extends DataItem {
+    tag?: {name:string, id:string};
     constructor(
         readonly api: any,
         public uri: string,
-        readonly serverName: string,
+        readonly parent: ServerItem,
         readonly id: string,
         readonly label: string,
         status: 'normal' | 'archived' | 'trashed',
@@ -77,15 +93,44 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     getChildren(element?: DataItem): Thenable<DataItem[]> {
         if (element) {
             if (element instanceof ServerItem) {
-                const _promise = GlobalStateManager.fetchServerProjects(this.context, element.api, element.name);
-                return _promise.then(projects => {
+                return GlobalStateManager.fetchServerProjects(this.context, element.api, element.name)
+                .then(projects => {
+                    return GlobalStateManager.authenticate(this.context, element.name)
+                    .then(identity => element.api.getAllTags(identity))
+                    .then(res => 
+                        res.type==='success' ? res.tags as ProjectTagsResponseSchema[] : []
+                    )
+                    .then(tags => {
+                        return {projects, tags};
+                    });
+                })
+                .then(({projects, tags}) => {
+                    const allTags:{name:string, id:string}[] = [];
+                    // get project items
                     const projectItems = projects.map(project => {
                         const uri = `${ROOT_NAME}://${element.name}/${project.name}?user=${project.userId}&project=${project.id}`;
                         const status = project.archived ? 'archived' : project.trashed ? 'trashed' : 'normal';
-                        return new ProjectItem(element.api, uri, element.name, project.id, project.name, status);
+                        return new ProjectItem(element.api, uri, element, project.id, project.name, status);
                     });
-                    return projectItems;
+                    // get tag items
+                    const tagItems:TagItem[] = tags.map(tag => {
+                        const _tag = {name:tag.name, id:tag._id};
+                        allTags.push( _tag );
+                        const _projectItems:ProjectItem[] = tag.project_ids.map(id => {
+                            const index = projectItems.findIndex(project => project.id===id);
+                            const item = projectItems.splice(index, 1)[0];
+                            item.contextValue = 'project_in_tag';
+                            item.tag = _tag;
+                            return item;
+                        });
+                        return new TagItem(element.api, element.name, tag._id, tag.name, _projectItems);
+                    });
+                    // return all items
+                    element.tags = allTags;
+                    return [...tagItems, ...projectItems];
                 });
+            } else if (element instanceof TagItem) {
+                return Promise.resolve(element.projects);
             } else {
                 return Promise.resolve([]);
             }
@@ -234,7 +279,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         })
         .then(newName => {
             if (newName && newName!==project.label) {
-                GlobalStateManager.authenticate(this.context, project.serverName)
+                GlobalStateManager.authenticate(this.context, project.parent.name)
                 .then(identity => project.api.renameProject(identity, project.id, newName))
                 .then(res => {
                     if (res.type==='success') {
@@ -251,7 +296,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         vscode.window.showInformationMessage(`Permanently delete project "${project.label}" ?`, "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
-                GlobalStateManager.authenticate(this.context, project.serverName)
+                GlobalStateManager.authenticate(this.context, project.parent.name)
                 .then(identity => project.api.deleteProject(identity, project.id))
                 .then(res => {
                     if (res.type==='success') {
@@ -268,7 +313,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         vscode.window.showInformationMessage(`Archive project "${project.label}" ?`, "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
-                GlobalStateManager.authenticate(this.context, project.serverName)
+                GlobalStateManager.authenticate(this.context, project.parent.name)
                 .then(identity => project.api.archiveProject(identity, project.id))
                 .then(res => {
                     if (res.type==='success') {
@@ -282,7 +327,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     unarchiveProject(project: ProjectItem) {
-        GlobalStateManager.authenticate(this.context, project.serverName)
+        GlobalStateManager.authenticate(this.context, project.parent.name)
         .then(identity => project.api.unarchiveProject(identity, project.id))
         .then(res => {
             if (res.type==='success') {
@@ -297,7 +342,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         vscode.window.showInformationMessage(`Move project "${project.label}" to trash ?`, "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
-                GlobalStateManager.authenticate(this.context, project.serverName)
+                GlobalStateManager.authenticate(this.context, project.parent.name)
                 .then(identity => project.api.trashProject(identity, project.id))
                 .then(res => {
                     if (res.type==='success') {
@@ -311,13 +356,106 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     untrashProject(project: ProjectItem) {
-        GlobalStateManager.authenticate(this.context, project.serverName)
+        GlobalStateManager.authenticate(this.context, project.parent.name)
         .then(identity => project.api.untrashProject(identity, project.id))
         .then(res => {
             if (res.type==='success') {
                 this.refresh();
             } else {
                 vscode.window.showErrorMessage(res.message);
+            }
+        });
+    }
+
+    createTag(server: ServerItem) {
+        vscode.window.showInputBox({'placeHolder': 'Tag name'})
+        .then(name => {
+            if (name) {
+                GlobalStateManager.authenticate(this.context, server.name)
+                .then(identity => server.api.createTag(identity, name))
+                .then(res => {
+                    if (res.type==='success') {
+                        this.refresh();
+                    } else {
+                        vscode.window.showErrorMessage(res.message);
+                    }
+                });
+            }
+        });
+    }
+
+    renameTag(tag: TagItem) {
+        vscode.window.showInputBox({
+            'placeHolder': 'New tag name',
+            'value': tag.label,
+        })
+        .then(newName => {
+            if (newName && newName!==tag.label) {
+                GlobalStateManager.authenticate(this.context, tag.serverName)
+                .then(identity => tag.api.renameTag(identity, tag.id, newName))
+                .then(res => {
+                    if (res.type==='success') {
+                        this.refresh();
+                    } else {
+                        vscode.window.showErrorMessage(res.message);
+                    }
+                });
+            }
+        });
+    }
+
+    deleteTag(tag: TagItem) {
+        vscode.window.showInformationMessage(`Delete tag "${tag.label}" ?`, "Yes", "No")
+        .then((answer) => {
+            if (answer === "Yes") {
+                GlobalStateManager.authenticate(this.context, tag.serverName)
+                .then(identity => tag.api.deleteTag(identity, tag.id))
+                .then(res => {
+                    if (res.type==='success') {
+                        this.refresh();
+                    } else {
+                        vscode.window.showErrorMessage(res.message);
+                    }
+                });
+            }
+        });
+    }
+
+    addProjectToTag(project: ProjectItem) {
+        const tagNames = project.parent.tags?.map(tag => tag.name) || [];
+        vscode.window.showQuickPick(tagNames, {
+            canPickMany:false, placeHolder:'Select the tag below.'})
+        .then(selection => {
+            if (selection===undefined) { return Promise.reject(); }
+            return Promise.resolve(selection);
+        })
+        .then(tagName => {
+            const tagId = project.parent.tags?.find(tag => tag.name===tagName)?.id;
+            GlobalStateManager.authenticate(this.context, project.parent.name)
+            .then(identity => project.api.addProjectToTag(identity, tagId, project.id))
+            .then(res => {
+                if (res.type==='success') {
+                    this.refresh();
+                } else {
+                    vscode.window.showErrorMessage(res.message);
+                }
+            });
+        });
+    }
+
+    removeProjectFromTag(project: ProjectItem) {
+        vscode.window.showInformationMessage(`Remove project "${project.label}" from tag "${project.tag?.name}" ?`, "Yes", "No")
+        .then((answer) => {
+            if (answer === "Yes") {
+                GlobalStateManager.authenticate(this.context, project.parent.name)
+                .then(identity => project.api.removeProjectFromTag(identity, project.tag?.id, project.id))
+                .then(res => {
+                    if (res.type==='success') {
+                        this.refresh();
+                    } else {
+                        vscode.window.showErrorMessage(res.message);
+                    }
+                });
             }
         });
     }

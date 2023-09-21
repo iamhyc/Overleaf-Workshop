@@ -73,6 +73,23 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('projectManager.untrashProject', (item) => {
         projectManagerProvider.untrashProject(item);
     });
+    //
+    vscode.commands.registerCommand('projectManager.createTag', (item) => {
+        projectManagerProvider.createTag(item);
+    });
+    vscode.commands.registerCommand('projectManager.renameTag', (item) => {
+        projectManagerProvider.renameTag(item);
+    });
+    vscode.commands.registerCommand('projectManager.deleteTag', (item) => {
+        projectManagerProvider.deleteTag(item);
+    });
+    vscode.commands.registerCommand('projectManager.addProjectToTag', (item) => {
+        projectManagerProvider.addProjectToTag(item);
+    });
+    vscode.commands.registerCommand('projectManager.removeProjectFromTag', (item) => {
+        projectManagerProvider.removeProjectFromTag(item);
+    });
+    //
     vscode.commands.registerCommand('projectManager.openProjectInCurrentWindow', (item) => {
         projectManagerProvider.openProjectInCurrentWindow(item);
     });
