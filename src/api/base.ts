@@ -6,6 +6,7 @@ import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
 import { FileEntity, FileType, FolderEntity, MemberEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
 import { MisspellingItem, SnippetItem } from '../provider/langIntellisenseProvider';
+import { from } from 'form-data';
 
 
 export interface Identity {
@@ -68,6 +69,54 @@ export interface ProjectTagsResponseSchema {
     project_ids: string[],
 }
 
+export interface ProjectLabelResponseSchema {
+    id: string,
+    comment: string,
+    version: string,
+    user_id: string,
+    created_at: number,
+    user_display_name?: string,
+}
+
+export interface ProjectUpdateMeta {
+    users: {id:string, first_name:string, last_name:string, email:string}[],
+    start_ts: number,
+    end_ts: number,
+}
+
+export interface ProjectHistoryResponseSchema {
+    fromV: number,
+    toV: number,
+    meta: ProjectUpdateMeta,
+    labels: ProjectLabelResponseSchema[],
+    pathnames: string[],
+    project_ops:{
+        add?: {pathname:string},
+        remove?: {pathname:string},
+        atV: number,
+    }[],
+}
+
+export interface ProjectUpdateResponseSchema {
+    updates: ProjectHistoryResponseSchema[],
+    nextBeforeTimestamp: number,
+}
+
+export interface ProjectFileDiffResponseSchema {
+    diff: (
+        {u:string} |
+        {d:string, meta: ProjectUpdateMeta} |
+        {i:string, meta: ProjectUpdateMeta}
+    )[]
+}
+
+export interface ProjectFileTreeDiffResponseSchema {
+    diff: {
+        pathname: string,
+        operation?: 'edited' | 'added'
+    }[]
+}
+
 export interface ResponseSchema {
     type: 'success' | 'error';
     raw?: ArrayBuffer;
@@ -82,6 +131,10 @@ export interface ResponseSchema {
     meta?: MetadataResponseScheme;
     misspellings?: MisspellingItem[];
     tags?: ProjectTagsResponseSchema[];
+    labels?: ProjectLabelResponseSchema[];
+    updates?: ProjectUpdateResponseSchema;
+    diff?: ProjectFileDiffResponseSchema;
+    treeDiff?: ProjectFileTreeDiffResponseSchema;
     dictionary?: string[];
 }
 
@@ -1010,6 +1063,171 @@ export class BaseAPI {
             headers: {
                 'Connection': 'keep-alive',
                 'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+                'X-Csrf-Token': identity.csrfToken,
+            },
+        });
+
+        if (res.status===204) {
+            return {
+                type: 'success',
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async proxyToHistoryApiAndGetUpdates(identity:Identity, projectId:string, before?:number) {
+        const beforeQuery = before? `&before=${before}` : '';
+        const res = await fetch(this.url+`project/${projectId}/updates?min_count=10${beforeQuery}`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                updates: (await res.json() as any) as ProjectUpdateResponseSchema
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async proxyToHistoryApiAndGetFileDiff(identity:Identity, projectId:string, pathname:string, from:number, to:number) {
+        const res = await fetch(this.url+`project/${projectId}/diff?pathname=${pathname}&from=${from}&to=${to}`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                diff: (await res.json() as any) as ProjectFileDiffResponseSchema
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async proxyToHistoryApiAndGetFileTreeDiff(identity:Identity, projectId:string, from:number, to:number) {
+        const res = await fetch(this.url+`project/${projectId}/filetree/diff?from=${from}&to=${to}`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                treeDiff: (await res.json() as any) as ProjectFileTreeDiffResponseSchema
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async downloadZipOfVersion(identity:Identity, projectId:string, version:number) {
+        let content: Buffer[] = [];
+        while(true) {
+            const res = await fetch(this.url+`project/${projectId}/version/${version}/zip`, {
+                method: 'GET', redirect: 'manual', agent: this.agent,
+                headers: {
+                    'Connection': 'keep-alive',
+                    'Cookie': identity.cookies.split(';')[0],
+                }
+            });
+            if (res.status===200) {
+                content.push(await res.buffer());
+                break;
+            }
+            else if (res.status===206) {
+                content.push(await res.buffer());
+            } else {
+                break;
+            }
+        };
+        return {
+            type: 'success',
+            content: new Uint8Array( Buffer.concat(content) )
+        };
+    }
+
+    async getLabels(identity:Identity, projectId:string) {
+        const res = await fetch(this.url+`project/${projectId}/labels`, {
+            method: 'GET', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                labels: (await res.json() as any) as ProjectLabelResponseSchema[]
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async createLabel(identity:Identity, projectId:string, comment:string, version:number) {
+        const res = await fetch(this.url+`project/${projectId}/labels`, {
+            method: 'POST', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/json',
+                'Cookie': identity.cookies.split(';')[0],
+            },
+            body: JSON.stringify({
+                _csrf: identity.csrfToken,
+                comment,
+                version
+            })
+        });
+
+        if (res.status===200) {
+            return {
+                type: 'success',
+                labels: [(await res.json() as any)] as ProjectLabelResponseSchema[]
+            };
+        } else {
+            return {
+                type: 'error',
+                message: `${res.status}: `+await res.text()
+            };
+        }
+    }
+
+    async deleteLabel(identity:Identity, projectId:string, labelId:string) {
+        const res = await fetch(this.url+`project/${projectId}/labels/${labelId}`, {
+            method: 'DELETE', redirect: 'manual', agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
                 'Cookie': identity.cookies.split(';')[0],
                 'X-Csrf-Token': identity.csrfToken,
             },
