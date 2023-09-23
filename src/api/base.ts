@@ -1,13 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as http from 'http';
 import * as https from 'https';
-import * as fs from 'fs';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
 import { FileEntity, FileType, FolderEntity, MemberEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
 import { MisspellingItem, SnippetItem } from '../provider/langIntellisenseProvider';
-import { from } from 'form-data';
-
 
 export interface Identity {
     csrfToken: string;
@@ -103,11 +100,10 @@ export interface ProjectUpdateResponseSchema {
 }
 
 export interface ProjectFileDiffResponseSchema {
-    diff: (
-        {u:string} |
-        {d:string, meta: ProjectUpdateMeta} |
-        {i:string, meta: ProjectUpdateMeta}
-    )[]
+    diff: {
+        u?: string, d?: string, i?: string,
+        meta?: ProjectUpdateMeta,
+    }[]
 }
 
 export interface ProjectFileTreeDiffResponseSchema {

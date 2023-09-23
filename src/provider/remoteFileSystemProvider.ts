@@ -623,6 +623,36 @@ export class VirtualFileSystem {
             return undefined;
         }
     }
+
+    async getUpdates(before?: number) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.proxyToHistoryApiAndGetUpdates(identity, this.projectId, before);
+        if (res.type==='success') {
+            return res.updates;
+        } else {
+            return undefined;
+        }
+    }
+
+    async getFileDiff(pathname:string, from:number, to:number) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.proxyToHistoryApiAndGetFileDiff(identity, this.projectId, pathname, from, to);
+        if (res.type==='success') {
+            return res.diff;
+        } else {
+            return undefined;
+        }
+    }
+
+    async getFileTreeDiff(from:number, to:number) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.proxyToHistoryApiAndGetFileTreeDiff(identity, this.projectId, from, to);
+        if (res.type==='success') {
+            return res.treeDiff;
+        } else {
+            return undefined;
+        }
+    }
 }
 
 export class RemoteFileSystemProvider implements vscode.FileSystemProvider {

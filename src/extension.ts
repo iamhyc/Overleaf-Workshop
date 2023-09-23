@@ -6,6 +6,7 @@ import { ProjectManagerProvider } from './provider/projectManagerProvider';
 import { CompileManager } from './compile/compileManager';
 import { PdfViewEditorProvider } from './provider/pdfViewEditorProvider';
 import { LangIntellisenseProvider } from './provider/langIntellisenseProvider';
+import { HistoryViewProvider } from './provider/historyViewProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register: RemoteFileSystemProvider
@@ -101,4 +102,8 @@ export function activate(context: vscode.ExtensionContext) {
     const compileManager = new CompileManager(remoteFileSystemProvider);
     context.subscriptions.push( compileManager.status );
     context.subscriptions.push( ...compileManager.triggers );
+
+    // Register: HistoryViewProvider on Explorer
+    const historyDataProvider = new HistoryViewProvider(remoteFileSystemProvider);
+    context.subscriptions.push( ...historyDataProvider.triggers );
 }

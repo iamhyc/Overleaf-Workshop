@@ -163,6 +163,11 @@
         "icon": "$(empty-window)"
       },
       {
+        "command": "projectHistory.refresh",
+        "title": "Refresh Project History",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "compileManager.compile",
         "title": "Compile Project",
         "category": "Overleaf Workshop"
@@ -213,6 +218,14 @@
           "id": "projectManager",
           "name": "Hosts"
         }
+      ],
+      "explorer": [
+        {
+          "id": "projectHistory",
+          "name": "History",
+          "contextualTitle": "Overleaf Project History",
+          "when": "resourceScheme == overleaf-workshop"
+        }
       ]
     },
     "menus": {
@@ -220,6 +233,11 @@
         {
           "command": "projectManager.addServer",
           "when": "view == projectManager",
+          "group": "navigation"
+        },
+        {
+          "command": "projectHistory.refresh",
+          "when": "view == projectHistory",
           "group": "navigation"
         }
       ],
