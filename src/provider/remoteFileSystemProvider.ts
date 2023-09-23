@@ -7,6 +7,7 @@ import { BaseAPI } from '../api/base';
 import { assert } from 'console';
 import * as Diff from 'diff';
 import { ClientManager } from '../collaboration/clientManager';
+import { EventBus } from '../utils/eventBus';
 
 const __OUTPUTS_ID = `${ROOT_NAME}-outputs`;
 
@@ -155,9 +156,6 @@ export class VirtualFileSystem {
                 this.root = project;
                 this.clientManager = new ClientManager(this, this.publicId||'', this.socket);
                 this.clientManager.triggers; // init and then dispose
-                this.notify([
-                    {type:vscode.FileChangeType.Created, uri:this.origin},
-                ]);
                 vscode.commands.executeCommand('compileManager.compile');
                 return project;
             });
@@ -377,12 +375,14 @@ export class VirtualFileSystem {
             const doc = fileEntity as DocumentEntity;
             if (doc.cache) {
                 const content = doc.cache;
+                EventBus.fire('fileWillOpenEvent', {uri});
                 return new TextEncoder().encode(content);
             } else {
                 const res = await this.socket.joinDoc(fileEntity._id);
                 const content = res.docLines.join('\n');
                 doc.version = res.version;
                 doc.cache = content;
+                EventBus.fire('fileWillOpenEvent', {uri});
                 return new TextEncoder().encode(content);
             }
         } else if (fileType==='outputs') {
@@ -391,6 +391,7 @@ export class VirtualFileSystem {
                 return this.api.getFileFromClsi(identity, (fileEntity as OutputFileEntity).url, 'standard')
                 .then((res) => {
                     if (res.type==='success') {
+                        EventBus.fire('fileWillOpenEvent', {uri});
                         return res.content;
                     } else {
                         return new Uint8Array(0);
@@ -398,7 +399,9 @@ export class VirtualFileSystem {
                 });
             });
         } else {
-            return await GlobalStateManager.getProjectFile(this.context, this.api, this.serverName, this.projectId, fileEntity._id);
+            const content = await GlobalStateManager.getProjectFile(this.context, this.api, this.serverName, this.projectId, fileEntity._id);
+            content && EventBus.fire('fileWillOpenEvent', {uri});
+            return content || new Uint8Array(0);
         }
     }
 
@@ -524,7 +527,7 @@ export class VirtualFileSystem {
             this.isDirty = false;
             let needCacheClearFirst = false;
             try{
-                const temp = await this.resolve(this.pathToUri(OUTPUT_FOLDER_NAME, "output.log"));
+                await this.resolve(this.pathToUri(OUTPUT_FOLDER_NAME, "output.log"));
             }
             catch (e){
                 needCacheClearFirst = true;

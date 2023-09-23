@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
 import { pdfViewRecord } from '../compile/compileManager';
 import { parseUri } from './remoteFileSystemProvider';
+import { EventBus } from '../utils/eventBus';
 
 export class PdfDocument implements vscode.CustomDocument {
     cache: Uint8Array = new Uint8Array(0);
@@ -72,6 +73,11 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
         webviewPanel.webview.options = {enableScripts:true};
         webviewPanel.webview.html = await this.getHtmlForWebview(webviewPanel.webview);
         webviewPanel.webview.postMessage({type:'update', content:doc.cache.buffer});
+        webviewPanel.onDidChangeViewState((e) => {
+            if (e.webviewPanel.active) {
+                EventBus.fire('fileWillOpenEvent', {uri: doc.uri});
+            }
+        });
         webviewPanel.webview.onDidReceiveMessage((e) => {
             switch (e.type) {
                 case 'syncPdf':

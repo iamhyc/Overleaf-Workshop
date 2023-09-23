@@ -150,10 +150,10 @@ export class GlobalStateManager {
             if (res.type==='success' && res.content!==undefined) {
                 return res.content;
             } else {
-                return new Uint8Array(0);
+                return undefined;
             }
         } else {
-            return new Uint8Array(0);
+            return undefined;
         }
     }
 
