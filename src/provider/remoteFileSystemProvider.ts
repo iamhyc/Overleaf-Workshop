@@ -653,6 +653,26 @@ export class VirtualFileSystem {
             return undefined;
         }
     }
+
+    async createLabel(comment: string, version: number) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.createLabel(identity, this.projectId, comment, version);
+        if (res.type==='success') {
+            return res.labels?.at(0);
+        } else {
+            return undefined;
+        }
+    }
+
+    async deleteLabel(labelId: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.deleteLabel(identity, this.projectId, labelId);
+        if (res.type==='success') {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
 
 export class RemoteFileSystemProvider implements vscode.FileSystemProvider {

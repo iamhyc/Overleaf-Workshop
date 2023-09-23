@@ -168,6 +168,16 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "projectHistory.createLabel",
+        "title": "Add New Label",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "projectHistory.deleteLabel",
+        "title": "Delete Label",
+        "icon": "$(close-all)"
+      },
+      {
         "command": "compileManager.compile",
         "title": "Compile Project",
         "category": "Overleaf Workshop"
@@ -324,6 +334,14 @@
           "command": "projectManager.openProjectInNewWindow",
           "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "inline@4"
+        },
+        {
+          "command": "projectHistory.createLabel",
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/"
+        },
+        {
+          "command": "projectHistory.deleteLabel",
+          "when": "view == projectHistory && viewItem == historyItemLabelled"
         }
       ]
     },

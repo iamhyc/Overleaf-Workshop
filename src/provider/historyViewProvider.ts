@@ -60,11 +60,14 @@ function formatTime(timestamp:number) {
 class HistoryItem extends vscode.TreeItem {
     constructor(
         label: string,
-        tags?: string[]
+        readonly version: number,
+        readonly tags?: ProjectLabelResponseSchema[]
     ) {
-        const _label = tags?.length? `${label} (${tags.join('|')})` : label;
+        const _tag = tags?.map(t=>t.comment).join(' | ');
+        const _label = _tag? `${label} (${_tag})` : label;
         super(_label, vscode.TreeItemCollapsibleState.None);
-        this.iconPath = tags?.length? new vscode.ThemeIcon('tag') : new vscode.ThemeIcon('history');
+        this.iconPath = _tag?.length? new vscode.ThemeIcon('tag') : new vscode.ThemeIcon('history');
+        this.contextValue = _tag ? 'historyItemLabelled' : 'historyItem';
     }
 }
 
@@ -108,7 +111,8 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
 
             const item = new HistoryItem(
                 `Version ${_version}`,
-                _history.labels[_version]?.map(l=>l.comment),
+                _version,
+                _history.labels[_version],
             );
             const revision = _history.revisions[_version];
             item.description = '\t'+formatTime(revision.timestamp);
@@ -119,7 +123,7 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
             }
             _history.labels[_version].length && item.tooltip.appendMarkdown(`\n**Comments**\n\n`);
             for (const label of _history.labels[_version]) {
-                item.tooltip.appendMarkdown(`$(tag) ${label.user_display_name}: ${label.comment}\n`);
+                item.tooltip.appendMarkdown(`\`$(tag) ${label.comment}\` \n`);
             }
             item.tooltip.supportThemeIcons = true;
             if (this._path) {
@@ -137,7 +141,7 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
         }) || [];
 
         if (this._history.before) {
-            const item = new HistoryItem('Load More ...');
+            const item = new HistoryItem('Load More ...', NaN);
             item.iconPath = undefined;
             item.command = {
                 command: 'projectHistory.loadMore',
@@ -172,6 +176,44 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
             vscode.commands.registerCommand('projectHistory.loadMore', async (provider: HistoryDataProvider) => {
                 await provider.getHistory(provider._history?.before);
                 provider.refresh();
+            }),
+            vscode.commands.registerCommand('projectHistory.createLabel', async (item: HistoryItem) => {
+                const label = await vscode.window.showInputBox({
+                    prompt: 'Create a new label',
+                    placeHolder: 'Enter a label name',
+                });
+                if (!label) { return; }
+
+                const uri = vscode.workspace.workspaceFolders?.[0].uri;
+                if (!uri) { return; }
+
+                const vfs = await this.vfsm.prefetch(uri);
+                const res = await vfs.createLabel(label, item.version);
+                if (res) {
+                    this._history?.labels[item.version].push(res);
+                    this.refresh();
+                }
+            }),
+            vscode.commands.registerCommand('projectHistory.deleteLabel', async (item: HistoryItem) => {
+                const label = await vscode.window.showQuickPick(
+                    item.tags?.map(t=>t.comment) || [],
+                    { placeHolder: 'Select a label to delete' }
+                );
+                if (!label) { return; }
+
+                const uri = vscode.workspace.workspaceFolders?.[0].uri;
+                if (!uri) { return; }
+
+                const vfs = await this.vfsm.prefetch(uri);
+                const version = item.version;
+                const labelId = item.tags?.find(t=>t.comment===label)?.id;
+                const res = labelId && await vfs.deleteLabel(labelId);
+                if (res) {
+                    this._history?.labels[version].splice(
+                        this._history?.labels[version].findIndex(t=>t.id===labelId), 1
+                    );
+                    this.refresh();
+                }
             }),
         ];
     }
