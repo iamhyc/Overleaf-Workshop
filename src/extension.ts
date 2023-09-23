@@ -101,16 +101,4 @@ export function activate(context: vscode.ExtensionContext) {
     const compileManager = new CompileManager(remoteFileSystemProvider);
     context.subscriptions.push( compileManager.status );
     context.subscriptions.push( ...compileManager.triggers );
-    context.subscriptions.push(vscode.commands.registerCommand('compileManager.compile', () => {
-        compileManager.compile();
-    }));
-    context.subscriptions.push(vscode.commands.registerCommand('compileManager.viewPdf', () => {
-        compileManager.openPdf();
-    }));
-    context.subscriptions.push(vscode.commands.registerCommand('compileManager.syncCode', () => {
-        compileManager.syncCode();
-    }));
-    context.subscriptions.push(vscode.commands.registerCommand('compileManager.syncPdf', (r) => {
-        compileManager.syncPdf(r);
-    }));
 }

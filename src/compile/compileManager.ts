@@ -132,6 +132,12 @@ export class CompileManager {
 
     get triggers() {
         return [
+            // register compile commands
+            vscode.commands.registerCommand('compileManager.compile', () => this.compile()),
+            vscode.commands.registerCommand('compileManager.viewPdf', () =>  this.openPdf()),
+            vscode.commands.registerCommand('compileManager.syncCode', () => this.syncCode()),
+            vscode.commands.registerCommand('compileManager.syncPdf', (r) => this.syncPdf(r)),
+            // register diagnostics triggers
             vscode.workspace.onDidSaveTextDocument((e) => {
                 CompileManager.check.bind(this)(e.uri) && e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i) && this.compile();
             }),
