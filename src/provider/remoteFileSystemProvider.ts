@@ -8,6 +8,7 @@ import { assert } from 'console';
 import * as Diff from 'diff';
 import { ClientManager } from '../collaboration/clientManager';
 import { EventBus } from '../utils/eventBus';
+import * as DiffMatchPatch from 'diff-match-patch';
 
 const __OUTPUTS_ID = `${ROOT_NAME}-outputs`;
 
@@ -31,7 +32,8 @@ export interface DocumentEntity extends FileEntity {
     version?: number,
     mtime?: number,
     lastVersion?: number,
-    cache?: string,
+    localCache?: string,
+    remoteCache?: string,
 }
 
 export interface FileRefEntity extends FileEntity {
@@ -310,8 +312,8 @@ export class VirtualFileSystem {
                 const doc = res.fileEntity as DocumentEntity;
                 if (update.v===doc.version) {
                     doc.version += 1;
-                    if (update.op && doc.cache) {
-                        let content = doc.cache;
+                    if (update.op && doc.remoteCache) {
+                        let content = doc.remoteCache;
                         update.op.forEach((op) => {
                             if (op.i) {
                                 content = content.slice(0, op.p) + op.i + content.slice(op.p);
@@ -319,15 +321,19 @@ export class VirtualFileSystem {
                                 content = content.slice(0, op.p) + content.slice(op.p+op.d.length);
                             }
                         });
-                        doc.cache = content;
+                        const _uri = this.pathToUri(res.path).toString();
+                        const _doc = vscode.workspace.textDocuments.find((doc) => doc.uri.toString()===_uri);
+                        // if doc dirty, local cache should diverge from remote cache
+                        if (_doc && !_doc.isDirty) {doc.localCache = content;}
+                        doc.remoteCache = content;
                         this.isDirty = true;
                         this.notify([
                             {type: vscode.FileChangeType.Changed, uri: this.pathToUri(res.path)}
                         ]);
                     }
                 } else {
-                    //FIXME: cope with out-of-order or contradictory
-                    // throw new Error(`${doc.name}: ${doc._id}@${doc.version} inconsistent with ${update.v}`);
+                    doc.remoteCache = undefined;
+                    doc.localCache = undefined;
                 }
             }
         });
@@ -373,15 +379,16 @@ export class VirtualFileSystem {
 
         if (fileType==='doc') {
             const doc = fileEntity as DocumentEntity;
-            if (doc.cache) {
-                const content = doc.cache;
+            if (doc.remoteCache) {
+                const content = doc.remoteCache;
                 EventBus.fire('fileWillOpenEvent', {uri});
                 return new TextEncoder().encode(content);
             } else {
                 const res = await this.socket.joinDoc(fileEntity._id);
                 const content = res.docLines.join('\n');
                 doc.version = res.version;
-                doc.cache = content;
+                doc.remoteCache = content;
+                doc.localCache  = content;
                 EventBus.fire('fileWillOpenEvent', {uri});
                 return new TextEncoder().encode(content);
             }
@@ -433,10 +440,14 @@ export class VirtualFileSystem {
         if (fileType && fileType==='doc' && fileEntity) {
             const doc = fileEntity as DocumentEntity;
             const _content = new TextDecoder().decode(content);
-            if (doc.version===undefined || doc.cache===undefined) {
+            if (doc.version===undefined || doc.localCache===undefined || doc.remoteCache === undefined) {
                 return;
             }
+            const dmp = new DiffMatchPatch();
+            const patches = dmp.patch_make(doc.localCache,  doc.remoteCache);
 
+            const mergeResArray = dmp.patch_apply(patches, _content);
+            const mergeRes = mergeResArray[0] as string;
             const update = {
                 doc: doc._id,
                 lastV: doc.lastVersion,
@@ -446,13 +457,13 @@ export class VirtualFileSystem {
                     if (!doc.mtime || Date.now()-doc.mtime>5000) {
                         doc.mtime = Date.now();
                         return require('crypto').createHash('sha1').update(
-                            "blob " + _content.length + "\x00" + _content
+                            "blob " + mergeRes.length + "\x00" + mergeRes
                         ).digest('hex');
                     }
                 })() as string,
                 op: (()=>{
                     let currentPos = 0;
-                    return Diff.diffChars(doc.cache, _content)
+                    return Diff.diffChars(doc.remoteCache, mergeRes)
                                 .map((part) => {
                                     if (part.count) {
                                         const incCount = part.removed? 0 : part.count;
@@ -473,7 +484,14 @@ export class VirtualFileSystem {
                 this.isDirty = true;
             }
             await this.socket.applyOtUpdate(doc._id, update);
-            doc.cache = _content;
+            doc.localCache = mergeRes;
+            doc.remoteCache = mergeRes;
+            setTimeout(() => {
+                this.notify([
+                    {type: vscode.FileChangeType.Changed, uri: uri}
+                ]);
+            }, 10);
+
             doc.lastVersion = doc.version;
         }
     }
