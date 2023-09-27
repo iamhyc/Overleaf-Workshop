@@ -33,7 +33,6 @@
         PDFViewerApplication.pdfViewer.currentScaleValue = pdfViewerState.currentScaleValue;
         PDFViewerApplication.pdfCursorTools.switchTool( pdfViewerState.pdfCursorTools );
         PDFViewerApplication.pdfViewer.scrollMode = pdfViewerState.pdfViewerScrollMode;
-        PDFViewerApplication.pdfViewer.spreadMode = pdfViewerState.pdfViewerSpreadMode;
         PDFViewerApplication.pdfSidebar.setInitialView( pdfViewerState.pdfSidebarView );
         PDFViewerApplication.pdfSidebar.switchView( pdfViewerState.pdfSidebarView );
         document.getElementById('viewerContainer').scrollLeft = pdfViewerState.containerScrollLeft;
