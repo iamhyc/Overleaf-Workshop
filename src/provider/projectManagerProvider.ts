@@ -52,6 +52,7 @@ class ProjectItem extends DataItem {
         const _label = status==='normal' ? label : `[${status}] ${label}`;
         super(_label, vscode.TreeItemCollapsibleState.None);
         this.uri = uri;
+        this.tooltip = _label;
         this.setStatus(status);
     }
 
@@ -107,11 +108,18 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                 .then(({projects, tags}) => {
                     const allTags:{name:string, id:string}[] = [];
                     // get project items
-                    const projectItems = projects.map(project => {
+                    const normalProjects = [], trashedProjects = [], archivedProjects = [];
+                    for (const project of projects) {
                         const uri = `${ROOT_NAME}://${element.name}/${project.name}?user=${project.userId}&project=${project.id}`;
                         const status = project.archived ? 'archived' : project.trashed ? 'trashed' : 'normal';
-                        return new ProjectItem(element.api, uri, element, project.id, project.name, status);
-                    });
+                        const item = new ProjectItem(element.api, uri, element, project.id, project.name, status);
+                        switch (status) {
+                            case 'normal': normalProjects.push(item); break;
+                            case 'archived': archivedProjects.push(item); break;
+                            case 'trashed': trashedProjects.push(item); break;
+                        }
+                    }
+                    const projectItems = [...normalProjects, ...archivedProjects, ...trashedProjects];
                     // get tag items
                     const tagItems:TagItem[] = tags.map(tag => {
                         const _tag = {name:tag.name, id:tag._id};

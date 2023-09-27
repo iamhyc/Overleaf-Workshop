@@ -107,7 +107,7 @@
       {
         "command": "projectManager.deleteProject",
         "title": "Delete Project",
-        "icon": "$(close-all)"
+        "icon": "$(circle-slash)"
       },
       {
         "command": "projectManager.archiveProject",
@@ -117,7 +117,7 @@
       {
         "command": "projectManager.unarchiveProject",
         "title": "Unarchive Project",
-        "icon": "$(go-to-file)"
+        "icon": "$(reply)"
       },
       {
         "command": "projectManager.trashProject",
@@ -127,7 +127,7 @@
       {
         "command": "projectManager.untrashProject",
         "title": "Restore Project",
-        "icon": "$(go-to-file)"
+        "icon": "$(reply)"
       },
       {
         "command": "projectManager.createTag",
@@ -283,7 +283,7 @@
         {
           "command": "projectManager.deleteProject",
           "when": "view == projectManager && viewItem == trashed_project",
-          "group": "inline@1"
+          "group": "inline@2"
         },
         {
           "command": "projectManager.archiveProject",
@@ -292,7 +292,7 @@
         {
           "command": "projectManager.unarchiveProject",
           "when": "view == projectManager && viewItem == archived_project",
-          "group": "inline@2"
+          "group": "inline@1"
         },
         {
           "command": "projectManager.trashProject",
@@ -301,7 +301,7 @@
         {
           "command": "projectManager.untrashProject",
           "when": "view == projectManager && viewItem == trashed_project",
-          "group": "inline@2"
+          "group": "inline@1"
         },
         {
           "command": "projectManager.createTag",

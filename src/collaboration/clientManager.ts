@@ -220,23 +220,23 @@ export class ClientManager {
         switch (count) {
             case undefined:
                 this.status.color = undefined;
-                this.status.text = '$(vm-outline)';
+                this.status.text = '$(person-outline)';
                 this.status.tooltip = `${ELEGANT_NAME}: Not connected`;
                 break;
             case 0:
                 this.status.color = undefined;
-                this.status.text = '$(vm-active)';
+                this.status.text = '$(organization)';
                 this.status.tooltip = `${ELEGANT_NAME}: Online`;
                 break;
             default:
                 this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
-                this.status.text = `$(vm-active) ${count}`;
+                this.status.text = `$(organization) ${count}`;
                 const tooltip = new vscode.MarkdownString();
                 tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
                 Object.values(this.onlineUsers).forEach(user => {
                     const args = JSON.stringify([user.id]);
                     const commandUri = vscode.Uri.parse(`command:collaboration.jumpToUser?${encodeURIComponent(args)}`);
-                    const userInfo = `[<span style="color:${user.selection?.color};"><b>${user.name}</b></span>](mailto:${user.email})`;
+                    const userInfo = `[<span style="color:${user.selection?.color};"><b>${user.name}</b></span>]()`;
                     const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
                     const cursorInfo = user.row ? ` @ [${docPath}#L${user.row+1}](${commandUri})` : '';
                     const since_last_update = user.last_updated_at ? formatTime(Date.now() - user.last_updated_at) : '';
