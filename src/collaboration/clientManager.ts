@@ -76,7 +76,7 @@ function formatTime(timestamp:number) {
 }
 
 export class ClientManager {
-    private activeExists: boolean = false;
+    private activeExists?: string;
     private inactivateTask?: NodeJS.Timeout;
     private readonly status: vscode.StatusBarItem;
     private readonly onlineUsers: {[K:string]:UpdateUserSchema} = {};
@@ -87,7 +87,7 @@ export class ClientManager {
         private readonly socket: SocketIOAPI) {
         this.socket.updateEventHandlers({
             onClientUpdated: (user:UpdateUserSchema) => {
-                if (user.id !== this.publicId) { this.setStatusActive(); }
+                if (user.id !== this.publicId) { this.setStatusActive(user.id); }
                 this.updatePosition(user.id, user.doc_id, user.row, user.column, user);
             },
             onClientDisconnected: (id:string) => {
@@ -117,12 +117,12 @@ export class ClientManager {
         this.updateStatus();
     }
 
-    setStatusActive(timeout:number=10) {
+    setStatusActive(clientId:string, timeout:number=10) {
         this.inactivateTask && clearTimeout(this.inactivateTask);
         this.inactivateTask = setTimeout(() => {
-            this.activeExists = false;
+            this.activeExists = undefined;
         }, timeout*1000);
-        this.activeExists = true;
+        this.activeExists = clientId;
     }
 
     private jumpToUser(id: string) {
@@ -229,7 +229,7 @@ export class ClientManager {
                 this.status.tooltip = `${ELEGANT_NAME}: Online`;
                 break;
             default:
-                this.status.color = this.activeExists ? '#00C04B' : undefined;
+                this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
                 this.status.text = `$(vm-active) ${count}`;
                 const tooltip = new vscode.MarkdownString();
                 tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
