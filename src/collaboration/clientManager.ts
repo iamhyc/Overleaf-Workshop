@@ -180,6 +180,7 @@ export class ClientManager {
             const decoration = vscode.window.createTextEditorDecorationType({
                 outline: `1px solid ${color}`,
                 overviewRulerColor: color,
+                rangeBehavior: vscode.DecorationRangeBehavior.OpenClosed,
             });
             const hoverMessage = new vscode.MarkdownString(`<span style="color:${color};"><b>${this.onlineUsers[clientId].name}</b></span>`);
             hoverMessage.supportHtml = true;
