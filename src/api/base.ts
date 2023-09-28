@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as http from 'http';
 import * as https from 'https';
+import * as stream from 'stream';
+import * as FormData from 'form-data';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
 import { FileEntity, FileType, FolderEntity, MemberEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
@@ -137,6 +139,7 @@ export interface ResponseSchema {
 export class BaseAPI {
     private url: string;
     private agent: http.Agent | https.Agent;
+    private identity?: Identity;
 
     constructor(url:string) {
         this.url = url;
@@ -153,7 +156,7 @@ export class BaseAPI {
             throw new Error('Failed to get CSRF token.');
         } else {
             const csrfToken = match[1];
-            const cookies = res.headers.raw()['set-cookie'][0];
+            const cookies = res.headers.raw()['set-cookie'][0].split(';')[0];
             return { csrfToken, cookies };
         }
     }
@@ -163,7 +166,7 @@ export class BaseAPI {
             method: 'GET', redirect:'manual', agent: this.agent,
             headers: {
                 'Connection': 'keep-alive',
-                'Cookie': cookies.split(';')[0],
+                'Cookie': cookies,
             }
         });
 
@@ -186,7 +189,7 @@ export class BaseAPI {
             reconnect: false,
             'force new connection': true,
             extraHeaders: {
-                'Cookie': identity.cookies.split(';')[0],
+                'Cookie': identity.cookies,
             }
         });
     }
@@ -200,7 +203,7 @@ export class BaseAPI {
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
                 'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
+                'Cookie': identity.cookies,
                 'X-Csrf-Token': identity.csrfToken,
             },
             body: JSON.stringify({ _csrf: identity.csrfToken, email: email, password: password })
@@ -254,22 +257,73 @@ export class BaseAPI {
         }
     }
 
-    async logout(identity:Identity): Promise<ResponseSchema> {
-        const res = await fetch(this.url+'logout', {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({ _csrf: identity.csrfToken })
-        });
+    setIdentity(identity: Identity) {
+        this.identity = identity;
+        return this;
+    }
 
-        if (res.status===200) {
+    async logout(identity:Identity): Promise<ResponseSchema> {
+        this.setIdentity(identity);
+        return this.request('POST', 'logout');
+    }
+
+    private async request(type:'GET'|'POST'|'PUT'|'DELETE', route:string, body?:FormData|object, callback?: (res?:string)=>object|undefined, extraHeaders?:object ): Promise<ResponseSchema> {
+        if (this.identity===undefined) { return Promise.reject(); }
+
+        let res = undefined;
+        switch(type) {
+            case 'GET':
+                res = await fetch(this.url+route, {
+                    method: 'GET', redirect: 'manual', agent: this.agent,
+                    headers: {
+                        'Connection': 'keep-alive',
+                        'Cookie': this.identity.cookies,
+                        ...extraHeaders
+                    }
+                });
+                break;
+            case 'POST':
+                // if body is FormData, then it is a raw body
+                const content_type = body instanceof FormData ? undefined : {'Content-Type': 'application/json'};
+                const raw_body = body instanceof FormData ? body : JSON.stringify({
+                    _csrf: this.identity.csrfToken,
+                    ...body
+                });
+                res = await fetch(this.url+route, {
+                    method: 'POST', redirect: 'manual', agent: this.agent,
+                    headers: {
+                        'Connection': 'keep-alive',
+                        'Cookie': this.identity.cookies,
+                        ...content_type,
+                        ...extraHeaders
+                    },
+                    body: raw_body
+                });
+                break;
+            case 'PUT':
+                break;
+            case 'DELETE':
+                res = await fetch(this.url+route, {
+                    method: 'DELETE', redirect: 'manual', agent: this.agent,
+                    headers: {
+                        'Connection': 'keep-alive',
+                        'Cookie': this.identity.cookies,
+                        'X-Csrf-Token': this.identity.csrfToken,
+                        ...extraHeaders
+                    }
+                });
+                break;
+        };
+
+        if (res && (res.status===200 || res.status===204)) {
+            const _res = res.status===200 ? await res.text() : undefined;
+            const response = callback && callback(_res);
             return {
-                type: 'success'
-            };
+                type: 'success',
+                ...response
+            } as ResponseSchema;
         } else {
+            res = res || { status:'undefined', text:()=>'' };
             return {
                 type: 'error',
                 message: `${res.status}: `+await res.text()
@@ -277,967 +331,337 @@ export class BaseAPI {
         }
     }
 
-    async userProjectsJson(identity:Identity): Promise<ResponseSchema> {
-        const res = await fetch(this.url+'user/projects', {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            }
-        });
+    private async download(route:string) {
+        if (this.identity===undefined) { return Promise.reject(); }
 
-        if (res.status===200) {
-            const projects = (await res.json() as any).projects as any[];
+        let content: Buffer[] = [];
+        while(true) {
+            const res = await fetch(this.url+route, {
+                method: 'GET', redirect: 'manual', agent: this.agent,
+                headers: {
+                    'Connection': 'keep-alive',
+                    'Cookie': this.identity.cookies,
+                }
+            });
+            if (res.status===200) {
+                content.push(await res.buffer());
+                break;
+            }
+            else if (res.status===206) {
+                content.push(await res.buffer());
+            } else {
+                break;
+            }
+        };
+
+        return Buffer.concat(content);
+    }
+
+    async userProjectsJson(identity:Identity): Promise<ResponseSchema> {
+        this.setIdentity(identity);
+        return this.request('GET', 'user/projects', undefined, (res) => {
+            const projects = (JSON.parse(res!) as any).projects as any[];
             projects.forEach(project => {
                 project.id = project._id;
                 delete project._id;
             });
-            return {
-                type: 'success',
-                projects: projects as ProjectPersist[]
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+            return {projects};
+        });
     }
 
     async getProjectsJson(identity:Identity): Promise<ResponseSchema> {
-        const res = await fetch(this.url+'api/project', {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({ _csrf: identity.csrfToken })
+        this.setIdentity(identity);
+        return this.request('POST', 'api/project', {}, (res) => {
+            const projects = (JSON.parse(res!) as any).projects;
+            return {projects};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                projects: (await res.json() as any).projects
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async newProject(identity:Identity, projectName:string, template:'none'|'example') {
-        const res = await fetch(this.url+'project/new', {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                _csrf: identity.csrfToken,
-                projectName, template
-            })
+        this.setIdentity(identity);
+        return this.request('POST', 'project/new', {projectName, template}, (res) => {
+            const message = (JSON.parse(res!) as NewProjectResponseSchema).project_id;
+            return {message};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                message: (await res.json() as NewProjectResponseSchema).project_id
-            };
-        }
-        else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async renameProject(identity:Identity, projectId:string, newProjectName:string) {
-        const res = await fetch(this.url+`project/${projectId}/rename`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                _csrf: identity.csrfToken,
-                newProjectName
-            })
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/rename`, {newProjectName});
     }
 
     async deleteProject(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}`, {
-            method: 'DELETE', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            }
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('DELETE', `project/${projectId}`);
     }
 
     async archiveProject(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}/archive`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            }
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/archive`,
+                            undefined, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async unarchiveProject(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}/archive`, {
-            method: 'DELETE', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            }
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('DELETE', `project/${projectId}/archive`);
     }
 
     async trashProject(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}/trash`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            }
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/trash`,
+                            undefined, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async untrashProject(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}/trash`, {
-            method: 'DELETE', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            }
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
-    }
-
-    private async _sendEditingSessionHeartbeat(identity:Identity, projectId:string, segmentation: any) {
-        const res = await fetch(this.url+`editingSession/${projectId}`, {
-            method: 'PUT', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-            body: JSON.stringify({segmentation})
-        });
-
-        const body = await res.text();
-        if (res.status===202 && body==='Accepted') {
-            return;
-        } else {
-            throw new Error(`${res.status}: `+body);
-        }
+        this.setIdentity(identity);
+        return this.request('DELETE', `project/${projectId}/trash`);
     }
 
     async getFile(identity:Identity, projectId:string, fileId:string) {
-        let content: Buffer[] = [];
-        while(true) {
-            const res = await fetch(this.url+`project/${projectId}/file/${fileId}`, {
-                method: 'GET', redirect: 'manual', agent: this.agent,
-                headers: {
-                    'Connection': 'keep-alive',
-                    'Cookie': identity.cookies.split(';')[0],
-                }
-            });
-            if (res.status===200) {
-                content.push(await res.buffer());
-                break;
-            }
-            else if (res.status===206) {
-                content.push(await res.buffer());
-            } else {
-                break;
-            }
-        };
+        this.setIdentity(identity);
+        const content = await this.download(`project/${projectId}/file/${fileId}`);
         return {
             type: 'success',
-            content: new Uint8Array( Buffer.concat(content) )
+            content: new Uint8Array( content )
         };
     }
 
-    async uploadFile(identity:Identity, projectId:string, parentFolderId:string, fileName:string, fileContent:Uint8Array) {
-        const fileStream = require('stream').Readable.from(fileContent);
-        const formData = new (require('form-data'))();
-        const mimeType = require('mime-types').lookup(fileName);
+    async uploadFile(identity:Identity, projectId:string, parentFolderId:string, filename:string, fileContent:Uint8Array) {
+        const fileStream = stream.Readable.from(fileContent);
+        const formData = new FormData();
+        const mimeType = require('mime-types').lookup(filename);
         formData.append('targetFolderId', parentFolderId);
-        formData.append('name', fileName);
+        formData.append('name', filename);
         formData.append('type', mimeType? mimeType : 'text/plain');
-        formData.append('qqfile', fileStream, {filename: fileName});
-        const res = await fetch(this.url+`project/${projectId}/upload?folder_id=${parentFolderId}`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-            body: formData
-        });
+        formData.append('qqfile', fileStream, {filename});
 
-
-        if (res.status===200) {
-            const {success, entity_id, entity_type} = await res.json() as any;
-            return {
-                type: 'success',
-                entity: {_type:entity_type, _id:entity_id, name:fileName}
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/upload?folder_id=${parentFolderId}`, formData, (res) => {
+            const {success, entity_id, entity_type} = JSON.parse(res!) as any;
+            const entity = {_type:entity_type, _id:entity_id, name:filename} as FileEntity;
+            return {entity};
+        }, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async addFolder(identity:Identity, projectId:string, folderName:string, parentFolderId:string) {
-        // await this._sendEditingSessionHeartbeat(identity, projectId, {editorType:'ace'});
-        const res = await fetch(this.url+`project/${projectId}/folder`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-            body: JSON.stringify({
-                name: folderName,
-                parent_folder_id: parentFolderId
-            })
-        });
+        const body = { name: folderName, parent_folder_id: parentFolderId };
 
-        if (res.status===200) {
-            return {
-                type: 'success',
-                entity: (await res.json() as FolderEntity),
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/folder`, body, (res) => {
+            const entity = JSON.parse(res!) as FolderEntity;
+            return {entity};
+        }, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async deleteEntity(identity:Identity, projectId:string, fileType:FileType, fileId:string) {
-        const res = await fetch(this.url+`project/${projectId}/${fileType}/${fileId}`, {
-            method: 'DELETE', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-        });
-
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('DELETE', `project/${projectId}/${fileType}/${fileId}`);
     }
 
     async deleteAuxFiles(identity:Identity, projectId:string){
-        const res = await fetch(this.url+`project/${projectId}/output?`, {
-            method: 'DELETE', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-        });
-
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('DELETE', `project/${projectId}/output`);
     }
 
-    async renameEntity(identity:Identity, projectId:string, entityType:string, entityId:string, newName:string) {
-        const res = await fetch(this.url+`project/${projectId}/${entityType}/${entityId}/rename`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-            body: JSON.stringify({name:newName})
-        });
-
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+    async renameEntity(identity:Identity, projectId:string, entityType:string, entityId:string, name:string) {
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/${entityType}/${entityId}/rename`,
+                            {name}, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async moveEntity(identity:Identity, projectId:string, entityType:string, entityId:string, newParentFolderId:string) {
-        const res = await fetch(this.url+`project/${projectId}/${entityType}/${entityId}/move`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-            body: JSON.stringify({folder_id:newParentFolderId})
-        });
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        }
-        else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/${entityType}/${entityId}/move`,
+                            {folder_id:newParentFolderId}, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async compile(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}/compile?auto_compile=true`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-            body: JSON.stringify({
-                check: "silent",
-                draft: false,
-                incrementalCompilesEnabled: true,
-                rootDoc_id: null,
-                stopOnFirstError: false
-            })
-        });
+        const body = {
+            check: "silent",
+            draft: false,
+            incrementalCompilesEnabled: true,
+            rootDoc_id: null,
+            stopOnFirstError: false
+        };
 
-        if (res.status===200) {
-            return {
-                type: 'success',
-                compile: await res.json() as CompileResponseSchema
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/compile?auto_compile=true`, body, (res) => {
+            const compile = JSON.parse(res!) as CompileResponseSchema;
+            return {compile};
+        }, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async indexAll(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}/references/indexAll`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                '_csrf': identity.csrfToken,
-                shouldBroadcast: false
-            }),
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/references/indexAll`, {shouldBroadcast: false}, undefined);
     }
 
     async getMetadata(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}/metadata`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            },
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/metadata`, undefined, (res) => {
+            const meta = JSON.parse(res!) as MetadataResponseScheme;
+            return {meta};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                meta: (await res.json() as any) as MetadataResponseScheme
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async proxyRequestToSpellingApi(identity:Identity, userId:string, words: string[]) {
-        const res = await fetch(this.url+'spelling/check', {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                _csrf: identity.csrfToken,
-                language: 'en',
-                skipLearnedWords: true,
-                token: userId,
-                words
-            }),
-        });
+        const body = {
+            language: 'en',
+            skipLearnedWords: true,
+            token: userId,
+            words
+        };
 
-        if (res.status===200) {
-            return {
-                type: 'success',
-                misspellings: (await res.json() as any).misspellings as MisspellingItem[]
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', 'spelling/check', body, (res) => {
+            const misspellings = JSON.parse(res!).misspellings as MisspellingItem[];
+            return {misspellings};
+        });
     }
 
     async spellingControllerLearn(identity:Identity, userId:string, word: string) {
-        const res = await fetch(this.url+'spelling/learn', {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                _csrf: identity.csrfToken,
-                token: userId,
-                word
-            }),
-        });
+        const body = {
+            token: userId,
+            word
+        };
 
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
-
+        this.setIdentity(identity);
+        return this.request('POST', 'spelling/learn', body);
     }
 
     async getUserDictionary(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-        });
-
-        if (res.status===200) {
-            const body = await res.text();
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}`, undefined, (res) => {
+            const body = res || '';
             const match = /<meta\s+name="ol-learnedWords"\s+data-type="json"\s+content="(\[(&quot;\w+&quot;,?)+\])">/.exec(body);
             if (match) {
-                return {
-                    type: 'success',
-                    dictionary: JSON.parse(match[1].replace(/&quot;/g, '"')) as string[]
-                };
+                const dictionary = JSON.parse(match[1].replace(/&quot;/g, '"')) as string[];
+                return {dictionary};
+            } else {
+                const dictionary = [] as string[];
+                return {dictionary};
             }
-        }
-        return {
-            type: 'error',
-            message: `${res.status}: `+await res.text()
-        };
+        });
     }
 
     async getFileFromClsi(identity:Identity, url:string, compileGroup:string) {
-        let content: Buffer[] = [];
         url = url.replace(/^\/+/g, '');
-        while(true) {
-            const res = await fetch(this.url+url, {
-                method: 'GET', redirect: 'manual', agent: this.agent,
-                headers: {
-                    'Connection': 'keep-alive',
-                    'Cookie': identity.cookies.split(';')[0],
-                }
-            });
-            if (res.status===200) {
-                content.push(await res.buffer());
-                break;
-            }
-            else if (res.status===206) {
-                content.push(await res.buffer());
-            } else {
-                break;
-            }
-        };
+
+        this.setIdentity(identity);
+        const content = await this.download(url);
         return {
             type: 'success',
-            content: new Uint8Array( Buffer.concat(content) )
+            content: new Uint8Array( content )
         };
     }
 
     async proxySyncPdf(identity:Identity, projectId:string, page:number, h:number, v:number) {
-        const res = await fetch(this.url+`project/${projectId}/sync/pdf?page=${page}&h=${h.toFixed(2)}&v=${v.toFixed(2)}`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            }
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                syncPdf: (await res.json() as any).code[0] as SyncPdfResponseSchema
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/sync/pdf?page=${page}&h=${h.toFixed(2)}&v=${v.toFixed(2)}`,
+                            undefined, (res) => {
+                                const syncPdf = (JSON.parse(res!) as any).code[0] as SyncPdfResponseSchema;
+                                return {syncPdf};
+                            });
     }
 
     async proxySyncCode(identity:Identity, projectId:string, file:string, line:number, column:number) {
-        const res = await fetch(this.url+`project/${projectId}/sync/code?file=${file}&line=${line}&column=${column}`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            }
-        });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                syncCode: (await res.json() as any).pdf as SyncCodeResponseSchema
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/sync/code?file=${file}&line=${line}&column=${column}`,
+                            undefined, (res) => {
+                                const syncCode = (JSON.parse(res!) as any).pdf as SyncCodeResponseSchema;
+                                return {syncCode};
+                            });
     }
 
     async getAllTags(identity:Identity) {
-        const res = await fetch(this.url+'tag', {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            }
+        this.setIdentity(identity);
+        return this.request('GET', 'tag', undefined, (res) => {
+            const tags = JSON.parse(res!) as ProjectTagsResponseSchema[];
+            return {tags};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                tags: (await res.json() as any) as ProjectTagsResponseSchema[]
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async createTag(identity:Identity, name:string) {
-        const res = await fetch(this.url+'tag', {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                _csrf: identity.csrfToken,
-                name
-            })
+        this.setIdentity(identity);
+        return this.request('POST', 'tag', {name}, (res) => {
+            const tags = JSON.parse(res!) as ProjectTagsResponseSchema[];
+            return {tags};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                tags: (await res.json() as any) as ProjectTagsResponseSchema[]
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async renameTag(identity:Identity, tagId:string, name:string) {
-        const res = await fetch(this.url+`tag/${tagId}/rename`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                _csrf: identity.csrfToken,
-                name
-            }),
-        });
-
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `tag/${tagId}/rename`, {name});
     }
 
     async deleteTag(identity:Identity, tagId:string) {
-        const res = await fetch(this.url+`tag/${tagId}`, {
-            method: 'DELETE', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-        });
-
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('DELETE', `tag/${tagId}`);
     }
 
     async addProjectToTag(identity:Identity, tagId:string, projectId:string) {
-        const res = await fetch(this.url+`tag/${tagId}/project/${projectId}`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                _csrf: identity.csrfToken,
-            })
-        });
-
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('POST', `tag/${tagId}/project/${projectId}`);
     }
 
     async removeProjectFromTag(identity:Identity, tagId:string, projectId:string) {
-        const res = await fetch(this.url+`tag/${tagId}/project/${projectId}`, {
-            method: 'DELETE', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-        });
-
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('DELETE', `tag/${tagId}/project/${projectId}`);
     }
 
     async proxyToHistoryApiAndGetUpdates(identity:Identity, projectId:string, before?:number) {
         const beforeQuery = before? `&before=${before}` : '';
-        const res = await fetch(this.url+`project/${projectId}/updates?min_count=10${beforeQuery}`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-        });
 
-        if (res.status===200) {
-            return {
-                type: 'success',
-                updates: (await res.json() as any) as ProjectUpdateResponseSchema
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/updates?min_count=10${beforeQuery}`, undefined, (res) => {
+            const updates = JSON.parse(res!) as ProjectUpdateResponseSchema;
+            return {updates};
+        });
     }
 
     async proxyToHistoryApiAndGetFileDiff(identity:Identity, projectId:string, pathname:string, from:number, to:number) {
-        const res = await fetch(this.url+`project/${projectId}/diff?pathname=${pathname}&from=${from}&to=${to}`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            },
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/diff?pathname=${pathname}&from=${from}&to=${to}`, undefined, (res) => {
+            const diff = JSON.parse(res!) as ProjectFileDiffResponseSchema;
+            return {diff};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                diff: (await res.json() as any) as ProjectFileDiffResponseSchema
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async proxyToHistoryApiAndGetFileTreeDiff(identity:Identity, projectId:string, from:number, to:number) {
-        const res = await fetch(this.url+`project/${projectId}/filetree/diff?from=${from}&to=${to}`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            },
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/filetree/diff?from=${from}&to=${to}`, undefined, (res) => {
+            const treeDiff = JSON.parse(res!) as ProjectFileTreeDiffResponseSchema;
+            return {treeDiff};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                treeDiff: (await res.json() as any) as ProjectFileTreeDiffResponseSchema
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async downloadZipOfVersion(identity:Identity, projectId:string, version:number) {
-        let content: Buffer[] = [];
-        while(true) {
-            const res = await fetch(this.url+`project/${projectId}/version/${version}/zip`, {
-                method: 'GET', redirect: 'manual', agent: this.agent,
-                headers: {
-                    'Connection': 'keep-alive',
-                    'Cookie': identity.cookies.split(';')[0],
-                }
-            });
-            if (res.status===200) {
-                content.push(await res.buffer());
-                break;
-            }
-            else if (res.status===206) {
-                content.push(await res.buffer());
-            } else {
-                break;
-            }
-        };
+        this.setIdentity(identity);
+        const content = await this.download(`project/${projectId}/version/${version}/zip`);
         return {
             type: 'success',
-            content: new Uint8Array( Buffer.concat(content) )
+            content: new Uint8Array(content )
         };
     }
 
     async getLabels(identity:Identity, projectId:string) {
-        const res = await fetch(this.url+`project/${projectId}/labels`, {
-            method: 'GET', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-            },
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/labels`, undefined, (res) => {
+            const labels = JSON.parse(res!) as ProjectLabelResponseSchema[];
+            return {labels};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                labels: (await res.json() as any) as ProjectLabelResponseSchema[]
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async createLabel(identity:Identity, projectId:string, comment:string, version:number) {
-        const res = await fetch(this.url+`project/${projectId}/labels`, {
-            method: 'POST', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/json',
-                'Cookie': identity.cookies.split(';')[0],
-            },
-            body: JSON.stringify({
-                _csrf: identity.csrfToken,
-                comment,
-                version
-            })
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/labels`, {comment, version}, (res) => {
+            const labels = [JSON.parse(res!)] as ProjectLabelResponseSchema[];
+            return {labels};
         });
-
-        if (res.status===200) {
-            return {
-                type: 'success',
-                labels: [(await res.json() as any)] as ProjectLabelResponseSchema[]
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
     }
 
     async deleteLabel(identity:Identity, projectId:string, labelId:string) {
-        const res = await fetch(this.url+`project/${projectId}/labels/${labelId}`, {
-            method: 'DELETE', redirect: 'manual', agent: this.agent,
-            headers: {
-                'Connection': 'keep-alive',
-                'Cookie': identity.cookies.split(';')[0],
-                'X-Csrf-Token': identity.csrfToken,
-            },
-        });
-
-        if (res.status===204) {
-            return {
-                type: 'success',
-            };
-        } else {
-            return {
-                type: 'error',
-                message: `${res.status}: `+await res.text()
-            };
-        }
+        this.setIdentity(identity);
+        return this.request('DELETE', `project/${projectId}/labels/${labelId}`);
     }
 }

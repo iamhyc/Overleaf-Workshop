@@ -180,7 +180,7 @@ export class GlobalStateManager {
         if (server.login!==undefined) {
             const res = await api.addFolder(server.login.identity, projectId, folderName, parentFolderId);
             if (res.type==='success' && res.entity!==undefined) {
-                return res.entity;
+                return res.entity as FolderEntity;
             } else {
                 if (res.message!==undefined) {
                     vscode.window.showErrorMessage(res.message);

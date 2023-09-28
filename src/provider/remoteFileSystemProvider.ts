@@ -23,7 +23,7 @@ const FolderKeys: {[_type:string]: FolderKey} = {
 export interface FileEntity {
     _id: string,
     name: string,
-    _type?: string,
+    _type?: FileType,
     readonly?: boolean,
 }
 
@@ -417,7 +417,7 @@ export class VirtualFileSystem {
             throw vscode.FileSystemError.FileExists(uri);
         }
         const res = await GlobalStateManager.uploadProjectFile(this.context, this.api, this.serverName, this.projectId, parentFolder._id, fileName, content);
-        if (res) {
+        if (res && res._type) {
             this.insertEntity(parentFolder, res._type, res);
         }
     }
