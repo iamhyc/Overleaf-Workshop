@@ -426,6 +426,15 @@ export class BaseAPI {
         };
     }
 
+    async addDoc(identity:Identity, projectId:string, parentFolderId:string, filename:string) {
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/doc`, {parent_folder_id:parentFolderId, name:filename}, (res) => {
+            const {_id} = JSON.parse(res!) as any;
+            const entity = {_type:'doc', _id, name:filename} as FileEntity;
+            return {entity};
+        }, {'X-Csrf-Token': identity.csrfToken});
+    }
+
     async uploadFile(identity:Identity, projectId:string, parentFolderId:string, filename:string, fileContent:Uint8Array) {
         const fileStream = stream.Readable.from(fileContent);
         const formData = new FormData();

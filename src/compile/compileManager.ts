@@ -191,7 +191,7 @@ export class CompileManager {
                     }
                     // refresh pdf
                     const { identifier } = parseUri(uri);
-                    Object.values(pdfViewRecord[identifier]).forEach(
+                    pdfViewRecord[identifier] && Object.values(pdfViewRecord[identifier]).forEach(
                         (record) => record.doc.refresh()
                     );
                 });

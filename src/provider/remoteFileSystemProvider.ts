@@ -416,7 +416,17 @@ export class VirtualFileSystem {
         if (fileEntity && !overwrite) {
             throw vscode.FileSystemError.FileExists(uri);
         }
-        const res = await GlobalStateManager.uploadProjectFile(this.context, this.api, this.serverName, this.projectId, parentFolder._id, fileName, content);
+
+        let res = undefined;
+        if (content.length===0) {
+            const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+            const _res = await this.api.addDoc(identity, this.projectId, parentFolder._id, fileName);
+            if (_res.type==='success') {
+                res = _res.entity;
+            }
+        } else {
+            res = await GlobalStateManager.uploadProjectFile(this.context, this.api, this.serverName, this.projectId, parentFolder._id, fileName, content);
+        }
         if (res && res._type) {
             this.insertEntity(parentFolder, res._type, res);
         }
