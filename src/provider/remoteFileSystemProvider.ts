@@ -5,7 +5,6 @@ import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { GlobalStateManager } from '../utils/globalStateManager';
 import { BaseAPI } from '../api/base';
 import { assert } from 'console';
-import * as Diff from 'diff';
 import { ClientManager } from '../collaboration/clientManager';
 import { EventBus } from '../utils/eventBus';
 import * as DiffMatchPatch from 'diff-match-patch';
@@ -463,18 +462,18 @@ export class VirtualFileSystem {
                 })() as string,
                 op: (()=>{
                     let currentPos = 0;
-                    return Diff.diffChars(doc.remoteCache, mergeRes)
+                    return dmp.diff_main(doc.remoteCache, mergeRes)
                                 .map((part) => {
-                                    if (part.count) {
-                                        const incCount = part.removed? 0 : part.count;
-                                        currentPos += incCount;
-                                        if (part.added || part.removed) {
-                                            return {
-                                                p: currentPos - incCount,
-                                                i: part.added ?  part.value  : undefined,
-                                                d: part.removed ?  part.value : undefined,
-                                            };
-                                        }
+                                    // part[0] === -1: delete, 0: equal, 1: insert; part[1]: compared content
+                                    const incCount = part[0] === -1 ? 0 : part[1].length;
+                                    currentPos += incCount;
+                                    // add op when content not equal
+                                    if (part[0] !== 0) {
+                                        return {
+                                            p: currentPos - incCount,
+                                            i: part[0] ===  1 ?  part[1] : undefined,
+                                            d: part[0] === -1 ?  part[1] : undefined,
+                                        };
                                     }
                                 })
                                 .filter(x => x) as any;
