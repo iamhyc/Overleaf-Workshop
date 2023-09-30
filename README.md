@@ -1,17 +1,16 @@
 # Overleaf Workshop
 
+[![GitHub Repo stars](https://img.shields.io/github/stars/iamhyc/Overleaf-Workshop)](https://github.com/iamhyc/Overleaf-Workshop)
 [![version](https://img.shields.io/visual-studio-marketplace/v/iamhyc.overleaf-workshop)](https://marketplace.visualstudio.com/items?itemName=iamhyc.overleaf-workshop)
 [![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/iamhyc.overleaf-workshop)](https://marketplace.visualstudio.com/items?itemName=iamhyc.overleaf-workshop)
 [![updated](https://img.shields.io/visual-studio-marketplace/last-updated/iamhyc.overleaf-workshop)](https://marketplace.visualstudio.com/items?itemName=iamhyc.overleaf-workshop)
 [![release](https://img.shields.io/visual-studio-marketplace/release-date/iamhyc.overleaf-workshop)](https://vsmarketplacebadge.apphb.com/downloads-short/iamhyc.overleaf-workshop.svg)
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/iamhyc/Overleaf-Workshop)](https://github.com/iamhyc/Overleaf-Workshop)
-**<-- Star this project on Github if you are in favor of [new features](https://github.com/iamhyc/Overleaf-Workshop/issues/3) !**
-
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
-> [!WARNING]
-> We currently focus on ONLY open-source **Overleaf Community Edition** support. **Overleaf Server Pro** or `https://www.overleaf.com` is not supported.
+> [!NOTE]
+> We currently provide experimental support for `overleaf.com` login.
+> Please check [How to Login with Cookies](#how-to-login-with-cookies) for more details.
 
 ### Features
 
@@ -36,6 +35,20 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 - Spell Check, Auto Completion and Compile Messages
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo05-intellisense.png" heigh=300px/>
+
+### How to Login with Cookies
+
+<img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/login_with_cookie.png" heigh=300px/>
+
+In an already logged-in browser (Firefox for example):
+
+1. Open "Developer Tools" (usually by pressing <kbd>F12</kbd>) and switch to the "Network" tab
+
+   Then, navigate to the Overleaf main page (e.g., `https://www.overleaf.com`) in the address bar
+
+2. Filter the listed items with `/project` and select the extract match
+
+3. Check the "Cookie" under "Request Headers" of the selected item and copy its value
 
 ### Compatibility
 
