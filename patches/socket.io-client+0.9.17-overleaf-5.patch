@@ -1,8 +1,8 @@
 diff --git a/node_modules/socket.io-client/lib/socket.js b/node_modules/socket.io-client/lib/socket.js
-index 07c1c3f..67674db 100644
+index 07c1c3f..e208abc 100644
 --- a/node_modules/socket.io-client/lib/socket.js
 +++ b/node_modules/socket.io-client/lib/socket.js
-@@ -152,6 +152,12 @@
+@@ -152,11 +152,27 @@
        if (this.isXDomain()) {
          xhr.withCredentials = true;
        }
@@ -15,7 +15,31 @@ index 07c1c3f..67674db 100644
        xhr.onreadystatechange = function () {
          if (xhr.readyState == 4) {
            xhr.onreadystatechange = empty;
-@@ -369,6 +375,12 @@
+ 
+           if (xhr.status == 200) {
++            // extract set-cookie headers
++            const matches = xhr.getAllResponseHeaders().match(/set-cookie:\s*([^\r\n]+)/gi);
++            matches && matches.forEach(function (header) {
++              const newCookie = header.split(':')[1].split(';')[0].trim();
++              const optCookie = self.options['extraHeaders']['Cookie'];
++              const mergedCookie = optCookie ? `${optCookie}; ${newCookie}` : newCookie;
++              self.options['extraHeaders'] = self.options['extraHeaders'] || {};
++              self.options['extraHeaders']['Cookie'] = mergedCookie;
++            });
++
+             complete(xhr.responseText);
+           } else if (xhr.status == 403) {
+             self.onError(xhr.responseText);
+@@ -229,7 +245,7 @@
+         self.transport.ready(self, function () {
+           self.connecting = true;
+           self.publish('connecting', self.transport.name);
+-          self.transport.open();
++          self.transport.open(self.options['extraHeaders']);
+ 
+           if (self.options['connect timeout']) {
+             self.connectTimeoutTimer = setTimeout(function () {
+@@ -369,6 +385,12 @@
      ].join('/') + '/?disconnect=1';
  
      xhr.open('GET', uri, false);
@@ -28,3 +52,27 @@ index 07c1c3f..67674db 100644
      xhr.send(null);
  
      // handle disconnection immediately
+diff --git a/node_modules/socket.io-client/lib/transports/websocket.js b/node_modules/socket.io-client/lib/transports/websocket.js
+index 0dfa483..d878bbb 100644
+--- a/node_modules/socket.io-client/lib/transports/websocket.js
++++ b/node_modules/socket.io-client/lib/transports/websocket.js
+@@ -50,7 +50,7 @@
+    * @api public
+    */
+ 
+-  WS.prototype.open = function () {
++  WS.prototype.open = function (extraHeaders) {
+     var query = io.util.query(this.socket.options.query)
+       , self = this
+       , Socket
+@@ -63,7 +63,9 @@
+       Socket = global.MozWebSocket || global.WebSocket;
+     }
+ 
+-    this.websocket = new Socket(this.prepareUrl() + query);
++    this.websocket = new Socket(this.prepareUrl() + query, {
++      headers: extraHeaders || {}
++    });
+ 
+     this.websocket.onopen = function () {
+       self.onOpen();
