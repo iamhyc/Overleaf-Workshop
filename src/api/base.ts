@@ -242,8 +242,8 @@ export class BaseAPI {
     async cookiesLogin(cookies: string): Promise<ResponseSchema> {
         const res = await this.getUserId(cookies);
         if (res) {
-            const {userId,csrfToken} = res;
-            const identity:Identity = {cookies, csrfToken};
+            const { userId, csrfToken } = res;
+            const identity: Identity =  await this.updateCookies({ cookies, csrfToken });
             return {
                 type: 'success',
                 message: userId,
@@ -256,6 +256,26 @@ export class BaseAPI {
             };
         }
     }
+
+    async updateCookies(identity: Identity) {
+        const res = await fetch(this.url + 'socket.io/socket.io.js', {
+            method: 'GET',
+            redirect: 'manual',
+            agent: this.agent,
+            headers: {
+                'Connection': 'keep-alive',
+                'Cookie': identity.cookies,
+            }
+        });
+        const header = res.headers.raw()['set-cookie'];
+        if (header !== undefined) {
+            const cookies = header[0].split(';')[0];
+            if (cookies){
+                identity.cookies = `${identity.cookies}; ${cookies}`;
+            }
+        }
+        return identity;
+    };
 
     setIdentity(identity: Identity) {
         this.identity = identity;
