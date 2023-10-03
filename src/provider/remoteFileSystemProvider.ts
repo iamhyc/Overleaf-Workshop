@@ -317,7 +317,8 @@ export class VirtualFileSystem {
                             if (op.i) {
                                 content = content.slice(0, op.p) + op.i + content.slice(op.p);
                             } else if (op.d) {
-                                content = content.slice(0, op.p) + content.slice(op.p+op.d.length);
+                                const deleteUtf8 = Buffer.from(op.d, 'ascii').toString('utf-8');
+                                content = content.slice(0, op.p) + content.slice(op.p+deleteUtf8.length);
                             }
                         });
                         const _uri = this.pathToUri(res.path).toString();
@@ -471,8 +472,10 @@ export class VirtualFileSystem {
                     }
                 })() as string,
                 op: (()=>{
+                    const remoteCacheAscii = Buffer.from(doc.remoteCache, 'utf-8').toString('utf-8');
+                    const mergeResAscii = Buffer.from(mergeRes, 'utf-8').toString('utf-8');
                     let currentPos = 0;
-                    return dmp.diff_main(doc.remoteCache, mergeRes)
+                    return dmp.diff_main(remoteCacheAscii, mergeResAscii)
                                 .map((part) => {
                                     // part[0] === -1: delete, 0: equal, 1: insert; part[1]: compared content
                                     const incCount = part[0] === -1 ? 0 : part[1].length;

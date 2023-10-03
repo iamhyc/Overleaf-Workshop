@@ -152,7 +152,8 @@ export class SocketIOAPI {
     async joinDoc(docId:string) {
         return this.emit('joinDoc', docId, { encodeRanges: true })
             .then((returns: [Array<string>, number, Array<any>, any]) => {
-                const [docLines, version, updates, ranges] = returns;
+                const [docLinesAscii, version, updates, ranges] = returns;
+                const docLines = docLinesAscii.map((line) => Buffer.from(line, 'ascii').toString('utf-8') );
                 return {docLines, version, updates, ranges};
             });
     }
