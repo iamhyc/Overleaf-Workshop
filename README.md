@@ -46,7 +46,7 @@ In an already logged-in browser (Firefox for example):
 
    Then, navigate to the Overleaf main page (e.g., `https://www.overleaf.com`) in the address bar
 
-2. Filter the listed items with `/project` and select the extract match
+2. Filter the listed items with `/project` and select the exact match
 
 3. Check the "Cookie" under "Request Headers" of the selected item and copy its value
 

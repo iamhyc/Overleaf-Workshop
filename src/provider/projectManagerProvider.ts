@@ -154,7 +154,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     addServer() {
-        vscode.window.showInputBox({'placeHolder': 'Overleaf server address, e.g. "http://localhost:8080"'})
+        vscode.window.showInputBox({'placeHolder': 'Overleaf server address, e.g. "https://www.overleaf.com"'})
         .then((url) => {
             if (url) {
                 try {
