@@ -90,7 +90,7 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
     }
 
     private patchViewerHtml(webview: vscode.Webview, html: string): string {
-        const patchPath = (...path:string[]) => webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'views', ...path)).toString();
+        const patchPath = (...path:string[]) => webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'views/pdf-viewer', ...path)).toString();
 
         // adjust original path
         html = html.replace('../build/pdf.js', patchPath('vendor','build','pdf.js'));
@@ -99,15 +99,15 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
 
         // patch custom files
         const workerScript = `<script src="${patchPath('vendor','build','pdf.worker.js')}"></script>`;
-        const customScript = `<script src="${patchPath('vscode-pdf-viewer.js')}"></script>`;
-        const customStyle = `<link rel="stylesheet" href="${patchPath('vscode-pdf-viewer.css')}" />`;
+        const customScript = `<script src="${patchPath('index.js')}"></script>`;
+        const customStyle = `<link rel="stylesheet" href="${patchPath('index.css')}" />`;
         html = html.replace(/\<\/head\>/, `${workerScript}\n${customScript}\n${customStyle}\n</head>`);
 
         return html;
     }
 
     private async getHtmlForWebview(webview: vscode.Webview): Promise<string> {
-        const htmlPath = vscode.Uri.joinPath(this.context.extensionUri, 'views','vendor','web','viewer.html');
+        const htmlPath = vscode.Uri.joinPath(this.context.extensionUri, 'views/pdf-viewer/vendor/web/viewer.html');
         let html = (await vscode.workspace.fs.readFile(htmlPath)).toString();
         return this.patchViewerHtml(webview, html);
     }

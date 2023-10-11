@@ -42,20 +42,40 @@
     "languages": [
       {
         "id": "tex",
-        "aliases": ["TeX","tex"],
-        "extensions": [".sty",".cls",".bbx",".cbx"],
+        "aliases": [
+          "TeX",
+          "tex"
+        ],
+        "extensions": [
+          ".sty",
+          ".cls",
+          ".bbx",
+          ".cbx"
+        ],
         "configuration": "data/vendor/languages/latex-language-configuration.json"
       },
       {
         "id": "latex",
-        "aliases": ["LaTeX","latex"],
-        "extensions": [".tex",".ltx",".ctx"],
+        "aliases": [
+          "LaTeX",
+          "latex"
+        ],
+        "extensions": [
+          ".tex",
+          ".ltx",
+          ".ctx"
+        ],
         "configuration": "data/vendor/languages/latex-language-configuration.json"
       },
       {
         "id": "bibtex",
-        "aliases": ["BibTeX","bibtex"],
-        "extensions": [".bib"]
+        "aliases": [
+          "BibTeX",
+          "bibtex"
+        ],
+        "extensions": [
+          ".bib"
+        ]
       },
       {
         "id": "cpp_embedded_latex",
@@ -365,7 +385,7 @@
     ]
   },
   "scripts": {
-    "download-pdfjs": "download -o views/vendor -e https://github.com/mozilla/pdf.js/releases/download/v3.10.111/pdfjs-3.10.111-dist.zip; cd views/vendor && patch -p1 < pdfjs-3.10.111-dist.patch",
+    "download-pdfjs": "download -o views/pdf-viewer/vendor -e https://github.com/mozilla/pdf.js/releases/download/v3.10.111/pdfjs-3.10.111-dist.zip; cd views/pdf-viewer/vendor && patch -p1 < pdfjs-3.10.111-dist.patch",
     "download-latex-basics": "download -o data/vendor -s 1 -e https://github.com/jlelong/vscode-latex-basics/archive/refs/tags/v1.5.4.zip",
     "postinstall": "patch-package; npm run download-pdfjs; npm run download-latex-basics",
     "vscode:prepublish": "npm run compile",
@@ -400,5 +420,8 @@
     "patch-package": "^7.0.2",
     "typescript": "^5.1.3"
   },
-  "extensionKind": ["workspace", "ui"]
+  "extensionKind": [
+    "workspace",
+    "ui"
+  ]
 }
