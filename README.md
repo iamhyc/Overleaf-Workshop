@@ -8,15 +8,13 @@
 
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
-> [!NOTE]
-> We currently provide experimental support for `overleaf.com` login.
-> Please check [How to Login with Cookies](#how-to-login-with-cookies) for more details.
-
 ### Features
 
 - Login Server, Open Projects and Edit Files
-  > For captcha enabled servers or SSO login without password, please use `cookies` extracted from a logged-in browser.
-  > The format would be like: `sharelatex.sid=...` or `overleaf_session2=...`
+  > [!NOTE]
+  > For SSO login or captcha enabled servers like `https://www.overleaf.com`, please use "**Login with Cookies**" method.
+  > 
+  > For more details, please refer to [How to Login with Cookies](#how-to-login-with-cookies), and related discussions in [this issue on Github](https://github.com/iamhyc/Overleaf-Workshop/issues/18).
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo01-login.gif" height=300px/>
 
@@ -42,13 +40,14 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
 In an already logged-in browser (Firefox for example):
 
-1. Open "Developer Tools" (usually by pressing <kbd>F12</kbd>) and switch to the "Network" tab
+1. Open "Developer Tools" (usually by pressing <kbd>F12</kbd>) and switch to the "Network" tab;
 
-   Then, navigate to the Overleaf main page (e.g., `https://www.overleaf.com`) in the address bar
+   Then, navigate to the Overleaf main page (e.g., `https://www.overleaf.com`) in the address bar.
 
-2. Filter the listed items with `/project` and select the exact match
+2. Filter the listed items with `/project` and select the exact match.
 
-3. Check the "Cookie" under "Request Headers" of the selected item and copy its value
+3. Check the "Cookie" under "Request Headers" of the selected item and copy its value to login.
+    > The format of the Cookie value would be like: `overleaf_session2=...` or `sharelatex.sid=...`
 
 ### Compatibility
 
