@@ -78,7 +78,7 @@ export interface ProjectLabelResponseSchema {
 }
 
 export interface ProjectUpdateMeta {
-    users: {id:string, first_name:string, last_name:string, email:string}[],
+    users: {id:string, first_name:string, last_name?:string, email:string}[],
     start_ts: number,
     end_ts: number,
 }
@@ -115,6 +115,15 @@ export interface ProjectFileTreeDiffResponseSchema {
     }[]
 }
 
+export interface ProjectMessageResponseSchema {
+    id: string,
+    content: string,
+    timestamp: number,
+    user_id: string,
+    user: {id:string, first_name:string, last_name?:string, email:string},
+    clientId: string,
+}
+
 export interface ResponseSchema {
     type: 'success' | 'error';
     raw?: ArrayBuffer;
@@ -133,6 +142,7 @@ export interface ResponseSchema {
     updates?: ProjectUpdateResponseSchema;
     diff?: ProjectFileDiffResponseSchema;
     treeDiff?: ProjectFileTreeDiffResponseSchema;
+    messages?: ProjectMessageResponseSchema[];
     dictionary?: string[];
 }
 
@@ -282,11 +292,6 @@ export class BaseAPI {
         return this;
     }
 
-    async logout(identity:Identity): Promise<ResponseSchema> {
-        this.setIdentity(identity);
-        return this.request('POST', 'logout');
-    }
-
     private async request(type:'GET'|'POST'|'PUT'|'DELETE', route:string, body?:FormData|object, callback?: (res?:string)=>object|undefined, extraHeaders?:object ): Promise<ResponseSchema> {
         if (this.identity===undefined) { return Promise.reject(); }
 
@@ -375,6 +380,11 @@ export class BaseAPI {
         };
 
         return Buffer.concat(content);
+    }
+
+    async logout(identity:Identity): Promise<ResponseSchema> {
+        this.setIdentity(identity);
+        return this.request('POST', 'logout');
     }
 
     async userProjectsJson(identity:Identity): Promise<ResponseSchema> {
@@ -692,5 +702,18 @@ export class BaseAPI {
     async deleteLabel(identity:Identity, projectId:string, labelId:string) {
         this.setIdentity(identity);
         return this.request('DELETE', `project/${projectId}/labels/${labelId}`);
+    }
+
+    async getMessages(identity:Identity, projectId:string) {
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/messages?limit=50`, undefined, (res) => {
+            const messages = JSON.parse(res!) as ProjectMessageResponseSchema[];
+            return {messages};
+        }, {'X-Csrf-Token': identity.csrfToken});
+    }
+
+    async sendMessage(identity:Identity, projectId:string, client_id:string, content:string) {
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/messages`, {client_id, content}, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 }

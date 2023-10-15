@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { Identity, BaseAPI } from './base';
+import { Identity, BaseAPI, ProjectMessageResponseSchema } from './base';
 import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../provider/remoteFileSystemProvider';
 import { OnlineUserSchema, UpdateUserSchema } from '../collaboration/clientManager';
 
@@ -31,6 +31,8 @@ export interface EventsHandler {
     onConnectionAccepted?: (publicId:string) => void,
     onClientUpdated?: (user:UpdateUserSchema) => void,
     onClientDisconnected?: (id:string) => void,
+    //
+    onReceivedMessage?: (message:ProjectMessageResponseSchema) => void,
 }
 
 export class SocketIOAPI {
@@ -125,6 +127,10 @@ export class SocketIOAPI {
                         handler(id);
                     });
                     break;
+                case handlers.onReceivedMessage:
+                    this.socket.on('new-chat-message', (message:ProjectMessageResponseSchema) => {
+                        handler(message);
+                    });
                 default:
                     break;
             }
