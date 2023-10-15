@@ -155,7 +155,7 @@ export class VirtualFileSystem {
             this.remoteWatch();
             this.initializing = this.socket.joinProject(this.projectId).then((project) => {
                 this.root = project;
-                this.clientManager = new ClientManager(this, this.publicId||'', this.socket);
+                this.clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
                 this.clientManager.triggers; // init and then dispose
                 vscode.commands.executeCommand('compileManager.compile');
                 return project;
@@ -697,6 +697,26 @@ export class VirtualFileSystem {
     async deleteLabel(labelId: string) {
         const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
         const res = await this.api.deleteLabel(identity, this.projectId, labelId);
+        if (res.type==='success') {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    async getMessages() {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.getMessages(identity, this.projectId);
+        if (res.type==='success') {
+            return res.messages;
+        } else {
+            return undefined;
+        }
+    }
+
+    async sendMessage(publicId:string, content: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.sendMessage(identity, this.projectId, publicId, content);
         if (res.type==='success') {
             return true;
         } else {

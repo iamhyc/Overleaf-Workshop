@@ -1,7 +1,7 @@
 {
   "name": "overleaf-workshop",
   "displayName": "Overleaf Workshop",
-  "description": "Open Overleaf/ShareLaTex projects in vscode, with full collaboration support.",
+  "description": "Open Overleaf/ShareLaTex projects in VSCode, with full collaboration support.",
   "version": "0.3.0",
   "icon": "resources/icons/app_icon.png",
   "author": {
@@ -255,6 +255,13 @@
           "name": "History",
           "contextualTitle": "Overleaf Project History",
           "when": "resourceScheme == overleaf-workshop"
+        },
+        {
+          "type": "webview",
+          "id": "chatWebview",
+          "name": "Chat",
+          "contextualTitle": "Overleaf Chat",
+          "when": "resourceScheme == overleaf-workshop"
         }
       ]
     },
@@ -388,7 +395,7 @@
     "download-pdfjs": "download -o views/pdf-viewer/vendor -e https://github.com/mozilla/pdf.js/releases/download/v3.10.111/pdfjs-3.10.111-dist.zip; cd views/pdf-viewer/vendor && patch -p1 < pdfjs-3.10.111-dist.patch",
     "download-latex-basics": "download -o data/vendor -s 1 -e https://github.com/jlelong/vscode-latex-basics/archive/refs/tags/v1.5.4.zip",
     "postinstall": "patch-package; npm run download-pdfjs; npm run download-latex-basics",
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run compile; cd views/chat-view && npm run build",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",

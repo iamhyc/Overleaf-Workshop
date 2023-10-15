@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { SocketIOAPI } from '../api/socketio';
 import { VirtualFileSystem } from '../provider/remoteFileSystemProvider';
 import { ELEGANT_NAME } from '../consts';
+import { ChatViewProvider } from './chatViewProvider';
 
 export interface UpdateUserSchema {
     id: string,
@@ -83,6 +84,7 @@ export class ClientManager {
 
     constructor(
         private readonly vfs: VirtualFileSystem,
+        private readonly context: vscode.ExtensionContext,
         private readonly publicId: string,
         private readonly socket: SocketIOAPI) {
         this.socket.updateEventHandlers({
@@ -258,6 +260,8 @@ export class ClientManager {
             vscode.commands.registerCommand('collaboration.jumpToUser', (uid) => {
                 this.jumpToUser(uid);
             }),
+            // register chat view provider
+            ...new ChatViewProvider(this.vfs, this.publicId, this.context.extensionUri, this.socket).triggers,
             // update this client's position
             vscode.window.onDidChangeTextEditorSelection(async e => {
                 if (e.kind===undefined) { return; }

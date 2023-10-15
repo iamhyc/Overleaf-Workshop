@@ -10,12 +10,15 @@ docs/**
 **/*.map
 **/*.ts
 
-views/vendor/web/*.pdf
-views/vendor/web/cmaps
-views/vendor/web/locale
-views/vendor/web/standard_fonts
-
 data/vendor/**
 !data/vendor/LICENSE*
 !data/vendor/README.md
 !data/vendor/languages/**
+
+views/pdf-viewer/vendor/web/*.pdf
+views/pdf-viewer/vendor/web/cmaps
+views/pdf-viewer/vendor/web/locale
+views/pdf-viewer/vendor/web/standard_fonts
+
+views/chat-view/**
+!views/chat-view/dist/**
