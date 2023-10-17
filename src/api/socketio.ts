@@ -28,6 +28,7 @@ export interface EventsHandler {
     onFileMoved?: (entityId:string, newParentFolderId:string) => void,
     onFileChanged?: (update:UpdateSchema) => void,
     //
+    onDisconnected?: () => void,
     onConnectionAccepted?: (publicId:string) => void,
     onClientUpdated?: (user:UpdateUserSchema) => void,
     onClientDisconnected?: (id:string) => void,
@@ -36,6 +37,8 @@ export interface EventsHandler {
 }
 
 export class SocketIOAPI {
+    private _handlers: EventsHandler = {};
+
     private url: string;
     private socket?: any;
     private emit: any;
@@ -65,9 +68,6 @@ export class SocketIOAPI {
         this.socket.on('connect_failed', () => {
             console.log('SocketIOAPI: connect_failed');
         });
-        this.socket.on('disconnect', () => {
-            console.log('SocketIOAPI: disconnected');
-        });
         this.socket.on('forceDisconnect', (message:string, delay=10) => {
             console.log('SocketIOAPI: forceDisconnect', message);
         });
@@ -79,7 +79,16 @@ export class SocketIOAPI {
         });
     }
 
+    get handlers() {
+        return this._handlers;
+    }
+
+    resumeEventHandlers(handlers: EventsHandler) {
+        this.updateEventHandlers(handlers);
+    }
+
     updateEventHandlers(handlers: EventsHandler) {
+        Object.assign(this._handlers, handlers);
         Object.values(handlers).forEach((handler) => {
             switch (handler) {
                 case handlers.onFileCreated:
@@ -113,10 +122,16 @@ export class SocketIOAPI {
                         handler(update);
                     });
                     break;
+                case handlers.onDisconnected:
+                    this.socket.on('disconnect', () => {
+                        handler();
+                    });
+                    break;
                 case handlers.onConnectionAccepted:
                     this.socket.on('connectionAccepted', (_:any, publicId:any) => {
                         handler(publicId);
                     });
+                    break;
                 case handlers.onClientUpdated:
                     this.socket.on('clientTracking.clientUpdated', (user:UpdateUserSchema) => {
                         handler(user);

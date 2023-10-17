@@ -137,12 +137,12 @@ export class VirtualFileSystem {
         this.context = context;
         this.notify = notify;
         //
-        const res = GlobalStateManager.initSocketIOAPI(context, uri.authority);
+        const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
         if (res) {
             this.api = res.api;
             this.socket = res.socket;
         } else {
-            throw new Error(`Cannot init SocketIOAPI for ${uri.authority}`);
+            throw new Error(`Cannot init SocketIOAPI for ${this.serverName}`);
         }
     }
 
@@ -256,6 +256,20 @@ export class VirtualFileSystem {
 
     private remoteWatch() {
         this.socket.updateEventHandlers({
+            onDisconnected: () => {
+                console.log("Disconnected, reconnecting ...");
+                const _handlers = this.socket.handlers;
+                const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
+                if (res) {
+                    this.api = res.api;
+                    this.socket = res.socket;
+                    this.socket.resumeEventHandlers(_handlers);
+                    this.root = undefined;
+                    this.initializing = undefined;
+                } else {
+                    throw new Error(`Cannot init SocketIOAPI for ${this.serverName}`);
+                }
+            },
             onConnectionAccepted: (publicId:string) => {
                 this.publicId = publicId;
             },
