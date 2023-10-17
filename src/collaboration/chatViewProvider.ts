@@ -25,9 +25,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         const htmlPath = vscode.Uri.joinPath(this.extensionUri, rootFolder, 'index.html');
         let html = (await vscode.workspace.fs.readFile(htmlPath)).toString();
         
-        // patch root path
-        html = html.replace(/href="\/(.*?)"/g, `href="${webviewPath}/$1"`);
-        html = html.replace(/src="\/(.*?)"/g, `src="${webviewPath}/$1"`);
+        // patch root path (deprecated due to vite-plugin-singlefile)
+        // html = html.replace(/href="\/(.*?)"/g, `href="${webviewPath}/$1"`);
+        // html = html.replace(/src="\/(.*?)"/g, `src="${webviewPath}/$1"`);
     
         return html;
     }
