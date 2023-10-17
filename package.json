@@ -255,6 +255,13 @@
           "name": "History",
           "contextualTitle": "Overleaf Project History",
           "when": "resourceScheme == overleaf-workshop"
+        },
+        {
+          "type": "webview",
+          "id": "chatWebview",
+          "name": "Chat",
+          "contextualTitle": "Overleaf Chat",
+          "when": "resourceScheme == overleaf-workshop"
         }
       ]
     },
