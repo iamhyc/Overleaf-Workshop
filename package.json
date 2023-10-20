@@ -252,6 +252,7 @@
       "explorer": [
         {
           "id": "projectHistory",
+          "icon": "$(history)",
           "name": "History",
           "contextualTitle": "Overleaf Project History",
           "when": "resourceScheme == overleaf-workshop"
@@ -259,6 +260,7 @@
         {
           "type": "webview",
           "id": "chatWebview",
+          "icon": "$(feedback)",
           "name": "Chat",
           "contextualTitle": "Overleaf Chat",
           "when": "resourceScheme == overleaf-workshop"
