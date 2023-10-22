@@ -14,7 +14,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     ) {
         this.socket.updateEventHandlers({
             onReceivedMessage: this.onReceivedMessage.bind(this)
-        })
+        });
     }
 
     async loadWebviewHtml(webview: vscode.Webview): Promise<string> {
@@ -47,8 +47,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    private getMessages() {
-        const messages = this.vfs.getMessages();
+    private async getMessages() {
+        const messages = await this.vfs.getMessages();
         if (this.webviewView !== undefined) {
             this.webviewView.webview.postMessage({
                 type: 'get-messages',
