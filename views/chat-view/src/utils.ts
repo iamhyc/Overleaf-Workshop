@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { vscode } from "./vscode";
+import { type Ref } from "vue";
 
 export interface Message {
     id: string,
@@ -13,10 +14,8 @@ export interface Message {
         email: string,
     },
     clientId: string,
-}
-
-function _formatMessage() {
-
+    replyTo?: {messageId:string, username:string, userId:string},
+    replies?: Message[],
 }
 
 export function elapsedTime(timestamp:number, now=Date.now()) {
@@ -65,4 +64,55 @@ export function sendMessage(content: string, context?:string) {
         type: 'send-message',
         content
     });
+}
+
+export function getReplyContext(message: Message) {
+    const slidingTextLength = 20;
+    const username = `${message.user.first_name}${message.user.last_name}`;
+    let slidingText = message.content.split('\n').join(' ').slice(0, slidingTextLength);
+    slidingText += message.content.length>=slidingTextLength ? '...' : '';
+
+    return [
+        `> reply-to-${message.id} [@${username}](${message.user.id})`,
+        `> ${slidingText}`
+    ].join('\n');
+}
+
+export class MessageTree {
+    private replyRegex = /^>\s*reply-to-(\w+)\s*\[@(.+)\]\((\w+)\)\s*$/;
+    private rootMap: Record<string, string> = {};
+
+    constructor(private messages: Ref<Message[]>) {}
+
+    update(messages: Message[]) {
+        messages.forEach(message => {
+            this.pushMessage(message);
+        });
+    }
+
+    pushMessage(message: Message) {
+        const _lines = message.content.trim().split('\n');
+        const _firstLine = _lines[0];
+        const match = _firstLine.match(this.replyRegex);
+
+        if (match) {
+            // update message
+            const [_, messageId, username, userId] = match;
+            message.content = _lines.slice(1).join('\n');
+            message.replyTo = {messageId, username, userId};
+            // insert into root's replies
+            const rootId = this.rootMap[messageId];
+            const rootMessage = this.messages.value.find(m => m.id===rootId);
+            rootMessage?.replies && rootMessage.replies.push(message);
+            // update rootMap
+            this.rootMap[message.id] = rootId;
+        } else {
+            // update message
+            message.replies = [];
+            // insert as root
+            this.messages.value.push(message);
+            // update rootMap
+            this.rootMap[message.id] = message.id;
+        }
+    }
 }

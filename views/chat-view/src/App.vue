@@ -3,21 +3,22 @@
     ui.provideVSCodeDesignSystem().register(ui.allComponents);
 
     import { ref, onMounted } from "vue";
-    import { getMessages, type Message } from "./utils";
+    import { getMessages, MessageTree, type Message } from "./utils";
     import InputBox from "./components/InputBox.vue";
     import MessageList from "./components/MessageList.vue";
 
     const messages = ref<Message[]>([]);
+    const messageTree = new MessageTree(messages);
 
     onMounted(() => {
         window.addEventListener('message', async (e) => {
             const data = e.data;
             switch (data.type) {
                 case 'get-messages':
-                    messages.value = data.content.reverse();
+                    messageTree.update(data.content.reverse());
                     break;
                 case 'new-message':
-                    messages.value.push(data.content);
+                    messageTree.pushMessage(data.content);
                     break;
             }
         });

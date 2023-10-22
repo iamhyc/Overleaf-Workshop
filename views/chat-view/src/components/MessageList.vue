@@ -30,6 +30,7 @@
         <template v-for="message in messages" :key="message.id">
             <vscode-divider role="separator"></vscode-divider>
             <MessageItem :message="message" :now="now" />
+            <MessageItem v-if="message.replies" v-for="reply in message.replies" class="indent" :key="reply.id" :root="message" :message="reply" :now="now" />
         </template>
     </div>
 </template>
@@ -40,7 +41,7 @@
         margin-bottom: 10px;
     }
 
-    div.empty-container {
+    .empty-container {
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -48,15 +49,20 @@
         height: 100%;
     }
 
-    div.message-container {
+    .message-container {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
         overflow-y: auto;
+        overflow-x: hidden;
     }
 
-    div.message-container::-webkit-scrollbar-thumb {
+    .message-container::-webkit-scrollbar-thumb {
         border-left: 4px solid transparent;
         background-clip: padding-box;
+    }
+
+    .indent {
+        width: 90%;
     }
 </style>
