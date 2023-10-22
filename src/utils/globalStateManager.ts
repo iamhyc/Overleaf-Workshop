@@ -34,14 +34,22 @@ interface ServerPersistMap {
 
 export class GlobalStateManager {
 
-    static getServers(context:vscode.ExtensionContext) {
+    static getServers(context:vscode.ExtensionContext): {server:ServerPersist, api:BaseAPI}[] {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        return Object.values(persists).map(persist => {
+        const servers = Object.values(persists).map(persist => {
             return {
                 server: persist,
                 api: new BaseAPI(persist.url),
             };
         });
+
+        if (servers.length===0) {
+            const url = new URL('https://www.overleaf.com');
+            this.addServer(context, url.host, url.href);
+            return this.getServers(context);
+        } else {
+            return servers;
+        }
     }
 
     static addServer(context:vscode.ExtensionContext, name:string, url:string): boolean {
