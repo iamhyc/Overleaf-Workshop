@@ -2,7 +2,7 @@
   "name": "overleaf-workshop",
   "displayName": "Overleaf Workshop",
   "description": "Open Overleaf/ShareLaTex projects in VSCode, with full collaboration support.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "icon": "resources/icons/app_icon.png",
   "author": {
     "name": "iamhyc",
