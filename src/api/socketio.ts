@@ -34,6 +34,8 @@ export interface EventsHandler {
     onClientDisconnected?: (id:string) => void,
     //
     onReceivedMessage?: (message:ProjectMessageResponseSchema) => void,
+    //
+    onSpellCheckLanguageUpdated?: (language:string) => void,
 }
 
 export class SocketIOAPI {
@@ -149,6 +151,12 @@ export class SocketIOAPI {
                     this.socket.on('new-chat-message', (message:ProjectMessageResponseSchema) => {
                         handler(message);
                     });
+                    break;
+                case handlers.onSpellCheckLanguageUpdated:
+                    this.socket.on('spellCheckLanguageUpdated', (language:string) => {
+                        handler(language);
+                    });
+                    break;
                 default:
                     break;
             }

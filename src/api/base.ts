@@ -543,9 +543,9 @@ export class BaseAPI {
         });
     }
 
-    async proxyRequestToSpellingApi(identity:Identity, userId:string, words: string[]) {
+    async proxyRequestToSpellingApi(identity:Identity, language:string, userId:string, words: string[]) {
         const body = {
-            language: 'en',
+            language,
             skipLearnedWords: true,
             token: userId,
             words

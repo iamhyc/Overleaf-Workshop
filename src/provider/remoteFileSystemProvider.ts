@@ -70,7 +70,7 @@ export interface ProjectEntity {
     rootFolder: Array<FolderEntity>,
     publicAccessLevel: string, //"tokenBased"
     compiler: string, //"pdflatex"
-    spellCheckLanguage: string, //"en"
+    spellCheckLanguage: string,
     deletedDocs: Array<{
         _id: string,
         name: string,
@@ -357,7 +357,13 @@ export class VirtualFileSystem {
                     doc.remoteCache = undefined;
                     doc.localCache = undefined;
                 }
-            }
+            },
+            onSpellCheckLanguageUpdated: (language:string) => {
+                if (this.root) {
+                    this.root.spellCheckLanguage = language;
+                    EventBus.fire('spellCheckLanguageUpdateEvent', {language});
+                }
+            },
         });
     }
 
@@ -633,11 +639,13 @@ export class VirtualFileSystem {
     }
 
     async spellCheck(uri: vscode.Uri, words: string[]) {
+        if (this.root?.spellCheckLanguage==='') { return []; }
+
         const {fileType} = await this._resolveUri(uri);
         if (fileType==='doc' || fileType==='file') {
             const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
-            const res = await this.api.proxyRequestToSpellingApi(identity, this.userId, words);
-            if (res.type==='success') {
+            const res = this.root && await this.api.proxyRequestToSpellingApi(identity, this.root.spellCheckLanguage, this.userId, words);
+            if (res?.type==='success') {
                 return res.misspellings;
             }
         }

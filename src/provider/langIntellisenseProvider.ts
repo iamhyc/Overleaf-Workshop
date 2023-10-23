@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 import { RemoteFileSystemProvider, parseUri } from './remoteFileSystemProvider';
+import { EventBus } from '../utils/eventBus';
 
 type PathFileType = 'text' | 'image' | 'bib';
 
@@ -163,6 +164,17 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
             // register learn spelling command
             vscode.commands.registerCommand('langIntellisense.learnSpelling', (uri: vscode.Uri, word: string) => {
                 this.learnSpelling(uri, word);
+            }),
+            // reset diagnostics when spell check languages changed
+            EventBus.on('spellCheckLanguageUpdateEvent', async () => {
+                this.learnedWords?.clear();
+                this.suggestionCache.clear();
+                this.diagnosticCollection.clear();
+                vscode.workspace.textDocuments.forEach(async doc => {
+                    const uri = doc.uri;
+                    await this.check( uri, doc.getText() );
+                    this.updateDiagnostics(uri);
+                });
             }),
             // update diagnostics on document open
             vscode.workspace.onDidOpenTextDocument(async doc => {
