@@ -37,7 +37,7 @@ export interface EventsHandler {
 }
 
 export class SocketIOAPI {
-    private _handlers: EventsHandler = {};
+    private _handlers: Array<EventsHandler> = [];
 
     private url: string;
     private socket?: any;
@@ -83,12 +83,15 @@ export class SocketIOAPI {
         return this._handlers;
     }
 
-    resumeEventHandlers(handlers: EventsHandler) {
-        this.updateEventHandlers(handlers);
+    resumeEventHandlers(handlers: Array<EventsHandler>) {
+        this._handlers = [];
+        handlers.forEach((handler) => {
+            this.updateEventHandlers(handler);
+        });
     }
 
     updateEventHandlers(handlers: EventsHandler) {
-        Object.assign(this._handlers, handlers);
+        this._handlers.push(handlers);
         Object.values(handlers).forEach((handler) => {
             switch (handler) {
                 case handlers.onFileCreated:

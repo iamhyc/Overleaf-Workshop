@@ -81,6 +81,7 @@ export class ClientManager {
     private inactivateTask?: NodeJS.Timeout;
     private readonly status: vscode.StatusBarItem;
     private readonly onlineUsers: {[K:string]:UpdateUserSchema} = {};
+    private connectedFlag: boolean = true;
 
     constructor(
         private readonly vfs: VirtualFileSystem,
@@ -94,6 +95,12 @@ export class ClientManager {
             },
             onClientDisconnected: (id:string) => {
                 this.removePosition(id);
+            },
+            onDisconnected: () => {
+                this.connectedFlag = false;
+            },
+            onConnectionAccepted: (publicId:string) => {
+                this.connectedFlag = true;
             }
         });
         this.socket.getConnectedUsers().then(users => {
@@ -219,37 +226,46 @@ export class ClientManager {
 
     private updateStatus() {
         const count = Object.keys(this.onlineUsers).length;
-        switch (count) {
-            case undefined:
-                this.status.color = undefined;
-                this.status.text = '$(person-outline)';
+        switch (this.connectedFlag){
+            case false:
+                this.status.color = 'red';
+                this.status.text = '$(sync-ignored)';
                 this.status.tooltip = `${ELEGANT_NAME}: Not connected`;
-                break;
-            case 0:
-                this.status.color = undefined;
-                this.status.text = '$(organization)';
-                this.status.tooltip = `${ELEGANT_NAME}: Online`;
-                break;
-            default:
-                this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
-                this.status.text = `$(organization) ${count}`;
-                const tooltip = new vscode.MarkdownString();
-                tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
-                Object.values(this.onlineUsers).forEach(user => {
-                    const args = JSON.stringify([user.id]);
-                    const commandUri = vscode.Uri.parse(`command:collaboration.jumpToUser?${encodeURIComponent(args)}`);
-                    const userInfo = `[<span style="color:${user.selection?.color};"><b>${user.name}</b></span>]()`;
-                    const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
-                    const cursorInfo = user.row ? ` @ [${docPath}#L${user.row+1}](${commandUri})` : '';
-                    const since_last_update = user.last_updated_at ? formatTime(Date.now() - user.last_updated_at) : '';
-                    const timeInfo = since_last_update==='' ? 'Just now' : `${since_last_update} ago`;
-                    tooltip.appendMarkdown(`${userInfo} ${cursorInfo} ${timeInfo}\n\n`);
+                // Kick out all users indication since the connection is lost
+                Object.keys(this.onlineUsers).forEach(clientId => {
+                    this.removePosition(clientId);
                 });
-                tooltip.isTrusted = true;
-                tooltip.supportHtml = true;
-                this.status.tooltip = tooltip;
+                break;
+            case true:
+                switch (count) {
+                    case 0:
+                        this.status.color = undefined;
+                        this.status.text = '$(organization)';
+                        this.status.tooltip = `${ELEGANT_NAME}: Online`;
+                        break;
+                    default:
+                        this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
+                        this.status.text = `$(organization) ${count}`;
+                        const tooltip = new vscode.MarkdownString();
+                        tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
+                        Object.values(this.onlineUsers).forEach(user => {
+                            const args = JSON.stringify([user.id]);
+                            const commandUri = vscode.Uri.parse(`command:collaboration.jumpToUser?${encodeURIComponent(args)}`);
+                            const userInfo = `[<span style="color:${user.selection?.color};"><b>${user.name}</b></span>]()`;
+                            const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
+                            const cursorInfo = user.row ? ` @ [${docPath}#L${user.row+1}](${commandUri})` : '';
+                            const since_last_update = user.last_updated_at ? formatTime(Date.now() - user.last_updated_at) : '';
+                            const timeInfo = since_last_update==='' ? 'Just now' : `${since_last_update} ago`;
+                            tooltip.appendMarkdown(`${userInfo} ${cursorInfo} ${timeInfo}\n\n`);
+                        });
+                        tooltip.isTrusted = true;
+                        tooltip.supportHtml = true;
+                        this.status.tooltip = tooltip;
+                        break;
+                }
                 break;
         }
+        
         this.status.show();
         setTimeout(this.updateStatus.bind(this), 500);
     }
