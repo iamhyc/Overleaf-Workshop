@@ -257,18 +257,26 @@ export class VirtualFileSystem {
     private remoteWatch() {
         this.socket.updateEventHandlers({
             onDisconnected: () => {
-                console.log("Disconnected, reconnecting ...");
-                const _handlers = this.socket.handlers;
-                const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
-                if (res) {
-                    this.api = res.api;
-                    this.socket = res.socket;
-                    this.socket.resumeEventHandlers(_handlers);
-                    this.root = undefined;
-                    this.initializing = undefined;
-                } else {
-                    throw new Error(`Cannot init SocketIOAPI for ${this.serverName}`);
-                }
+                console.log("Disconnected");
+                vscode.window.showErrorMessage(`Connection lost: ${this.serverName}`, 'Reconnect').then((choice) => {
+                    if (choice==='Reconnect') {
+                        console.log("Reconnecting ...");
+                        const _handlers = this.socket.handlers;
+                        const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
+                        if (res) {
+                            this.api = res.api;
+                            this.socket = res.socket;
+                            this.socket.resumeEventHandlers(_handlers);
+                            this.root = undefined;
+                            this.initializing = this.socket.joinProject(this.projectId).then((project) => {
+                                this.root = project;
+                                return project;
+                            });
+                        } else {
+                            throw new Error(`Cannot init SocketIOAPI for ${this.serverName}`);
+                        }
+                    }
+                });
             },
             onConnectionAccepted: (publicId:string) => {
                 this.publicId = publicId;
@@ -506,9 +514,7 @@ export class VirtualFileSystem {
                                 .filter(x => x) as any;
                 })(),
             };
-            if (update.op && update.op.length) {
-                this.isDirty = true;
-            }
+            this.isDirty = (update.op && update.op.length) ? true : false;
             await this.socket.applyOtUpdate(doc._id, update);
             doc.localCache = mergeRes;
             doc.remoteCache = mergeRes;
@@ -517,8 +523,7 @@ export class VirtualFileSystem {
                     {type: vscode.FileChangeType.Changed, uri: uri}
                 ]);
             }, 10);
-
-            doc.lastVersion = doc.version;
+            doc.lastVersion = doc.version;                
         }
     }
 
