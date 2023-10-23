@@ -185,7 +185,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     loginServer(server: ServerItem) {
-        const loginMethods = {
+        const loginMethods:Record<string, ()=>void> = {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             'Login with Password': () => {
                 vscode.window.showInputBox({'placeHolder': 'Email'})
@@ -209,7 +209,10 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             },
             // eslint-disable-next-line @typescript-eslint/naming-convention
             'Login with Cookies': () => {
-                vscode.window.showInputBox({'placeHolder': 'Cookies, e.g., "sharelatex.sid=..." or "overleaf_session2=..."',})
+                vscode.window.showInputBox({
+                    'placeHolder': 'Cookies, e.g., "sharelatex.sid=..." or "overleaf_session2=..."',
+                    'prompt': 'README: [How to Login with Cookies](https://github.com/iamhyc/overleaf-workshop#how-to-login-with-cookies)',
+                })
                 .then(cookies => cookies ? Promise.resolve(cookies) : Promise.reject())
                 .then(cookies =>
                     GlobalStateManager.loginServer(this.context, server.api, server.name, {cookies})
@@ -223,6 +226,11 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                 });
             },
         };
+
+        //NOTE: temporarily disable password-based login for `www.overleaf.com`
+        if (server.name==='www.overleaf.com') {
+            delete loginMethods['Login with Password'];
+        }
 
         vscode.window.showQuickPick(Object.keys(loginMethods), {
             canPickMany:false, placeHolder:'Select the login method below.'})
