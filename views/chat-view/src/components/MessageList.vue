@@ -47,6 +47,7 @@
         justify-content: center;
         align-items: center;
         height: 100%;
+        color: var(--vscode-descriptionForeground);
     }
 
     .message-container {

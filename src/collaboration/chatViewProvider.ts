@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { SocketIOAPI } from '../api/socketio';
 import { ProjectMessageResponseSchema } from '../api/base';
-import { VirtualFileSystem } from '../provider/remoteFileSystemProvider';
+import { VirtualFileSystem, parseUri } from '../provider/remoteFileSystemProvider';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
     private webviewView?: vscode.WebviewView;
@@ -41,6 +41,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 switch (e.type) {
                     case 'get-messages': this.getMessages(); break;
                     case 'send-message': this.sendMessage(e.content); break;
+                    case 'show-line-ref':
+                        const {path, L1, C1, L2, C2} = e.content;
+                        const range = new vscode.Range(L1, C1, L2, C2);
+                        this.showLineRef(path, range);
+                        break;
                     default: break;
                 }
             });
@@ -70,9 +75,37 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    private copyLineRef() {
+        const editor = vscode.window.activeTextEditor;
+        if (editor === undefined) { return; }
+
+        const filePath = parseUri(editor.document.uri).pathParts.join('/');
+        const start = editor.selection.start, end = editor.selection.end;
+        const ref = `[[${filePath}#L${start.line}C${start.character}-L${end.line}C${end.character}]]`;
+        vscode.env.clipboard.writeText(ref);
+
+        // reveal chat webview
+        this.webviewView?.show(true);
+        this.webviewView?.webview.postMessage({
+            type: 'insert-text',
+            content: ref + ' ',
+        });
+    }
+
+    private showLineRef(path:string, range:vscode.Range) {
+        const uri = this.vfs.pathToUri(path);
+        vscode.window.showTextDocument(uri).then(editor => {
+            editor.revealRange(range);
+            editor.selection = new vscode.Selection(range.start, range.end);
+        });
+    }
+
     get triggers() {
         return [
             //TODO: register commands
+            vscode.commands.registerCommand('collaboration.copyLineRef', () => {
+                this.copyLineRef();
+            }),
             // register chat webview
             vscode.window.registerWebviewViewProvider('chatWebview', this, {webviewOptions:{retainContextWhenHidden:true}}),
         ];

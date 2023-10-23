@@ -7,6 +7,7 @@
     import InputBox from "./components/InputBox.vue";
     import MessageList from "./components/MessageList.vue";
 
+    const inputBox = ref();
     const messages = ref<Message[]>([]);
     const messageTree = new MessageTree(messages);
 
@@ -20,6 +21,10 @@
                 case 'new-message':
                     messageTree.pushMessage(data.content);
                     break;
+                case 'insert-text':
+                    if (!inputBox.value) { return; }
+                    inputBox.value.insertText(data.content);
+                    break;
             }
         });
 
@@ -30,7 +35,7 @@
 <template>
     <main>
         <MessageList :messages="messages" />
-        <InputBox />
+        <InputBox ref="inputBox" />
     </main>
 </template>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
     import { computed, ref } from 'vue';
     import InputBox from './InputBox.vue';
-    import { type Message, elapsedTime, getReplyContext } from '../utils';
+    import { type Message, elapsedTime, getReplyContext, showLineRef } from '../utils';
     import * as markdownit from 'markdown-it';
     const md = new markdownit.default();
 
@@ -26,6 +26,25 @@
     const replyContext = computed(() => {
         return getReplyContext(props.message);
     });
+    const parsedContent = computed(() => {
+        let content = props.message.content;
+        // render markdown content
+        content = md.render(content);
+        // parse line references
+        content = content.replace(/\[\[(([^#]+)#L(\d+)C(\d+)-L(\d+)C(\d+))\]\]/g,
+                    `<vscode-link class="show-line-ref" href='$2,$3,$4,$5,$6'>$1</vscode-link>`);
+        return content;
+    });
+
+    function handleClick(event: Event) {
+        const target = event.target as HTMLElement;
+        if (target.className==='show-line-ref') {
+            event.preventDefault();
+            const href = target.getAttribute('href')?.split(',') || [];
+            const [path, strL1, strC1, strL2, strC2] = href;
+            showLineRef(path, parseInt(strL1), parseInt(strC1), parseInt(strL2), parseInt(strC2));
+        }
+    }
 </script>
 
 <template>
@@ -40,7 +59,7 @@
             </span>
             <span class="message-item_header_date" :title="new Date(message.timestamp).toLocaleString()">{{ formatTimestamp }}</span>
         </div>
-        <div class="message-item_content" v-html="md.render(message.content)"></div>
+        <div class="message-item_content" @click="handleClick($event)" v-html="parsedContent"></div>
         <div class="message-item_actions">
             <vscode-button
                 @mouseenter="hoverButton='reply'"

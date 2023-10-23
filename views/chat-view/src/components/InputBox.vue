@@ -7,6 +7,10 @@
         context?: string,
         placeholder?: string,
     }>();
+    defineExpose({
+        insertText,
+    });
+
     const textAreaRef = ref<TextArea>();
     const placeholder = computed(() => {
         return props.placeholder || 'Send a message to your collaborators...';
@@ -19,6 +23,20 @@
         textAreaElement.style.borderRadius = '4px';
         textAreaElement.style.overflow = 'hidden';
     });
+
+    function insertText(text: string) {
+        if (!textAreaRef.value) { return; }
+        const textAreaElement = textAreaRef.value.control as HTMLTextAreaElement;
+        const selectionStart = textAreaElement.selectionStart;
+        const selectionEnd = textAreaElement.selectionEnd;
+        const value = textAreaElement.value;
+        const newValue = value.slice(0, selectionStart) + text + value.slice(selectionEnd);
+        textAreaElement.value = newValue;
+        textAreaElement.selectionStart = selectionStart + text.length;
+        textAreaElement.selectionEnd = selectionStart + text.length;
+        autoExpand();
+        textAreaElement.focus();
+    }
 
     function autoExpand() {
         if (!textAreaRef.value) { return; }

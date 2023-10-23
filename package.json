@@ -211,6 +211,11 @@
         "command": "compileManager.syncCode",
         "title": "Jump to PDF",
         "category": "Overleaf Workshop"
+      },
+      {
+        "command": "collaboration.copyLineRef",
+        "title": "Overleaf: Copy Line Reference",
+        "category": "Overleaf Workshop"
       }
     ],
     "keybindings": [
@@ -230,6 +235,12 @@
         "key": "ctrl+alt+j",
         "mac": "cmd+alt+j",
         "command": "compileManager.syncCode",
+        "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
+      },
+      {
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c",
+        "command": "collaboration.copyLineRef",
         "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
       }
     ],
@@ -268,6 +279,12 @@
       ]
     },
     "menus": {
+      "editor/context": [
+        {
+          "command": "collaboration.copyLineRef",
+          "when": "resourceScheme == overleaf-workshop && resourceExtname == .tex"
+        }
+      ],
       "view/title": [
         {
           "command": "projectManager.addServer",

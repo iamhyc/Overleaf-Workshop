@@ -66,6 +66,13 @@ export function sendMessage(content: string, context?:string) {
     });
 }
 
+export function showLineRef(path:string, L1:number, C1:number, L2:number, C2:number) {
+    vscode.postMessage({
+        type: 'show-line-ref',
+        content: {path, L1, C1, L2, C2},
+    });
+}
+
 export function getReplyContext(message: Message) {
     const slidingTextLength = 20;
     const username = `${message.user.first_name}${message.user.last_name}`;
