@@ -228,7 +228,7 @@ export class ClientManager {
 
     private updateStatus() {
         const count = Object.keys(this.onlineUsers).length;
-        switch (this.connectedFlag){
+        switch (this.connectedFlag) {
             case false:
                 this.status.color = 'red';
                 this.status.text = '$(sync-ignored)';
@@ -239,15 +239,18 @@ export class ClientManager {
                 });
                 break;
             case true:
+                const prefixText = this.chatViewer.hasUnread? '$(bell-dot) ' : '';
+                this.status.command = this.chatViewer.hasUnread? 'collaboration.revealChatView' : undefined;
+
                 switch (count) {
                     case 0:
                         this.status.color = undefined;
-                        this.status.text = '$(organization)';
+                        this.status.text = prefixText + '$(organization)';
                         this.status.tooltip = `${ELEGANT_NAME}: Online`;
                         break;
                     default:
                         this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
-                        this.status.text = `$(organization) ${count}`;
+                        this.status.text = prefixText + `$(organization) ${count}`;
                         const tooltip = new vscode.MarkdownString();
                         tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
                         Object.values(this.onlineUsers).forEach(user => {
@@ -284,6 +287,9 @@ export class ClientManager {
             }),
             vscode.commands.registerCommand('collaboration.jumpToUser', (uid) => {
                 this.jumpToUser(uid);
+            }),
+            vscode.commands.registerCommand('collaboration.revealChatView', () => {
+                this.chatViewer.revealChatView();
             }),
             // register chat view provider
             ...this.chatViewer.triggers,
