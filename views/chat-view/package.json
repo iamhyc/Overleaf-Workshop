@@ -13,6 +13,7 @@
   "dependencies": {
     "@vscode/codicons": "^0.0.33",
     "@vscode/webview-ui-toolkit": "^1.2.2",
+    "@vueuse/core": "^10.5.0",
     "markdown-it": "^13.0.2",
     "vue": "^3.3.4"
   },

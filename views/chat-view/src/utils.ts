@@ -16,6 +16,7 @@ export interface Message {
     clientId: string,
     replyTo?: {messageId:string, username:string, userId:string},
     replies?: Message[],
+    newMessage?: boolean,
 }
 
 export function elapsedTime(timestamp:number, now=Date.now()) {
@@ -90,7 +91,10 @@ export class MessageTree {
     private rootMap: Record<string, string> = {};
     userId: string = '';
 
-    constructor(private messages: Ref<Message[]>) {}
+    constructor(
+        private messages: Ref<Message[]>,
+        private unreadRecord: Ref<string[]>,
+    ) {}
 
     update(messages: Message[]) {
         messages.forEach(message => {
@@ -98,7 +102,12 @@ export class MessageTree {
         });
     }
 
-    pushMessage(message: Message) {
+    pushMessage(message: Message, newMessage:boolean=false) {
+        // update unread record
+        newMessage = newMessage && (message.user.id !== this.userId);
+        message.newMessage = newMessage;
+        newMessage && this.unreadRecord.value.push(message.id);
+
         const _lines = message.content.trim().split('\n');
         const _firstLine = _lines[0];
         const match = _firstLine.match(this.replyRegex);

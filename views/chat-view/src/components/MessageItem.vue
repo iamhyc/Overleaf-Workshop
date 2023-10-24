@@ -1,5 +1,6 @@
 <script setup lang="ts">
-    import { computed, inject, ref, type Ref } from 'vue';
+    import { useElementVisibility } from '@vueuse/core'
+    import { computed, inject, ref, type Ref, watchEffect } from 'vue';
     import InputBox from './InputBox.vue';
     import { type Message, elapsedTime, getReplyContext, showLineRef } from '../utils';
     import * as markdownit from 'markdown-it';
@@ -14,9 +15,11 @@
         message: Message,
         root?: Message,
     }>();
+    const container = ref<HTMLDivElement>();
     const showReply = ref(false);
     const hoverButton = ref('');
     const activeInputBox = inject('activeInputBox');
+    const unreadRecord = inject('unreadRecord') as Ref<string[]>;
 
     const username = computed(() => {
         return `${props.message.user.first_name} ${props.message.user.last_name||''}`;
@@ -35,6 +38,15 @@
         content = content.replace(/\[\[(([^#]+)#L(\d+)C(\d+)-L(\d+)C(\d+))\]\]/g,
                     `<vscode-link class="show-line-ref" href='$2,$3,$4,$5,$6'>$1</vscode-link>`);
         return content;
+    });
+
+    const containerVisible = useElementVisibility(container);
+    watchEffect(() => {
+        if (containerVisible.value && props.message.newMessage) {
+            props.message.newMessage = false;
+            const index = unreadRecord.value.indexOf(props.message.id);
+            index>=0 && unreadRecord.value.splice(index, 1);
+        }
     });
 
     function insertUsername() {
@@ -57,10 +69,23 @@
             showLineRef(path, parseInt(strL1), parseInt(strC1), parseInt(strL2), parseInt(strC2));
         }
     }
+
+    function scrollIntoView() {
+        // scroll container into viewport
+        container.value?.scrollIntoView({behavior: 'smooth', block: 'start'});
+        container.value?.classList.add('showup');
+        setTimeout(() => {
+            container.value?.classList.remove('showup');
+        }, 500);
+    }
+
+    defineExpose({
+        scrollIntoView,
+    });
 </script>
 
 <template>
-    <div class="message-item">
+    <div class="message-item" ref="container">
         <div class="message-item_header">
             <span class="message-item_header_author">
                 <inline class="clickable" @click="insertUsername()" :title="`@${username}`">{{ username }}</inline>
@@ -134,5 +159,11 @@
 
     .clickable {
         cursor: pointer;
+    }
+
+    .showup {
+        /* highlight border with focus color and fade out border color */
+        border-color: var(--vscode-focusBorder);
+        transition: border-color 0.5s ease-out;
     }
 </style>
