@@ -2,7 +2,7 @@
     import * as ui from "@vscode/webview-ui-toolkit";
     ui.provideVSCodeDesignSystem().register(ui.allComponents);
 
-    import { ref, onMounted } from "vue";
+    import { ref, onMounted, provide, watchEffect } from "vue";
     import { getMessages, MessageTree, type Message } from "./utils";
     import InputBox from "./components/InputBox.vue";
     import MessageList from "./components/MessageList.vue";
@@ -11,11 +11,15 @@
     const messages = ref<Message[]>([]);
     const messageTree = new MessageTree(messages);
 
+    const activeInputBox = ref();
+    provide('activeInputBox', activeInputBox);
+
     onMounted(() => {
         window.addEventListener('message', async (e) => {
             const data = e.data;
             switch (data.type) {
                 case 'get-messages':
+                    messageTree.userId = data.userId;
                     messageTree.update(data.content.reverse());
                     break;
                 case 'new-message':
@@ -25,6 +29,12 @@
                     if (!inputBox.value) { return; }
                     inputBox.value.insertText(data.content);
                     break;
+            }
+        });
+
+        watchEffect(async () => {
+            if (activeInputBox.value===undefined || activeInputBox.value.value===undefined) {
+                activeInputBox.value = inputBox;
             }
         });
 

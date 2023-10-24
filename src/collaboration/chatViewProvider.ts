@@ -58,6 +58,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             this.webviewView.webview.postMessage({
                 type: 'get-messages',
                 content: messages,
+                userId: this.vfs._userId,
             });
         }
     }
@@ -75,21 +76,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    private copyLineRef() {
+    insertText(text: string) {
+        if (this.webviewView !== undefined) {
+            // reveal chat webview
+            this.webviewView?.show(true);
+            this.webviewView.webview.postMessage({
+                type: 'insert-text',
+                content: text,
+            });
+        }
+    }
+
+    private getLineRef() {
         const editor = vscode.window.activeTextEditor;
         if (editor === undefined) { return; }
 
         const filePath = parseUri(editor.document.uri).pathParts.join('/');
         const start = editor.selection.start, end = editor.selection.end;
         const ref = `[[${filePath}#L${start.line}C${start.character}-L${end.line}C${end.character}]]`;
-        vscode.env.clipboard.writeText(ref);
-
-        // reveal chat webview
-        this.webviewView?.show(true);
-        this.webviewView?.webview.postMessage({
-            type: 'insert-text',
-            content: ref + ' ',
-        });
+        return ref;
     }
 
     private showLineRef(path:string, range:vscode.Range) {
@@ -102,9 +107,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     get triggers() {
         return [
-            //TODO: register commands
+            // register commands
             vscode.commands.registerCommand('collaboration.copyLineRef', () => {
-                this.copyLineRef();
+                const ref = this.getLineRef();
+                ref && vscode.env.clipboard.writeText(ref);
+            }),
+            vscode.commands.registerCommand('collaboration.insertLineRef', () => {
+                const ref = this.getLineRef();
+                ref && this.insertText(ref + ' ');
             }),
             // register chat webview
             vscode.window.registerWebviewViewProvider('chatWebview', this, {webviewOptions:{retainContextWhenHidden:true}}),

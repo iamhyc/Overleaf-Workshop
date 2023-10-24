@@ -1,5 +1,5 @@
 <script setup lang="ts">
-    import { ref, onMounted, computed } from 'vue';
+    import { ref, type Ref, onMounted, computed, inject, onUnmounted } from 'vue';
     import { TextArea } from '@vscode/webview-ui-toolkit';
     import { sendMessage } from '../utils';
 
@@ -11,6 +11,7 @@
         insertText,
     });
 
+    const activeInputBox = inject('activeInputBox');
     const textAreaRef = ref<TextArea>();
     const placeholder = computed(() => {
         return props.placeholder || 'Send a message to your collaborators...';
@@ -23,6 +24,16 @@
         textAreaElement.style.borderRadius = '4px';
         textAreaElement.style.overflow = 'hidden';
     });
+
+    onUnmounted(() => {
+        (activeInputBox as Ref<any>).value = ref(undefined);
+    });
+
+    function setActive() {
+        (activeInputBox as Ref<any>).value = ref({
+            'insertText': insertText
+        });
+    }
 
     function insertText(text: string) {
         if (!textAreaRef.value) { return; }
@@ -64,6 +75,7 @@
 <template>
     <vscode-text-area
     ref="textAreaRef"
+    @focus="setActive"
     @input="autoExpand"
     @keydown="handleKeybinding"
     autofocus resize="none" :placeholder="placeholder">

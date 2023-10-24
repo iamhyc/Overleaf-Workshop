@@ -75,7 +75,7 @@ export function showLineRef(path:string, L1:number, C1:number, L2:number, C2:num
 
 export function getReplyContext(message: Message) {
     const slidingTextLength = 20;
-    const username = `${message.user.first_name}${message.user.last_name}`;
+    const username = `${message.user.first_name} ${message.user.last_name||''}`;
     let slidingText = message.content.split('\n').join(' ').slice(0, slidingTextLength);
     slidingText += message.content.length>=slidingTextLength ? '...' : '';
 
@@ -88,6 +88,7 @@ export function getReplyContext(message: Message) {
 export class MessageTree {
     private replyRegex = /^>\s*reply-to-(\w+)\s*\[@(.+)\]\((\w+)\)\s*$/;
     private rootMap: Record<string, string> = {};
+    userId: string = '';
 
     constructor(private messages: Ref<Message[]>) {}
 

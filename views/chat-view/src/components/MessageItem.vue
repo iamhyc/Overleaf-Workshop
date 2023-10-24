@@ -1,5 +1,5 @@
 <script setup lang="ts">
-    import { computed, ref } from 'vue';
+    import { computed, inject, ref, type Ref } from 'vue';
     import InputBox from './InputBox.vue';
     import { type Message, elapsedTime, getReplyContext, showLineRef } from '../utils';
     import * as markdownit from 'markdown-it';
@@ -16,9 +16,10 @@
     }>();
     const showReply = ref(false);
     const hoverButton = ref('');
+    const activeInputBox = inject('activeInputBox');
 
     const username = computed(() => {
-        return `${props.message.user.first_name} ${props.message.user.last_name}`;
+        return `${props.message.user.first_name} ${props.message.user.last_name||''}`;
     });
     const formatTimestamp = computed(() => {
         return `${elapsedTime(props.message.timestamp, props.now)} ago`;
@@ -36,6 +37,17 @@
         return content;
     });
 
+    function insertUsername() {
+        const text = `@[[${username.value}#${props.message.user.id}]] `;
+        (activeInputBox as Ref<any>).value.value.insertText(text);
+    }
+
+    function insertReplyUser() {
+        const replyTo = props.message.replyTo;
+        const text = `@[[${replyTo?.username}#${replyTo?.userId}]] `;
+        (activeInputBox as Ref<any>).value.value.insertText(text);
+    }
+
     function handleClick(event: Event) {
         const target = event.target as HTMLElement;
         if (target.className==='show-line-ref') {
@@ -51,10 +63,10 @@
     <div class="message-item">
         <div class="message-item_header">
             <span class="message-item_header_author">
-                <inline>{{ username }}</inline>
+                <inline class="clickable" @click="insertUsername()" :title="`@${username}`">{{ username }}</inline>
                 <inline v-if="root && message.replyTo && message.replyTo.userId!==root.user.id">
                     <span class="codicon codicon-chevron-right"></span>
-                    {{ message.replyTo.username }}
+                    <inline class="clickable" @click="insertReplyUser()" :title="`@${message.replyTo.username}`">{{ message.replyTo.username }}</inline>
                 </inline>
             </span>
             <span class="message-item_header_date" :title="new Date(message.timestamp).toLocaleString()">{{ formatTimestamp }}</span>
@@ -72,6 +84,7 @@
             </vscode-button>
         </div>
         <InputBox
+            ref="inputBox"
             v-focus v-if="showReply"
             @keydown.enter.exact="showReply=false"
             @keydown.escape.exact="showReply=false"
@@ -117,5 +130,9 @@
         align-items: center;
         width: 100%;
         color: var(--vscode-descriptionForeground);
+    }
+
+    .clickable {
+        cursor: pointer;
     }
 </style>

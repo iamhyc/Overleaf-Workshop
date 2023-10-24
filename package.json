@@ -216,6 +216,11 @@
         "command": "collaboration.copyLineRef",
         "title": "Overleaf: Copy Line Reference",
         "category": "Overleaf Workshop"
+      },
+      {
+        "command": "collaboration.insertLineRef",
+        "title": "Overleaf: Insert Line Reference",
+        "category": "Overleaf Workshop"
       }
     ],
     "keybindings": [
@@ -282,6 +287,10 @@
       "editor/context": [
         {
           "command": "collaboration.copyLineRef",
+          "when": "resourceScheme == overleaf-workshop && resourceExtname == .tex"
+        },
+        {
+          "command": "collaboration.insertLineRef",
           "when": "resourceScheme == overleaf-workshop && resourceExtname == .tex"
         }
       ],
