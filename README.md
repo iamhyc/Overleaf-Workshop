@@ -34,6 +34,10 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo05-intellisense.png" heigh=300px/>
 
+- Chat with Collaborators
+
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo06-chat.gif" heigh=300px/>
+
 ### How to Login with Cookies
 
 <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/login_with_cookie.png" heigh=300px/>
