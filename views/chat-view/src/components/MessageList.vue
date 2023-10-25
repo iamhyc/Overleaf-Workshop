@@ -1,5 +1,5 @@
 <script setup lang="ts">
-    import { ref, watchEffect } from 'vue';
+    import { ref, watchEffect, provide } from 'vue';
     import { type Message } from '../utils';
     import MessageItem from './MessageItem.vue';
 
@@ -7,6 +7,7 @@
         messages: Message[],
     }>();
     const messageContainer = ref<HTMLDivElement>();
+    const refs: {[id:string]:any} = ref({});
 
     // update the timestamp every 10 seconds
     const now = ref(Date.now());
@@ -20,6 +21,14 @@
             messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
         }
     });
+
+    const scrollItemIntoView = (messageId: string) => {
+        (refs.value)[ messageId ].scrollIntoView();
+    };
+
+    defineExpose({
+        scrollItemIntoView,
+    });
 </script>
 
 <template>
@@ -29,8 +38,12 @@
     <div v-else class="message-container" ref="messageContainer">
         <template v-for="message in messages" :key="message.id">
             <vscode-divider role="separator"></vscode-divider>
-            <MessageItem :message="message" :now="now" />
-            <MessageItem v-if="message.replies" v-for="reply in message.replies" class="indent" :key="reply.id" :root="message" :message="reply" :now="now" />
+            <MessageItem :message="message" :now="now" :ref="(el) => {refs[message.id] = el;}" />
+            <MessageItem
+                v-if="message.replies" v-for="reply in message.replies"
+                class="indent" :key="reply.id" :ref="(el) => {refs[reply.id] = el;}"
+                :root="message" :message="reply" :now="now"
+            />
         </template>
     </div>
 </template>
@@ -47,6 +60,7 @@
         justify-content: center;
         align-items: center;
         height: 100%;
+        color: var(--vscode-descriptionForeground);
     }
 
     .message-container {

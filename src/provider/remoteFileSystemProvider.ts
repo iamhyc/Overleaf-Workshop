@@ -146,6 +146,10 @@ export class VirtualFileSystem {
         }
     }
 
+    get _userId() {
+        return this.userId;
+    }
+
     async init() : Promise<ProjectEntity> {
         if (this.root) {
             return Promise.resolve(this.root);

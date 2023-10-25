@@ -82,6 +82,7 @@ export class ClientManager {
     private readonly status: vscode.StatusBarItem;
     private readonly onlineUsers: {[K:string]:UpdateUserSchema} = {};
     private connectedFlag: boolean = true;
+    private readonly chatViewer: ChatViewProvider;
 
     constructor(
         private readonly vfs: VirtualFileSystem,
@@ -122,6 +123,7 @@ export class ClientManager {
             });
         });
 
+        this.chatViewer = new ChatViewProvider(this.vfs, this.publicId, this.context.extensionUri, this.socket);
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
         this.updateStatus();
     }
@@ -226,7 +228,7 @@ export class ClientManager {
 
     private updateStatus() {
         const count = Object.keys(this.onlineUsers).length;
-        switch (this.connectedFlag){
+        switch (this.connectedFlag) {
             case false:
                 this.status.color = 'red';
                 this.status.text = '$(sync-ignored)';
@@ -237,23 +239,32 @@ export class ClientManager {
                 });
                 break;
             case true:
+                const prefixText = this.chatViewer.hasUnread? `$(bell-dot) ${this.chatViewer.hasUnread} ` : '';
+                this.status.command = this.chatViewer.hasUnread? 'collaboration.revealChatView' : undefined;
+                this.status.backgroundColor = this.chatViewer.hasUnread? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
+
                 switch (count) {
                     case 0:
                         this.status.color = undefined;
-                        this.status.text = '$(organization)';
+                        this.status.text = prefixText + '$(organization)';
                         this.status.tooltip = `${ELEGANT_NAME}: Online`;
                         break;
                     default:
                         this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
-                        this.status.text = `$(organization) ${count}`;
+                        this.status.text = prefixText + `$(organization) ${count}`;
                         const tooltip = new vscode.MarkdownString();
                         tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
+
                         Object.values(this.onlineUsers).forEach(user => {
-                            const args = JSON.stringify([user.id]);
-                            const commandUri = vscode.Uri.parse(`command:collaboration.jumpToUser?${encodeURIComponent(args)}`);
-                            const userInfo = `[<span style="color:${user.selection?.color};"><b>${user.name}</b></span>]()`;
-                            const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
-                            const cursorInfo = user.row ? ` @ [${docPath}#L${user.row+1}](${commandUri})` : '';
+                            const userArgs = JSON.stringify([`@[[${user.name}#${user.user_id}]] `]);
+                            const userCommandUri = vscode.Uri.parse(`command:collaboration.insertText?${encodeURIComponent(userArgs)}`);
+                            const userInfo = `<a href=${userCommandUri}>@<span style="color:${user.selection?.color};"><b>${user.name}</b></span></a>`;
+
+                            const jumpArgs = JSON.stringify([user.id]);
+                            const jumpCommandUri = vscode.Uri.parse(`command:collaboration.jumpToUser?${encodeURIComponent(jumpArgs)}`);
+                                    const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
+                                    const cursorInfo = user.row ? ` at <a href="${jumpCommandUri}">${docPath}#L${user.row+1}</a>` : '';
+                
                             const since_last_update = user.last_updated_at ? formatTime(Date.now() - user.last_updated_at) : '';
                             const timeInfo = since_last_update==='' ? 'Just now' : `${since_last_update} ago`;
                             tooltip.appendMarkdown(`${userInfo} ${cursorInfo} ${timeInfo}\n\n`);
@@ -273,11 +284,17 @@ export class ClientManager {
     get triggers() {
         return [
             // register commands
+            vscode.commands.registerCommand('collaboration.insertText', (text) => {
+                this.chatViewer.insertText(text);
+            }),
             vscode.commands.registerCommand('collaboration.jumpToUser', (uid) => {
                 this.jumpToUser(uid);
             }),
+            vscode.commands.registerCommand('collaboration.revealChatView', () => {
+                this.chatViewer.revealChatView();
+            }),
             // register chat view provider
-            ...new ChatViewProvider(this.vfs, this.publicId, this.context.extensionUri, this.socket).triggers,
+            ...this.chatViewer.triggers,
             // update this client's position
             vscode.window.onDidChangeTextEditorSelection(async e => {
                 if (e.kind===undefined) { return; }

@@ -16,6 +16,7 @@ export interface Message {
     clientId: string,
     replyTo?: {messageId:string, username:string, userId:string},
     replies?: Message[],
+    newMessage?: boolean,
 }
 
 export function elapsedTime(timestamp:number, now=Date.now()) {
@@ -66,23 +67,34 @@ export function sendMessage(content: string, context?:string) {
     });
 }
 
+export function showLineRef(path:string, L1:number, C1:number, L2:number, C2:number) {
+    vscode.postMessage({
+        type: 'show-line-ref',
+        content: {path, L1, C1, L2, C2},
+    });
+}
+
 export function getReplyContext(message: Message) {
-    const slidingTextLength = 20;
-    const username = `${message.user.first_name}${message.user.last_name}`;
-    let slidingText = message.content.split('\n').join(' ').slice(0, slidingTextLength);
-    slidingText += message.content.length>=slidingTextLength ? '...' : '';
+    // const slidingTextLength = 20;
+    const username = `${message.user.first_name} ${message.user.last_name||''}`;
+    // let slidingText = message.content.split('\n').join(' ').slice(0, slidingTextLength);
+    // slidingText += message.content.length>=slidingTextLength ? '...' : '';
 
     return [
         `> reply-to-${message.id} [@${username}](${message.user.id})`,
-        `> ${slidingText}`
+        // `> ${slidingText}`
     ].join('\n');
 }
 
 export class MessageTree {
     private replyRegex = /^>\s*reply-to-(\w+)\s*\[@(.+)\]\((\w+)\)\s*$/;
     private rootMap: Record<string, string> = {};
+    userId: string = '';
 
-    constructor(private messages: Ref<Message[]>) {}
+    constructor(
+        private messages: Ref<Message[]>,
+        private unreadRecord: Ref<string[]>,
+    ) {}
 
     update(messages: Message[]) {
         messages.forEach(message => {
@@ -90,7 +102,12 @@ export class MessageTree {
         });
     }
 
-    pushMessage(message: Message) {
+    pushMessage(message: Message, newMessage:boolean=false) {
+        // update unread record
+        newMessage = newMessage && (message.user.id !== this.userId);
+        message.newMessage = newMessage;
+        newMessage && this.unreadRecord.value.push(message.id);
+
         const _lines = message.content.trim().split('\n');
         const _firstLine = _lines[0];
         const match = _firstLine.match(this.replyRegex);

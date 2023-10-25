@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { SocketIOAPI } from '../api/socketio';
 import { ProjectMessageResponseSchema } from '../api/base';
-import { VirtualFileSystem } from '../provider/remoteFileSystemProvider';
+import { VirtualFileSystem, parseUri } from '../provider/remoteFileSystemProvider';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
+    private hasUnreadMessages = 0;
     private webviewView?: vscode.WebviewView;
 
     constructor(
@@ -41,6 +42,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 switch (e.type) {
                     case 'get-messages': this.getMessages(); break;
                     case 'send-message': this.sendMessage(e.content); break;
+                    case 'show-line-ref':
+                        const {path, L1, C1, L2, C2} = e.content;
+                        const range = new vscode.Range(L1, C1, L2, C2);
+                        this.showLineRef(path, range);
+                        break;
                     default: break;
                 }
             });
@@ -53,6 +59,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             this.webviewView.webview.postMessage({
                 type: 'get-messages',
                 content: messages,
+                userId: this.vfs._userId,
             });
         }
     }
@@ -68,11 +75,64 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 content: message,
             });
         }
+
+        if (!this.isViewVisible()) {
+            this.hasUnreadMessages += 1;
+        }
+    }
+
+    private isViewVisible() {
+        return this.webviewView?.visible ?? false;
+    }
+
+    get hasUnread() {
+        return this.hasUnreadMessages;
+    }
+
+    revealChatView() {
+        this.webviewView?.show(true);
+        this.hasUnreadMessages = 0;
+    }
+
+    insertText(text: string) {
+        if (this.webviewView !== undefined) {
+            this.revealChatView();
+            this.webviewView.webview.postMessage({
+                type: 'insert-text',
+                content: text,
+            });
+        }
+    }
+
+    private getLineRef() {
+        const editor = vscode.window.activeTextEditor;
+        if (editor === undefined) { return; }
+
+        const filePath = parseUri(editor.document.uri).pathParts.join('/');
+        const start = editor.selection.start, end = editor.selection.end;
+        const ref = `[[${filePath}#L${start.line}C${start.character}-L${end.line}C${end.character}]]`;
+        return ref;
+    }
+
+    private showLineRef(path:string, range:vscode.Range) {
+        const uri = this.vfs.pathToUri(path);
+        vscode.window.showTextDocument(uri).then(editor => {
+            editor.revealRange(range);
+            editor.selection = new vscode.Selection(range.start, range.end);
+        });
     }
 
     get triggers() {
         return [
-            //TODO: register commands
+            // register commands
+            vscode.commands.registerCommand('collaboration.copyLineRef', () => {
+                const ref = this.getLineRef();
+                ref && vscode.env.clipboard.writeText(ref);
+            }),
+            vscode.commands.registerCommand('collaboration.insertLineRef', () => {
+                const ref = this.getLineRef();
+                ref && this.insertText(ref + ' ');
+            }),
             // register chat webview
             vscode.window.registerWebviewViewProvider('chatWebview', this, {webviewOptions:{retainContextWhenHidden:true}}),
         ];
