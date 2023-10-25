@@ -47,7 +47,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
     protected readonly contextPrefix = [];
 
     private splitText(text: string) {
-        return text.split(/([\W\d_]*\\[a-zA-Z]*|[\W\d_]+)/mug);
+        return text.split(/([\P{L}\p{N}]*\\[a-zA-Z]*|[\P{L}\p{N}]+)/gu);
     }
 
     private async check(uri:vscode.Uri, changedText: string) {
