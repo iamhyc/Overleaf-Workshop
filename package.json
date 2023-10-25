@@ -246,7 +246,7 @@
         "key": "ctrl+shift+c",
         "mac": "cmd+shift+c",
         "command": "collaboration.copyLineRef",
-        "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
+        "when": "editorTextFocus && resourceScheme == overleaf-workshop"
       }
     ],
     "viewsContainers": {
@@ -287,11 +287,11 @@
       "editor/context": [
         {
           "command": "collaboration.copyLineRef",
-          "when": "resourceScheme == overleaf-workshop && resourceExtname == .tex"
+          "when": "resourceScheme == overleaf-workshop"
         },
         {
           "command": "collaboration.insertLineRef",
-          "when": "resourceScheme == overleaf-workshop && resourceExtname == .tex"
+          "when": "resourceScheme == overleaf-workshop"
         }
       ],
       "view/title": [

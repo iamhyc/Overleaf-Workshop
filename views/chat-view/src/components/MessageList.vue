@@ -22,11 +22,13 @@
         }
     });
 
-    function scrollItemIntoView(messageId: string) {
-        refs[ messageId ].scrollIntoView;
-    }
+    const scrollItemIntoView = (messageId: string) => {
+        (refs.value)[ messageId ].scrollIntoView();
+    };
 
-    provide('scrollItemIntoView', scrollItemIntoView);
+    defineExpose({
+        scrollItemIntoView,
+    });
 </script>
 
 <template>

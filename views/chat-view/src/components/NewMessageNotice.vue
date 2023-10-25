@@ -2,11 +2,14 @@
     import { inject, type Ref } from 'vue';
 
     const unreadRecord = inject('unreadRecord') as Ref<string[]>;
-    const scrollItemIntoView = inject('scrollItemIntoView') as (messageId: string) => void;
+
+    defineProps<{
+        callback: (messageId:string) => any,
+    }>();
 </script>
 
 <template>
-    <vscode-button @click="scrollItemIntoView(unreadRecord[0]);" appearance="secondary" v-show="unreadRecord.length>0">
+    <vscode-button :callback="callback" @click="callback(unreadRecord[0])" appearance="secondary" v-show="unreadRecord.length>0">
         <inline>New Messages</inline>
         &nbsp;
         <vscode-badge>{{unreadRecord.length}}</vscode-badge>

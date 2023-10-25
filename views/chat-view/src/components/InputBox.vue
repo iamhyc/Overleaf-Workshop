@@ -61,7 +61,7 @@
         const target = event.target as TextArea;
         if (event.key==='Enter' && !event.shiftKey && !event.ctrlKey) {
             event.preventDefault();
-            sendMessage(target.value, props.context);
+            sendMessage(target.control.value, props.context);
             target.control.value = '';
             autoExpand();
         } else if (event.key==='Enter' && (event.ctrlKey || event.shiftKey)) {

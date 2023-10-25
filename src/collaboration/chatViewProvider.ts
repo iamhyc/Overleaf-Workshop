@@ -4,7 +4,7 @@ import { ProjectMessageResponseSchema } from '../api/base';
 import { VirtualFileSystem, parseUri } from '../provider/remoteFileSystemProvider';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
-    private hasUnreadMessages = false;
+    private hasUnreadMessages = 0;
     private webviewView?: vscode.WebviewView;
 
     constructor(
@@ -74,10 +74,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 type: 'new-message',
                 content: message,
             });
+        }
 
-            if (!this.isViewVisible()) {
-                this.hasUnreadMessages = true;
-            }
+        if (!this.isViewVisible()) {
+            this.hasUnreadMessages += 1;
         }
     }
 
@@ -91,7 +91,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     revealChatView() {
         this.webviewView?.show(true);
-        this.hasUnreadMessages = false;
+        this.hasUnreadMessages = 0;
     }
 
     insertText(text: string) {

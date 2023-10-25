@@ -13,6 +13,7 @@
     provide('activeInputBox', activeInputBox);
     provide('unreadRecord', unreadRecord);
 
+    const messageList = ref();
     const inputBox = ref();
     const messages = ref<Message[]>([]);
     const messageTree = new MessageTree(messages, unreadRecord);
@@ -29,8 +30,7 @@
                     messageTree.pushMessage(data.content, true);
                     break;
                 case 'insert-text':
-                    if (!inputBox.value) { return; }
-                    inputBox.value.insertText(data.content);
+                    activeInputBox.value.value.insertText(data.content);
                     break;
             }
         });
@@ -43,12 +43,16 @@
 
         getMessages();
     });
+
+    function clickCallback(messageId: string) {
+        messageList.value?.scrollItemIntoView(messageId);
+    }
 </script>
 
 <template>
     <main>
-        <MessageList :messages="messages" />
-        <NewMessageNotice :unread="[]" />
+        <MessageList ref="messageList" :messages="messages" />
+        <NewMessageNotice :callback="clickCallback" :unread="[]" />
         <InputBox ref="inputBox" />
     </main>
 </template>

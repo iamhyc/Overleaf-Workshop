@@ -75,14 +75,14 @@ export function showLineRef(path:string, L1:number, C1:number, L2:number, C2:num
 }
 
 export function getReplyContext(message: Message) {
-    const slidingTextLength = 20;
+    // const slidingTextLength = 20;
     const username = `${message.user.first_name} ${message.user.last_name||''}`;
-    let slidingText = message.content.split('\n').join(' ').slice(0, slidingTextLength);
-    slidingText += message.content.length>=slidingTextLength ? '...' : '';
+    // let slidingText = message.content.split('\n').join(' ').slice(0, slidingTextLength);
+    // slidingText += message.content.length>=slidingTextLength ? '...' : '';
 
     return [
         `> reply-to-${message.id} [@${username}](${message.user.id})`,
-        `> ${slidingText}`
+        // `> ${slidingText}`
     ].join('\n');
 }
 

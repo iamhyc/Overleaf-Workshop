@@ -239,8 +239,9 @@ export class ClientManager {
                 });
                 break;
             case true:
-                const prefixText = this.chatViewer.hasUnread? '$(bell-dot) ' : '';
+                const prefixText = this.chatViewer.hasUnread? `$(bell-dot) ${this.chatViewer.hasUnread} ` : '';
                 this.status.command = this.chatViewer.hasUnread? 'collaboration.revealChatView' : undefined;
+                this.status.backgroundColor = this.chatViewer.hasUnread? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
 
                 switch (count) {
                     case 0:
@@ -253,6 +254,7 @@ export class ClientManager {
                         this.status.text = prefixText + `$(organization) ${count}`;
                         const tooltip = new vscode.MarkdownString();
                         tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
+
                         Object.values(this.onlineUsers).forEach(user => {
                             const userArgs = JSON.stringify([`@[[${user.name}#${user.user_id}]] `]);
                             const userCommandUri = vscode.Uri.parse(`command:collaboration.insertText?${encodeURIComponent(userArgs)}`);

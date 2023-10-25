@@ -37,6 +37,9 @@
         // parse line references
         content = content.replace(/\[\[(([^#]+)#L(\d+)C(\d+)-L(\d+)C(\d+))\]\]/g,
                     `<vscode-link class="show-line-ref" href='$2,$3,$4,$5,$6'>$1</vscode-link>`);
+        // parse user reference
+        content = content.replace(/@\[\[([^#]+)#([^\]]+)\]\]/g,
+                    `<vscode-link href='$1,$2'>@$1</vscode-link>`);
         return content;
     });
 
@@ -72,7 +75,7 @@
 
     function scrollIntoView() {
         // scroll container into viewport
-        container.value?.scrollIntoView({behavior: 'smooth', block: 'start'});
+        container.value?.scrollIntoView({behavior: 'instant', block: 'nearest'});
         container.value?.classList.add('showup');
         setTimeout(() => {
             container.value?.classList.remove('showup');
@@ -162,8 +165,9 @@
     }
 
     .showup {
-        /* highlight border with focus color and fade out border color */
-        border-color: var(--vscode-focusBorder);
-        transition: border-color 0.5s ease-out;
+        width: 98%;
+        border: 2px solid var(--vscode-focusBorder);
+        border-radius: 2px;
+        transition: border-color 0.5s ease-in;
     }
 </style>
