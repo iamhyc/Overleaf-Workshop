@@ -162,7 +162,6 @@ export class VirtualFileSystem {
                 // fetch project settings
                 const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
                 project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
-                console.log( project.settings );
                 // setup project
                 this.root = project;
                 this.clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
@@ -672,6 +671,20 @@ export class VirtualFileSystem {
         const res = await this.api.spellingControllerLearn(identity, this.userId, word);
         if (res.type==='success') {
             this.root?.settings.learnedWords.push(word);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    async spellUnlearn(word: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.spellingControllerUnlearn(identity, word);
+        if (res.type==='success') {
+            const index = this.root?.settings.learnedWords.findIndex((w) => w===word);
+            if (index!==undefined && index>=0) {
+                this.root?.settings.learnedWords.splice(index, 1);
+            }
             return true;
         } else {
             return false;

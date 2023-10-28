@@ -577,6 +577,11 @@ export class BaseAPI {
         return this.request('POST', 'spelling/learn', body);
     }
 
+    async spellingControllerUnlearn(identity:Identity, word: string) {
+        this.setIdentity(identity);
+        return this.request('POST', 'spelling/unlearn', {word}, undefined, {'X-Csrf-Token': identity.csrfToken});
+    }
+
     async getProjectSettings(identity:Identity, projectId:string) {
         this.setIdentity(identity);
         return this.request('GET', `project/${projectId}`, undefined, (res) => {

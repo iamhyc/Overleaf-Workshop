@@ -232,13 +232,13 @@ export class ClientManager {
                 break;
             case true:
                 const prefixText = this.chatViewer.hasUnread? `$(bell-dot) ${this.chatViewer.hasUnread} ` : '';
-                this.status.command = this.chatViewer.hasUnread? 'collaboration.revealChatView' : undefined;
+                this.status.command = 'collaboration.revealChatView';
                 this.status.backgroundColor = this.chatViewer.hasUnread? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
 
                 switch (count) {
                     case 0:
                         this.status.color = undefined;
-                        this.status.text = prefixText + '$(organization)';
+                        this.status.text = prefixText + '$(organization) 0';
                         this.status.tooltip = `${ELEGANT_NAME}: Online`;
                         break;
                     default:

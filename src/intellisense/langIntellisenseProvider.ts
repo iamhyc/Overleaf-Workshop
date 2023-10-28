@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
-import { RemoteFileSystemProvider, parseUri } from '../provider/remoteFileSystemProvider';
+import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../provider/remoteFileSystemProvider';
 import { EventBus } from '../utils/eventBus';
 
 type PathFileType = 'text' | 'image' | 'bib';
@@ -125,6 +125,15 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
         this.diagnosticCollection.set(uri, diagnostics);
     }
 
+    private resetDiagnosticCollection() {
+        this.diagnosticCollection.clear();
+        vscode.workspace.textDocuments.forEach(async doc => {
+            const uri = doc.uri;
+            await this.check( uri, doc.getText() );
+            this.updateDiagnostics(uri);
+        });
+    }
+
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeAction[]> {
         const diagnostic = context.diagnostics[0];
         const actions = this.suggestionCache.get(diagnostic.code as string)
@@ -155,29 +164,60 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
         this.updateDiagnostics(uri);
     }
 
+    async dictionarySettings(vfs:VirtualFileSystem, dictionary?:string[]) {
+        vscode.window.showQuickPick(dictionary||[], {
+            canPickMany: false,
+            placeHolder: 'Select a word to unlearn',
+        }).then(async (word) => {
+            if (word) {
+                vfs.spellUnlearn(word);
+                this.learnedWords?.delete(word);
+                this.suggestionCache.delete(word);
+                dictionary = dictionary?.filter(x => x!==word);
+                this.dictionarySettings(vfs, dictionary);
+            } else {
+                // reset diagnostic collection is dictionary changed
+                if ( !vfs.getDictionary()?.every(x => dictionary?.includes(x)) ) {
+                    this.resetDiagnosticCollection();
+                }
+            }
+        });
+    }
+
     async spellCheckSettings() {
         const uri = vscode.workspace.workspaceFolders?.[0].uri;
         const vfs = uri && await this.vfsm.prefetch(uri);
         const languages = vfs?.getAllSpellCheckLanguages();
         const currentLanguage = vfs?.getSpellCheckLanguage();
 
-        if (languages) {
-            vscode.window.showQuickPick(languages?.map(x => {
-                return {
-                    label: x.name,
-                    description: x.code,
-                    picked: x.code===currentLanguage?.code,
-                };
-            }), {
-                placeHolder: 'Select spell check language',
-                canPickMany: false,
-                ignoreFocusOut: true,
-                matchOnDescription: true,
-                matchOnDetail: true,
-            }).then(async (option) => {
-                option && vfs?.updateSettings({spellCheckLanguage:option.description});
+        const items = [];
+        items.push({
+            id: "dictionary",
+            label: 'Manage Dictionary',
+            iconPath: new vscode.ThemeIcon('book'),
+        });
+        items.push({label:'',kind:vscode.QuickPickItemKind.Separator});
+        for (const item of languages||[]) {
+            items.push({
+                label: item.name,
+                description: item.code,
+                picked: item.code===currentLanguage?.code,
             });
         }
+
+        vscode.window.showQuickPick(items, {
+            placeHolder: 'Select spell check language',
+            canPickMany: false,
+            ignoreFocusOut: true,
+            matchOnDescription: true,
+            matchOnDetail: true,
+        }).then(async (option) => {
+            if (option?.id==='dictionary') {
+                vfs && this.dictionarySettings(vfs, vfs.getDictionary());
+            } else {
+                option && vfs?.updateSettings({spellCheckLanguage:option.description});
+            }
+        });
     }
 
     get triggers () {
@@ -194,12 +234,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
             EventBus.on('spellCheckLanguageUpdateEvent', async () => {
                 this.learnedWords?.clear();
                 this.suggestionCache.clear();
-                this.diagnosticCollection.clear();
-                vscode.workspace.textDocuments.forEach(async doc => {
-                    const uri = doc.uri;
-                    await this.check( uri, doc.getText() );
-                    this.updateDiagnostics(uri);
-                });
+                this.resetDiagnosticCollection();
             }),
             // update diagnostics on document open
             vscode.workspace.onDidOpenTextDocument(async doc => {
@@ -677,7 +712,7 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
             const {name, code} = languageItem;
             this.status.text = code===''? '$(eye-closed)' : '$(eye) ' + code.toLocaleUpperCase();
             this.status.tooltip = new vscode.MarkdownString(`Spell Check: **${name}**`);
-            this.status.tooltip.appendMarkdown('\n\n*Click to switch spell check language.*');
+            this.status.tooltip.appendMarkdown('\n\n*Click to manage spell check.*');
         } else {
             this.status.text = '';
             this.status.tooltip = '';
