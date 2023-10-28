@@ -127,6 +127,7 @@ export interface ProjectMessageResponseSchema {
 export interface ProjectSettingsSchema {
     learnedWords: string[],
     languages: {code:string, name:string}[],
+    compilers: {code:string, name:string}[],
 }
 
 export interface ResponseSchema {
@@ -585,9 +586,17 @@ export class BaseAPI {
             const learnedWords = (learnedWordsMatch!==null) ? JSON.parse(learnedWordsMatch[1].replace(/&quot;/g, '"')) : [];
             // parse "ol-languages"
             const languagesMatch = /<meta\s+name="ol-languages"\s+data-type="json"\s+content="(\[.*?\])">/.exec(body);
-            const languages = (languagesMatch!==null) ? JSON.parse(languagesMatch[1].replace(/&quot;/g, '"')) as {code:string,name:string} : {};
+            const languages = (languagesMatch!==null) ? JSON.parse(languagesMatch[1].replace(/&quot;/g, '"')) as {code:string,name:string}[] : [];
+            languages.length && languages.unshift({name:'Off', code:''});
+            // fill in compilers
+            const compilers = [
+                {code: 'pdflatex', name: 'pdfLaTex'},
+                {code: 'latex',    name: 'LaTex'},
+                {code: 'xelatex',  name: 'XeLaTex'},
+                {code: 'lualatex', name: 'LuaLaTex'},
+            ];
             // return parsed results
-            const settings = {learnedWords, languages} as ProjectSettingsSchema;
+            const settings = {learnedWords, languages, compilers} as ProjectSettingsSchema;
             return {settings};
         });
     }

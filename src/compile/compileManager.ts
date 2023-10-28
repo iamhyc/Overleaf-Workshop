@@ -123,7 +123,6 @@ export class CompileManager {
         this.vfsm = vfsm;
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
         this.status.command = 'compilerManager.settings';
-        this.update('$(alert)', {tooltip:`${ELEGANT_NAME}: No Results`, color:'#FFCC00'});
         this.diagnosticProvider = new CompileDiagnosticProvider(vfsm);
     }
 
@@ -133,13 +132,36 @@ export class CompileManager {
         return uri?.scheme === ROOT_NAME ? uri : undefined;
     }
 
-    update(text: string, options?:{tooltip?:string, color?:string}) {
+    update(status: 'success'|'compiling'|'failed'|'alert') {
         const uri = CompileManager.check();
         if (uri) {
-            this.status.text = text;
-            this.status.tooltip = options?.tooltip;
-            this.status.color = options?.color;
-            this.status.show();
+            this.vfsm.prefetch(uri).then((vfs) => {
+                const compilerName = vfs.getCompiler()?.name || '';
+                switch (status) {
+                    case 'success':
+                        this.status.text = `${compilerName}`;
+                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **Compile Success**`);
+                        this.status.backgroundColor = undefined;
+                        break;
+                    case 'compiling':
+                        this.status.text = `${compilerName} $(sync~spin)`;
+                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **Compiling**`);
+                        this.status.backgroundColor = undefined;
+                        break;
+                    case 'failed':
+                        this.status.text = `${compilerName} $(x)`;
+                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **Compile Failed**`);
+                        this.status.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+                        break;
+                    case 'alert':
+                        this.status.text = `$(alert)`;
+                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **Not Connected**`);
+                        this.status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+                        break;
+                }
+                this.status.tooltip.appendMarkdown('\n\n*Click to switch compiler.*');
+                this.status.show();
+            });
         } else {
             this.status.hide();
         }
@@ -147,22 +169,22 @@ export class CompileManager {
     }
 
     compile(force:boolean=false) {
-        const uri = this.update('$(sync~spin) Compiling');
+        const uri = this.update('compiling');
         if (uri) {
             this.vfsm.prefetch(uri)
                 .then((vfs) => vfs.compile(force))
                 .then((res) => {
                     switch (res) {
                         case undefined:
-                            this.update('$(check)', {tooltip:`${ELEGANT_NAME}: Compile Success`});
+                            this.update('success');
                             break;
                         case false:
-                            this.update('$(x)', {tooltip:`${ELEGANT_NAME}: Compile Failed`, color:'#FF0000'});
+                            this.update('failed');
                             break;
                         case true:
                             return true;
                         default:
-                            this.update('$(alert)', {tooltip:`${ELEGANT_NAME}: No Results`, color:'#FFCC00'});
+                            this.update('alert');
                             break;
                     }
                 })
@@ -173,9 +195,9 @@ export class CompileManager {
                 )
                 .then((hasError) => {
                     if (hasError) {
-                        this.update('$(x)', {tooltip:`${ELEGANT_NAME}: Compile Failed`, color:'#FF0000'});
+                        this.update('failed');
                     } else {
-                        this.update('$(check)', {tooltip:`${ELEGANT_NAME}: Compile Success`});
+                        this.update('success');
                     }
                     // refresh pdf
                     const { identifier } = parseUri(uri);
@@ -259,8 +281,24 @@ export class CompileManager {
         }
     }
 
-    compileSettings() {
+    async compileSettings() {
+        const uri = CompileManager.check();
+        const vfs = uri && await this.vfsm.prefetch(uri);
+        const compilers = vfs?.getAllCompilers();
+        const currentCompiler = vfs?.getCompiler();
 
+        compilers && vscode.window.showQuickPick(compilers.map((item) => {
+            return {
+                label: item.name,
+                description: item.code,
+                picked: item.code === currentCompiler?.code,
+            };
+        }), {
+            canPickMany: false,
+            placeHolder: 'Select Compiler',
+        }).then((option) => {
+            option && vfs?.updateSettings({ compiler: option.description });
+        });
     }
 
     get triggers() {

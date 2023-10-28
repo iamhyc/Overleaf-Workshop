@@ -54,7 +54,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
         // init learned words
         if (this.learnedWords===undefined) {
             const vfs = await this.vfsm.prefetch(uri);
-            const words = await vfs.getDictionary();
+            const words = vfs.getDictionary();
             this.learnedWords = new Set(words);
         }
 
@@ -155,8 +155,29 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
         this.updateDiagnostics(uri);
     }
 
-    spellCheckSettings() {
+    async spellCheckSettings() {
+        const uri = vscode.workspace.workspaceFolders?.[0].uri;
+        const vfs = uri && await this.vfsm.prefetch(uri);
+        const languages = vfs?.getAllSpellCheckLanguages();
+        const currentLanguage = vfs?.getSpellCheckLanguage();
 
+        if (languages) {
+            vscode.window.showQuickPick(languages?.map(x => {
+                return {
+                    label: x.name,
+                    description: x.code,
+                    picked: x.code===currentLanguage?.code,
+                };
+            }), {
+                placeHolder: 'Select spell check language',
+                canPickMany: false,
+                ignoreFocusOut: true,
+                matchOnDescription: true,
+                matchOnDetail: true,
+            }).then(async (option) => {
+                option && vfs?.updateSettings({spellCheckLanguage:option.description});
+            });
+        }
     }
 
     get triggers () {
@@ -630,6 +651,7 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
 
 export class LangIntellisenseProvider extends IntellisenseProvider {
     protected readonly contextPrefix = [];
+    private status: vscode.StatusBarItem;
     private commandCompletion: CommandCompletionProvider;
     private constantCompletion: ConstantCompletionProvider;
     private filePathCompletion: FilePathCompletionProvider;
@@ -643,6 +665,26 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
         this.filePathCompletion = new FilePathCompletionProvider(vfsm);
         this.misspellingCheck = new MisspellingCheckProvider(vfsm);
         this.referenceCompletion = new ReferenceCompletionProvider(vfsm);
+        this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -2);
+        this.activate();
+    }
+
+    async activate() {
+        const uri = vscode.workspace.workspaceFolders?.[0].uri;
+        const vfs = uri && await this.vfsm.prefetch(uri);
+        const languageItem = vfs?.getSpellCheckLanguage();
+        if (languageItem) {
+            const {name, code} = languageItem;
+            this.status.text = code===''? '$(eye-closed)' : '$(eye) ' + code.toLocaleUpperCase();
+            this.status.tooltip = new vscode.MarkdownString(`Spell Check: **${name}**`);
+            this.status.tooltip.appendMarkdown('\n\n*Click to switch spell check language.*');
+        } else {
+            this.status.text = '';
+            this.status.tooltip = '';
+        }
+        this.status.command = 'langIntellisense.settings';
+        this.status.show();
+        setTimeout(this.activate.bind(this), 200);
     }
 
     get triggers() {

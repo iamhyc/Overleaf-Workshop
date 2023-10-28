@@ -377,6 +377,7 @@ export class VirtualFileSystem {
             onCompilerUpdated: (compiler:string) => {
                 if (this.root) {
                     this.root.compiler = compiler;
+                    EventBus.fire('compilerUpdateEvent', {compiler});
                 }
             },
         });
@@ -677,7 +678,30 @@ export class VirtualFileSystem {
         }
     }
 
-    async getDictionary() {
+    getSpellCheckLanguage() {
+        const language = this.root?.spellCheckLanguage;
+        if (language==='') {
+            return {name:'Off', code:''};
+        } else {
+            return this.root?.settings.languages.find(item => item.code===language);
+        }
+    }
+
+    getAllSpellCheckLanguages() {
+        return this.root?.settings.languages;
+    }
+
+    getCompiler() {
+        const compiler = this.root?.compiler;
+        const compilerItem = this.root?.settings.compilers.find(item => item.code===compiler);
+        return compilerItem;
+    }
+
+    getAllCompilers() {
+        return this.root?.settings.compilers;
+    }
+
+    getDictionary() {
         return this.root?.settings.learnedWords;
     }
 
