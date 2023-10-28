@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
-import { RemoteFileSystemProvider, parseUri } from './remoteFileSystemProvider';
+import { RemoteFileSystemProvider, parseUri } from '../provider/remoteFileSystemProvider';
 import { EventBus } from '../utils/eventBus';
 
 type PathFileType = 'text' | 'image' | 'bib';
@@ -149,10 +149,14 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
     }
 
     learnSpelling(uri:vscode.Uri, word: string) {
-        this.vfsm.prefetch(uri).then(vfs => vfs.spellLearn(uri, word));
+        this.vfsm.prefetch(uri).then(vfs => vfs.spellLearn(word));
         this.learnedWords?.add(word);
         this.suggestionCache.delete(word);
         this.updateDiagnostics(uri);
+    }
+
+    spellCheckSettings() {
+
     }
 
     get triggers () {
@@ -643,6 +647,11 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
 
     get triggers() {
         return [
+            // register commands
+            vscode.commands.registerCommand('langIntellisense.settings', () => {
+                this.misspellingCheck.spellCheckSettings();
+            }),
+            // register other triggers
             ...this.commandCompletion.triggers,
             ...this.constantCompletion.triggers,
             ...this.filePathCompletion.triggers,

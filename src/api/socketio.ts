@@ -36,6 +36,7 @@ export interface EventsHandler {
     onReceivedMessage?: (message:ProjectMessageResponseSchema) => void,
     //
     onSpellCheckLanguageUpdated?: (language:string) => void,
+    onCompilerUpdated?: (compiler:string) => void,
 }
 
 export class SocketIOAPI {
@@ -155,6 +156,11 @@ export class SocketIOAPI {
                 case handlers.onSpellCheckLanguageUpdated:
                     this.socket.on('spellCheckLanguageUpdated', (language:string) => {
                         handler(language);
+                    });
+                    break;
+                case handlers.onCompilerUpdated:
+                    this.socket.on('compilerUpdated', (compiler:string) => {
+                        handler(compiler);
                     });
                     break;
                 default:

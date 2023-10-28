@@ -6,7 +6,7 @@ import * as FormData from 'form-data';
 import fetch from 'node-fetch';
 import { ProjectPersist } from '../utils/globalStateManager';
 import { FileEntity, FileType, FolderEntity, MemberEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
-import { MisspellingItem, SnippetItem } from '../provider/langIntellisenseProvider';
+import { MisspellingItem, SnippetItem } from '../intellisense/langIntellisenseProvider';
 
 export interface Identity {
     csrfToken: string;
@@ -124,6 +124,11 @@ export interface ProjectMessageResponseSchema {
     clientId: string,
 }
 
+export interface ProjectSettingsSchema {
+    learnedWords: string[],
+    languages: {code:string, name:string}[],
+}
+
 export interface ResponseSchema {
     type: 'success' | 'error';
     raw?: ArrayBuffer;
@@ -144,7 +149,7 @@ export interface ResponseSchema {
     diff?: ProjectFileDiffResponseSchema;
     treeDiff?: ProjectFileTreeDiffResponseSchema;
     messages?: ProjectMessageResponseSchema[];
-    dictionary?: string[];
+    settings?: ProjectSettingsSchema;
 }
 
 export class BaseAPI {
@@ -571,19 +576,25 @@ export class BaseAPI {
         return this.request('POST', 'spelling/learn', body);
     }
 
-    async getUserDictionary(identity:Identity, projectId:string) {
+    async getProjectSettings(identity:Identity, projectId:string) {
         this.setIdentity(identity);
         return this.request('GET', `project/${projectId}`, undefined, (res) => {
             const body = res || '';
-            const match = /<meta\s+name="ol-learnedWords"\s+data-type="json"\s+content="(\[(&quot;\w+&quot;,?)+\])">/.exec(body);
-            if (match) {
-                const dictionary = JSON.parse(match[1].replace(/&quot;/g, '"')) as string[];
-                return {dictionary};
-            } else {
-                const dictionary = [] as string[];
-                return {dictionary};
-            }
+            // parse "ol-learnedWords"
+            const learnedWordsMatch = /<meta\s+name="ol-learnedWords"\s+data-type="json"\s+content="(\[.*?\])">/.exec(body);
+            const learnedWords = (learnedWordsMatch!==null) ? JSON.parse(learnedWordsMatch[1].replace(/&quot;/g, '"')) : [];
+            // parse "ol-languages"
+            const languagesMatch = /<meta\s+name="ol-languages"\s+data-type="json"\s+content="(\[.*?\])">/.exec(body);
+            const languages = (languagesMatch!==null) ? JSON.parse(languagesMatch[1].replace(/&quot;/g, '"')) as {code:string,name:string} : {};
+            // return parsed results
+            const settings = {learnedWords, languages} as ProjectSettingsSchema;
+            return {settings};
         });
+    }
+
+    async updateProjectSettings(identity:Identity, projectId:string, setting:any) {
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/settings`, setting);
     }
 
     async getFileFromClsi(identity:Identity, url:string, compileGroup:string) {

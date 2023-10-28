@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { SocketIOAPI, UpdateSchema } from '../api/socketio';
 import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { GlobalStateManager } from '../utils/globalStateManager';
-import { BaseAPI } from '../api/base';
+import { BaseAPI, ProjectSettingsSchema } from '../api/base';
 import { assert } from 'console';
 import { ClientManager } from '../collaboration/clientManager';
 import { EventBus } from '../utils/eventBus';
@@ -69,7 +69,7 @@ export interface ProjectEntity {
     rootDoc_id: string,
     rootFolder: Array<FolderEntity>,
     publicAccessLevel: string, //"tokenBased"
-    compiler: string, //"pdflatex"
+    compiler: string,
     spellCheckLanguage: string,
     deletedDocs: Array<{
         _id: string,
@@ -80,6 +80,7 @@ export interface ProjectEntity {
     invites: Array<MemberEntity>,
     owner: MemberEntity,
     features: {[key:string]:any},
+    settings: ProjectSettingsSchema,
 }
 
 export class File implements vscode.FileStat {
@@ -157,7 +158,12 @@ export class VirtualFileSystem {
 
         if (!this.initializing) {
             this.remoteWatch();
-            this.initializing = this.socket.joinProject(this.projectId).then((project) => {
+            this.initializing = this.socket.joinProject(this.projectId).then(async (project) => {
+                // fetch project settings
+                const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+                project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
+                console.log( project.settings );
+                // setup project
                 this.root = project;
                 this.clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
                 this.clientManager.triggers; // init and then dispose
@@ -366,6 +372,11 @@ export class VirtualFileSystem {
                 if (this.root) {
                     this.root.spellCheckLanguage = language;
                     EventBus.fire('spellCheckLanguageUpdateEvent', {language});
+                }
+            },
+            onCompilerUpdated: (compiler:string) => {
+                if (this.root) {
+                    this.root.compiler = compiler;
                 }
             },
         });
@@ -581,8 +592,8 @@ export class VirtualFileSystem {
         }
     }
 
-    async compile() {
-        if (this.root && this.isDirty) {
+    async compile(force:boolean=false) {
+        if (force || (this.root && this.isDirty)) {
             this.isDirty = false;
             let needCacheClearFirst = false;
             try{
@@ -655,10 +666,11 @@ export class VirtualFileSystem {
         }
     }
 
-    async spellLearn(uri: vscode.Uri, word: string) {
+    async spellLearn(word: string) {
         const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
         const res = await this.api.spellingControllerLearn(identity, this.userId, word);
         if (res.type==='success') {
+            this.root?.settings.learnedWords.push(word);
             return true;
         } else {
             return false;
@@ -666,13 +678,13 @@ export class VirtualFileSystem {
     }
 
     async getDictionary() {
+        return this.root?.settings.learnedWords;
+    }
+
+    async updateSettings(setting: any) {
         const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
-        const res = await this.api.getUserDictionary(identity, this.projectId);
-        if (res.type==='success') {
-            return res.dictionary;
-        } else {
-            return undefined;
-        }
+        const res = await this.api.updateProjectSettings(identity, this.projectId, setting);
+        return res.type==='success'? true : false;
     }
 
     async metadata() {

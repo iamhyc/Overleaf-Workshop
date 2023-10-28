@@ -3,6 +3,7 @@ import { RemoteFileSystemProvider, parseUri } from '../provider/remoteFileSystem
 import { ROOT_NAME, ELEGANT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 import { PdfDocument } from '../provider/pdfViewEditorProvider';
 import { LatexParser, ErrorSchema } from './compileLogParser';
+import { EventBus } from '../utils/eventBus';
 
 // map string level to severity
 const severityMap: Record<string, vscode.DiagnosticSeverity> = {
@@ -101,6 +102,7 @@ class CompileDiagnosticProvider {
         }
         return hasError;
     }
+
     get triggers() {
         return [
             this.diagnosticCollection,
@@ -120,6 +122,7 @@ export class CompileManager {
     ) {
         this.vfsm = vfsm;
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
+        this.status.command = 'compilerManager.settings';
         this.update('$(alert)', {tooltip:`${ELEGANT_NAME}: No Results`, color:'#FFCC00'});
         this.diagnosticProvider = new CompileDiagnosticProvider(vfsm);
     }
@@ -128,21 +131,6 @@ export class CompileManager {
         uri = uri || vscode.window.activeTextEditor?.document.uri;
         uri = uri || vscode.workspace.workspaceFolders?.[0].uri;
         return uri?.scheme === ROOT_NAME ? uri : undefined;
-    }
-
-    get triggers() {
-        return [
-            // register compile commands
-            vscode.commands.registerCommand('compileManager.compile', () => this.compile()),
-            vscode.commands.registerCommand('compileManager.viewPdf', () =>  this.openPdf()),
-            vscode.commands.registerCommand('compileManager.syncCode', () => this.syncCode()),
-            vscode.commands.registerCommand('compileManager.syncPdf', (r) => this.syncPdf(r)),
-            // register diagnostics triggers
-            vscode.workspace.onDidSaveTextDocument((e) => {
-                CompileManager.check.bind(this)(e.uri) && e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i) && this.compile();
-            }),
-            ...this.diagnosticProvider.triggers,
-        ];
     }
 
     update(text: string, options?:{tooltip?:string, color?:string}) {
@@ -158,11 +146,11 @@ export class CompileManager {
         return uri;
     }
 
-    compile() {
+    compile(force:boolean=false) {
         const uri = this.update('$(sync~spin) Compiling');
         if (uri) {
             this.vfsm.prefetch(uri)
-                .then((vfs) => vfs.compile())
+                .then((vfs) => vfs.compile(force))
                 .then((res) => {
                     switch (res) {
                         case undefined:
@@ -269,5 +257,29 @@ export class CompileManager {
                     }
                 });
         }
+    }
+
+    compileSettings() {
+
+    }
+
+    get triggers() {
+        return [
+            // register compile commands
+            vscode.commands.registerCommand('compileManager.compile', () => this.compile(true)),
+            vscode.commands.registerCommand('compileManager.viewPdf', () =>  this.openPdf()),
+            vscode.commands.registerCommand('compileManager.syncCode', () => this.syncCode()),
+            vscode.commands.registerCommand('compileManager.syncPdf', (r) => this.syncPdf(r)),
+            vscode.commands.registerCommand('compilerManager.settings', ()=> this.compileSettings()),
+            // register compile conditions
+            vscode.workspace.onDidSaveTextDocument((e) => {
+                CompileManager.check.bind(this)(e.uri) && e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i) && this.compile();
+            }),
+            EventBus.on('compilerUpdateEvent', () => {
+                this.compile(true);
+            }),
+            // register diagnostics triggers
+            ...this.diagnosticProvider.triggers,
+        ];
     }
 }

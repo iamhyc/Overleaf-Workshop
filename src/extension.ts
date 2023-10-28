@@ -5,7 +5,7 @@ import { RemoteFileSystemProvider } from './provider/remoteFileSystemProvider';
 import { ProjectManagerProvider } from './provider/projectManagerProvider';
 import { CompileManager } from './compile/compileManager';
 import { PdfViewEditorProvider } from './provider/pdfViewEditorProvider';
-import { LangIntellisenseProvider } from './provider/langIntellisenseProvider';
+import { LangIntellisenseProvider } from './intellisense/langIntellisenseProvider';
 import { HistoryViewProvider } from './provider/historyViewProvider';
 
 export function activate(context: vscode.ExtensionContext) {

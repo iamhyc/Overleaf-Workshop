@@ -128,14 +128,6 @@ export class ClientManager {
         this.updateStatus();
     }
 
-    setStatusActive(clientId:string, timeout:number=10) {
-        this.inactivateTask && clearTimeout(this.inactivateTask);
-        this.inactivateTask = setTimeout(() => {
-            this.activeExists = undefined;
-        }, timeout*1000);
-        this.activeExists = clientId;
-    }
-
     private jumpToUser(id: string) {
         const user = this.onlineUsers[id];
         const doc = this.vfs._resolveById(user.doc_id);
@@ -281,6 +273,18 @@ export class ClientManager {
         setTimeout(this.updateStatus.bind(this), 500);
     }
 
+    setStatusActive(clientId:string, timeout:number=10) {
+        this.inactivateTask && clearTimeout(this.inactivateTask);
+        this.inactivateTask = setTimeout(() => {
+            this.activeExists = undefined;
+        }, timeout*1000);
+        this.activeExists = clientId;
+    }
+
+    collaborationSettings() {
+        //TODO: toggle invisible mode
+    }
+
     get triggers() {
         return [
             // register commands
@@ -292,6 +296,9 @@ export class ClientManager {
             }),
             vscode.commands.registerCommand('collaboration.revealChatView', () => {
                 this.chatViewer.revealChatView();
+            }),
+            vscode.commands.registerCommand('collaboration.settings', () => {
+                this.collaborationSettings();
             }),
             // register chat view provider
             ...this.chatViewer.triggers,

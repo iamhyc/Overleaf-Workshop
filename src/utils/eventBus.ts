@@ -4,6 +4,7 @@ import {EventEmitter} from 'events';
 export type Events = {
     'fileWillOpenEvent': {uri: vscode.Uri},
     'spellCheckLanguageUpdateEvent': {language:string},
+    'compilerUpdateEvent': {compiler:string},
 };
 
 export class EventBus {
