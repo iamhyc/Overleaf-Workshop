@@ -128,6 +128,7 @@ export interface ResponseSchema {
     type: 'success' | 'error';
     raw?: ArrayBuffer;
     message?: string;
+    userInfo?: {userId:string, userEmail:string};
     identity?: Identity;
     projects?: ProjectPersist[];
     entity?: FileEntity;
@@ -182,11 +183,13 @@ export class BaseAPI {
 
         const body = await res.text();
         const userIDMatch = body.match(/<meta\s+name="ol-user_id"\s+content="([^"]*)">/);
+        const userEmailMatch = body.match(/<meta\s+name="ol-usersEmail"\s+content="([^"]*)">/);
         const csrfTokenMatch = body.match(/<meta\s+name="ol-csrfToken"\s+content="([^"]*)">/);
         if (userIDMatch!==null && csrfTokenMatch!==null) {
             const userId = userIDMatch[1];
             const csrfToken = csrfTokenMatch[1];
-            return {userId, csrfToken};
+            const userEmail = userEmailMatch ? userEmailMatch[1] : '';
+            return {userId, userEmail, csrfToken};
         } else {
             return undefined;
         }
@@ -252,11 +255,11 @@ export class BaseAPI {
     async cookiesLogin(cookies: string): Promise<ResponseSchema> {
         const res = await this.getUserId(cookies);
         if (res) {
-            const { userId, csrfToken } = res;
+            const { userId, userEmail, csrfToken } = res;
             const identity: Identity =  await this.updateCookies({ cookies, csrfToken });
             return {
                 type: 'success',
-                message: userId,
+                userInfo: {userId, userEmail},
                 identity: identity
             };
         } else {

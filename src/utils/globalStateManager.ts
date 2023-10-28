@@ -80,10 +80,10 @@ export class GlobalStateManager {
 
         if (server.login===undefined) {
             const res = auth.cookies ? await api.cookiesLogin(auth.cookies) : await api.passportLogin(auth.email, auth.password);
-            if (res.type==='success' && res.identity!==undefined && res.message!==undefined) {
+            if (res.type==='success' && res.identity!==undefined && res.userInfo!==undefined) {
                 server.login = {
-                    userId: res.message,
-                    username: auth.email,
+                    userId: res.userInfo.userId,
+                    username: auth.email || res.userInfo.userEmail,
                     identity: res.identity
                 };
                 context.globalState.update(keyServerPersists, persists);

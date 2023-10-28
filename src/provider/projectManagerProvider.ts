@@ -6,7 +6,7 @@ import { ProjectTagsResponseSchema } from '../api/base';
 class DataItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
         super(label, collapsibleState);
     }
@@ -17,11 +17,14 @@ class ServerItem extends DataItem {
     constructor(
         readonly api: any,
         public readonly name: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly username: string,
+        collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
         super(name, collapsibleState);
         this.iconPath = new vscode.ThemeIcon('vm');
         this.contextValue = collapsibleState===vscode.TreeItemCollapsibleState.None ? 'server_no_login' : 'server_login';
+        this.description = username;
+        this.tooltip = api.url;
     }
 }
 
@@ -147,6 +150,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             const serverItems = Object.values(persists).map(persist => new ServerItem(
                 persist.api,
                 persist.server.name,
+                persist.server.login?.username || '',
                 persist.server.login? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
             ));
             return Promise.resolve(serverItems);
