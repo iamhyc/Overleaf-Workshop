@@ -4,9 +4,7 @@ import * as https from 'https';
 import * as stream from 'stream';
 import * as FormData from 'form-data';
 import fetch from 'node-fetch';
-import { ProjectPersist } from '../utils/globalStateManager';
-import { FileEntity, FileType, FolderEntity, MemberEntity, OutputFileEntity } from '../provider/remoteFileSystemProvider';
-import { MisspellingItem, SnippetItem } from '../intellisense/langIntellisenseProvider';
+import { FileEntity, FileType, FolderEntity, OutputFileEntity } from '../core/remoteFileSystemProvider';
 
 export interface Identity {
     csrfToken: string;
@@ -50,14 +48,47 @@ export interface SyncCodeResponseSchema {
     }>
 }
 
+export interface SnippetItemSchema {
+    meta: string,
+    score: number,
+    caption: string,
+    snippet: string,
+}
+
+export interface MisspellingItemSchema {
+    index: number,
+    suggestions: string[]
+}
+
+export interface MemberEntity {
+    _id: string,
+    first_name: string,
+    last_name?: string,
+    email: string,
+    privileges?: string,
+    signUpDate?: string,
+}
+
 export interface MetadataResponseScheme {
     projectId: string,
     projectMeta: {
         [id:string]: {
             labels: string[],
-            packages: {[K:string]: SnippetItem[]}
+            packages: {[K:string]: SnippetItemSchema[]}
         }
     }
+}
+
+export interface ProjectPersist {
+    id: string;
+    userId: string;
+    name: string;
+    lastUpdated?: string;
+    lastUpdatedBy?: MemberEntity;
+    source?: 'owner' | 'collaborator' | 'readOnly';
+    accessLevel: 'owner' | 'collaborator' | 'readOnly';
+    archived?: boolean;
+    trashed?: boolean;
 }
 
 export interface ProjectTagsResponseSchema {
@@ -143,7 +174,7 @@ export interface ResponseSchema {
     syncPdf?: SyncPdfResponseSchema;
     syncCode?: SyncCodeResponseSchema;
     meta?: MetadataResponseScheme;
-    misspellings?: MisspellingItem[];
+    misspellings?: MisspellingItemSchema[];
     tags?: ProjectTagsResponseSchema[];
     labels?: ProjectLabelResponseSchema[];
     updates?: ProjectUpdateResponseSchema;
@@ -562,7 +593,7 @@ export class BaseAPI {
 
         this.setIdentity(identity);
         return this.request('POST', 'spelling/check', body, (res) => {
-            const misspellings = JSON.parse(res!).misspellings as MisspellingItem[];
+            const misspellings = JSON.parse(res!).misspellings as MisspellingItemSchema[];
             return {misspellings};
         });
     }

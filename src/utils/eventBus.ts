@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import {EventEmitter} from 'events';
+import { PdfDocument } from '../core/pdfViewEditorProvider';
 
 export type Events = {
     'fileWillOpenEvent': {uri: vscode.Uri},
+    'pdfWillOpenEvent': {uri: vscode.Uri, doc:PdfDocument, webviewPanel:vscode.WebviewPanel},
     'spellCheckLanguageUpdateEvent': {language:string},
     'compilerUpdateEvent': {compiler:string},
 };

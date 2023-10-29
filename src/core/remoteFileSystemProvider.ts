@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
+import * as DiffMatchPatch from 'diff-match-patch';
+import { BaseAPI, MemberEntity, ProjectSettingsSchema } from '../api/base';
 import { SocketIOAPI, UpdateSchema } from '../api/socketio';
 import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { GlobalStateManager } from '../utils/globalStateManager';
-import { BaseAPI, ProjectSettingsSchema } from '../api/base';
-import { assert } from 'console';
 import { ClientManager } from '../collaboration/clientManager';
 import { EventBus } from '../utils/eventBus';
-import * as DiffMatchPatch from 'diff-match-patch';
 
 const __OUTPUTS_ID = `${ROOT_NAME}-outputs`;
 
@@ -52,15 +51,6 @@ export interface FolderEntity extends FileEntity {
     fileRefs: Array<FileRefEntity>,
     folders: Array<FolderEntity>,
     outputs?: Array<OutputFileEntity>,
-}
-
-export interface MemberEntity {
-    _id: string,
-    first_name: string,
-    last_name?: string,
-    email: string,
-    privileges?: string,
-    signUpDate?: string,
 }
 
 export interface ProjectEntity {
@@ -125,7 +115,6 @@ export class VirtualFileSystem {
     private projectId: string;
     private isDirty: boolean = true;
     private initializing?: Promise<ProjectEntity>;
-    private clientManager?: ClientManager;
     private notify: (events:vscode.FileChangeEvent[])=>void;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
@@ -164,8 +153,8 @@ export class VirtualFileSystem {
                 project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
                 // setup project
                 this.root = project;
-                this.clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
-                this.clientManager.triggers; // init and then dispose
+                const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
+                clientManager.triggers; // init and then dispose
                 vscode.commands.executeCommand('compileManager.compile');
                 return project;
             });
@@ -863,8 +852,12 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
         return this.getVFS(uri).then( vfs => vfs.remove(uri, options.recursive) );
     }
 
-    rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean; }): Thenable<void> {
-        assert( oldUri.authority===newUri.authority, 'Cannot rename across servers' );
-        return this.getVFS(oldUri).then( vfs => vfs.rename(oldUri, newUri, options.overwrite) );
+    rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean; }) {
+        if (oldUri.authority !== newUri.authority) {
+            vscode.window.showErrorMessage('Cannot rename across servers');
+            return;
+        } else {
+            return this.getVFS(oldUri).then( vfs => vfs.rename(oldUri, newUri, options.overwrite) );
+        }
     }
 }

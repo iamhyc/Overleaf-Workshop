@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { RemoteFileSystemProvider, parseUri } from '../provider/remoteFileSystemProvider';
+import { RemoteFileSystemProvider, parseUri } from '../core/remoteFileSystemProvider';
 import { ROOT_NAME, ELEGANT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
-import { PdfDocument } from '../provider/pdfViewEditorProvider';
+import { PdfDocument } from '../core/pdfViewEditorProvider';
 import { LatexParser, ErrorSchema } from './compileLogParser';
 import { EventBus } from '../utils/eventBus';
 
@@ -12,19 +12,15 @@ const severityMap: Record<string, vscode.DiagnosticSeverity> = {
     information: vscode.DiagnosticSeverity.Information,
 };
 
-
-export const pdfViewRecord: {
+const pdfViewRecord: {
     [key: string]: {
         [key: string]: { doc: PdfDocument, webviewPanel: vscode.WebviewPanel }
     }
 } = {};
 
-
-
 class CompileDiagnosticProvider {
     private diagnosticCollection = vscode.languages.createDiagnosticCollection(ROOT_NAME);
-    constructor(private readonly vfsm: RemoteFileSystemProvider) { };
-
+    constructor(private readonly vfsm: RemoteFileSystemProvider) {};
 
     private async getRange(log: ErrorSchema, path: string, vfs: any) {
         let textDoc: vscode.TextDocument;
@@ -124,6 +120,16 @@ export class CompileManager {
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
         this.status.command = 'compilerManager.settings';
         this.diagnosticProvider = new CompileDiagnosticProvider(vfsm);
+        // listen pdf open event
+        EventBus.on('pdfWillOpenEvent', ({uri, doc, webviewPanel}) => {
+            const {identifier,pathParts} = parseUri(uri);
+            const filePath = pathParts.join('/');
+            if (pdfViewRecord[identifier]) {
+                pdfViewRecord[identifier][filePath] = {doc, webviewPanel};
+            } else {
+                pdfViewRecord[identifier] = {[filePath]:{doc, webviewPanel}};
+            }
+        });
     }
 
     static check(uri?: vscode.Uri) {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
 import { EventBus } from '../utils/eventBus';
-import { RemoteFileSystemProvider, parseUri } from './remoteFileSystemProvider';
+import { RemoteFileSystemProvider, parseUri } from '../core/remoteFileSystemProvider';
 import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { ProjectLabelResponseSchema } from '../api/base';
 

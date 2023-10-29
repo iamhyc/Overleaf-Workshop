@@ -1,42 +1,17 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
-import { SocketIOAPI } from '../api/socketio';
-import { VirtualFileSystem } from '../provider/remoteFileSystemProvider';
 import { ELEGANT_NAME } from '../consts';
+import { SocketIOAPI, UpdateUserSchema } from '../api/socketio';
+import { VirtualFileSystem } from '../core/remoteFileSystemProvider';
 import { ChatViewProvider } from './chatViewProvider';
 
-export interface UpdateUserSchema {
-    id: string,
-    user_id: string,
-    name: string,
-    email: string,
-    doc_id: string,
-    row: number,
-    column: number,
-
-    last_updated_at?: number, //unix timestamp
+interface ExtendedUpdateUserSchema extends UpdateUserSchema {
     selection?: {
         color: UserColors,
         hoverMessage: vscode.MarkdownString,
         decoration: vscode.TextEditorDecorationType,
         ranges: vscode.DecorationOptions[],
     },
-}
-
-export interface OnlineUserSchema {
-    client_age: number,
-    client_id: string,
-    connected: boolean,
-    cursorData?: {
-        column: number,
-        doc_id: string,
-        row: number,
-    },
-    email: string,
-    first_name: string,
-    last_name?: string,
-    last_updated_at: string, //unix timestamp
-    user_id: string,
 }
 
 enum UserColors {
@@ -80,7 +55,7 @@ export class ClientManager {
     private activeExists?: string;
     private inactivateTask?: NodeJS.Timeout;
     private readonly status: vscode.StatusBarItem;
-    private readonly onlineUsers: {[K:string]:UpdateUserSchema} = {};
+    private readonly onlineUsers: {[K:string]:ExtendedUpdateUserSchema} = {};
     private connectedFlag: boolean = true;
     private readonly chatViewer: ChatViewProvider;
 
@@ -88,7 +63,8 @@ export class ClientManager {
         private readonly vfs: VirtualFileSystem,
         private readonly context: vscode.ExtensionContext,
         private readonly publicId: string,
-        private readonly socket: SocketIOAPI) {
+        private readonly socket: SocketIOAPI,
+    ) {
         this.socket.updateEventHandlers({
             onClientUpdated: (user:UpdateUserSchema) => {
                 if (user.id !== this.publicId) { this.setStatusActive(user.id); }

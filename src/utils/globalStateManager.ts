@@ -1,21 +1,9 @@
 import * as vscode from 'vscode';
-import { Identity, ResponseSchema, BaseAPI } from '../api/base';
+import { Identity, BaseAPI, ProjectPersist } from '../api/base';
 import { SocketIOAPI } from '../api/socketio';
-import { FileType, FolderEntity, MemberEntity } from '../provider/remoteFileSystemProvider';
+import { FileType, FolderEntity } from '../core/remoteFileSystemProvider';
 
 const keyServerPersists: string = 'overleaf-servers';
-
-export interface ProjectPersist {
-    id: string;
-    userId: string;
-    name: string;
-    lastUpdated?: string;
-    lastUpdatedBy?: MemberEntity;
-    source?: 'owner' | 'collaborator' | 'readOnly';
-    accessLevel: 'owner' | 'collaborator' | 'readOnly';
-    archived?: boolean;
-    trashed?: boolean;
-}
 
 export interface ServerPersist {
     name: string;

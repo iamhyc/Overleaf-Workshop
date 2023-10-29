@@ -1,22 +1,12 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
-import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../provider/remoteFileSystemProvider';
+import { SnippetItemSchema } from '../api/base';
+import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { EventBus } from '../utils/eventBus';
 
 type PathFileType = 'text' | 'image' | 'bib';
 
-export type SnippetItemMap = {[K:string]: SnippetItem};
-export interface SnippetItem {
-    meta: string,
-    score: number,
-    caption: string,
-    snippet: string,
-}
-
-export interface MisspellingItem {
-    index: number,
-    suggestions: string[]
-}
+export type SnippetItemMap = {[K:string]: SnippetItemSchema};
 
 function* sRange(start:number, end:number) {
     for (let i = start; i <= end; i++) {

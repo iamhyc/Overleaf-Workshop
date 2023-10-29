@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { SocketIOAPI } from '../api/socketio';
 import { ProjectMessageResponseSchema } from '../api/base';
-import { VirtualFileSystem, parseUri } from '../provider/remoteFileSystemProvider';
+import { VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
     private hasUnreadMessages = 0;

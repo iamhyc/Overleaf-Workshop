@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
-import { GlobalStateManager, ProjectPersist } from '../utils/globalStateManager';
 import { ProjectTagsResponseSchema } from '../api/base';
+import { GlobalStateManager } from '../utils/globalStateManager';
 
 class DataItem extends vscode.TreeItem {
     constructor(
@@ -497,5 +497,71 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
             vscode.commands.executeCommand('workbench.view.explorer');
         });
+    }
+
+    get triggers() {
+        return [
+            // register server-related commands
+            vscode.commands.registerCommand('projectManager.addServer', () => {
+                this.addServer();
+            }),
+            vscode.commands.registerCommand('projectManager.removeServer', (item) => {
+                this.removeServer(item.name);
+            }),
+            vscode.commands.registerCommand('projectManager.loginServer', (item) => {
+                this.loginServer(item);
+            }),
+            vscode.commands.registerCommand('projectManager.logoutServer', (item) => {
+                this.logoutServer(item);
+            }),
+            vscode.commands.registerCommand('projectManager.refreshServer', (item) => {
+                this.refreshServer(item);
+            }),
+            // register project-related commands
+            vscode.commands.registerCommand('projectManager.newProject', (item) => {
+                this.newProject(item);
+            }),
+            vscode.commands.registerCommand('projectManager.renameProject', (item) => {
+                this.renameProject(item);
+            }),
+            vscode.commands.registerCommand('projectManager.deleteProject', (item) => {
+                this.deleteProject(item);
+            }),
+            vscode.commands.registerCommand('projectManager.archiveProject', (item) => {
+                this.archiveProject(item);
+            }),
+            vscode.commands.registerCommand('projectManager.unarchiveProject', (item) => {
+                this.unarchiveProject(item);
+            }),
+            vscode.commands.registerCommand('projectManager.trashProject', (item) => {
+                this.trashProject(item);
+            }),
+            vscode.commands.registerCommand('projectManager.untrashProject', (item) => {
+                this.untrashProject(item);
+            }),
+            // register tag-related commands
+            vscode.commands.registerCommand('projectManager.createTag', (item) => {
+                this.createTag(item);
+            }),
+            vscode.commands.registerCommand('projectManager.renameTag', (item) => {
+                this.renameTag(item);
+            }),
+            vscode.commands.registerCommand('projectManager.deleteTag', (item) => {
+                this.deleteTag(item);
+            }),
+            vscode.commands.registerCommand('projectManager.addProjectToTag', (item) => {
+                this.addProjectToTag(item);
+            }),
+            vscode.commands.registerCommand('projectManager.removeProjectFromTag', (item) => {
+                this.removeProjectFromTag(item);
+            }),
+            // register open project commands
+            vscode.commands.registerCommand('projectManager.openProjectInCurrentWindow', (item) => {
+                this.openProjectInCurrentWindow(item);
+            }),
+            vscode.commands.registerCommand('projectManager.openProjectInNewWindow', (item) => {
+                this.openProjectInNewWindow(item);
+            }),
+        ];
     }
 }

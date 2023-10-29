@@ -1,7 +1,33 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Identity, BaseAPI, ProjectMessageResponseSchema } from './base';
-import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../provider/remoteFileSystemProvider';
-import { OnlineUserSchema, UpdateUserSchema } from '../collaboration/clientManager';
+import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../core/remoteFileSystemProvider';
+
+export interface UpdateUserSchema {
+    id: string,
+    user_id: string,
+    name: string,
+    email: string,
+    doc_id: string,
+    row: number,
+    column: number,
+    last_updated_at?: number, //unix timestamp
+}
+
+export interface OnlineUserSchema {
+    client_age: number,
+    client_id: string,
+    connected: boolean,
+    cursorData?: {
+        column: number,
+        doc_id: string,
+        row: number,
+    },
+    email: string,
+    first_name: string,
+    last_name?: string,
+    last_updated_at: string, //unix timestamp
+    user_id: string,
+}
 
 export interface UpdateSchema {
     doc: string, //doc id
@@ -42,12 +68,10 @@ export interface EventsHandler {
 export class SocketIOAPI {
     private _handlers: Array<EventsHandler> = [];
 
-    private url: string;
     private socket?: any;
     private emit: any;
 
-    constructor(url:string, api:BaseAPI, identity:Identity) {
-        this.url = url;
+    constructor(private readonly url:string, api:BaseAPI, identity:Identity) {
         this.socket = api._initSocketV0(identity);
         (this.socket.emit)[require('util').promisify.custom] = (event:string, ...args:any[]) => {
             return new Promise((resolve, reject) => {

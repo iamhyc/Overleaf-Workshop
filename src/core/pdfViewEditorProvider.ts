@@ -1,7 +1,5 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
-import { pdfViewRecord } from '../compile/compileManager';
-import { parseUri } from './remoteFileSystemProvider';
 import { EventBus } from '../utils/eventBus';
 
 export class PdfDocument implements vscode.CustomDocument {
@@ -58,14 +56,7 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
     }
 
     async resolveCustomEditor(doc: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
-        const {identifier,pathParts} = parseUri(doc.uri);
-        const filePath = pathParts.join('/');
-        if (pdfViewRecord[identifier]) {
-            pdfViewRecord[identifier][filePath] = {doc, webviewPanel};
-        } else {
-            pdfViewRecord[identifier] = {[filePath]:{doc, webviewPanel}};
-        }
-
+        EventBus.fire('pdfWillOpenEvent', {uri: doc.uri, doc, webviewPanel});
         doc.onDidChange(() => {
             webviewPanel.webview.postMessage({type:'update', content:doc.cache.buffer});
         });
