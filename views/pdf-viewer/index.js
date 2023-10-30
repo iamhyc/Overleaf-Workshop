@@ -79,7 +79,11 @@
     }
 
     async function updatePdf(pdf) {
-        const doc = await pdfjsLib.getDocument(pdf).promise;
+        const doc = await pdfjsLib.getDocument({
+            data: pdf,
+            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.10.111/cmaps/',
+            cMapPacked: true
+        }).promise;
         backupPdfViewerState();
         PDFViewerApplication.load(doc);
     }
