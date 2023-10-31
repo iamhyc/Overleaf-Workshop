@@ -3,6 +3,7 @@ import * as http from 'http';
 import * as https from 'https';
 import * as stream from 'stream';
 import * as FormData from 'form-data';
+import { v4 as uuidv4 } from 'uuid';
 import fetch from 'node-fetch';
 import { FileEntity, FileType, FolderEntity, OutputFileEntity } from '../core/remoteFileSystemProvider';
 
@@ -520,6 +521,19 @@ export class BaseAPI {
             const entity = {_type:entity_type, _id:entity_id, name:filename} as FileEntity;
             return {entity};
         }, {'X-Csrf-Token': identity.csrfToken});
+    }
+
+    async uploadProject(identity:Identity, filename:string, fileContent:Uint8Array) {
+        const uuid = uuidv4();
+        const fileStream = stream.Readable.from(fileContent);
+        const formData = new FormData();
+        formData.append('qqfile', fileStream, {filename});
+
+        this.setIdentity(identity);
+        return this.request('POST', `project/new/upload?_csrf=${identity.csrfToken}&qquuid=${uuid}&qqfilename=${filename}&qqtotalfilesize=${fileContent.length}`, formData, (res) => {
+            const message = (JSON.parse(res!) as NewProjectResponseSchema).project_id;
+            return {message};
+        });
     }
 
     async addFolder(identity:Identity, projectId:string, folderName:string, parentFolderId:string) {

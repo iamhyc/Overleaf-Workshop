@@ -287,6 +287,33 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                     });
                     break;
                 case 'Upload Project':
+                    vscode.window.showOpenDialog({
+                        canSelectFiles: true,
+                        canSelectFolders: false,
+                        canSelectMany: false,
+                        filters: {
+                            // eslint-disable-next-line @typescript-eslint/naming-convention
+                            'Archive File': ['zip'],
+                        },
+                        title: 'Upload Zipped Project',
+                    }).then((uri) => {
+                        if (!uri) { return; }
+                        vscode.workspace.fs.readFile(uri[0])
+                        .then(fileContent => {
+                            const filename = uri[0].path.split('/').pop();
+                            if (filename) {
+                                GlobalStateManager.authenticate(this.context, server.name)
+                                .then(identity => server.api.uploadProject(identity, filename, fileContent))
+                                .then(res => {
+                                    if (res.type==='success') {
+                                        this.refresh();
+                                    } else {
+                                        vscode.window.showErrorMessage(res.message);
+                                    }
+                                });
+                            }
+                        });
+                    });
                     break;
             }
         });
