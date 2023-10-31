@@ -136,6 +136,8 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
                         `${this._path} (v${_version} vs v${revision.toV})`,
                     ],
                 };
+            } else {
+                //TODO: display global diff
             }
             return item;
         }) || [];
@@ -291,6 +293,7 @@ export class HistoryViewProvider {
         const treeDataProvider = new HistoryDataProvider(vfsm);
         this.historyView = vscode.window.createTreeView('projectHistory', { treeDataProvider});
         this.treeDataProvider = treeDataProvider;
+        this.updateView();
     }
 
     updateView(pathParts?: string[]) {
@@ -301,6 +304,10 @@ export class HistoryViewProvider {
     get triggers() {
         return [
             ...this.treeDataProvider.triggers,
+            // register commands
+            vscode.commands.registerCommand('projectHistory.clearSelection', async() => {
+                this.updateView(undefined);
+            }),
             // on file open
             EventBus.on('fileWillOpenEvent', async ({uri}) => {
                 setTimeout(() => {

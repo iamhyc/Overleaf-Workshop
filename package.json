@@ -188,6 +188,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "projectHistory.clearSelection",
+        "title": "Clear Selection",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "projectHistory.createLabel",
         "title": "Add New Label",
         "icon": "$(tag)"
@@ -307,6 +312,11 @@
         },
         {
           "command": "projectHistory.refresh",
+          "when": "view == projectHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "projectHistory.clearSelection",
           "when": "view == projectHistory",
           "group": "navigation"
         }
