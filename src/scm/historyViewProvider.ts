@@ -215,6 +215,22 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
                     this.refresh();
                 }
             }),
+            vscode.commands.registerCommand('projectHistory.downloadProject', async (item:HistoryItem) => {
+                const uri = vscode.workspace.workspaceFolders?.[0].uri;
+                if (!uri) { return; }
+                const vfs = await this.vfsm.prefetch(uri);
+                const version = item.version;
+                const content = await vfs.downloadProjectArchive(version);
+                const filename = `${vfs.projectName}-v${version}.zip`;
+
+                const savePath = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file(filename),
+                    filters: { 'Zip Archive': ['zip'] },
+                });
+                if (!savePath) { return; }
+                await vscode.workspace.fs.writeFile(savePath, content);
+                vscode.window.showInformationMessage(`Project v${version} saved to ${savePath.fsPath}`);
+            }),
         ];
     }
 

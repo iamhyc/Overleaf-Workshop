@@ -752,7 +752,7 @@ export class BaseAPI {
         const content = await this.download(`project/${projectId}/version/${version}/zip`);
         return {
             type: 'success',
-            content: new Uint8Array(content )
+            content: new Uint8Array(content)
         };
     }
 

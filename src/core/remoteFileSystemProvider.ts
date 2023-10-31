@@ -117,8 +117,11 @@ export class VirtualFileSystem {
     private initializing?: Promise<ProjectEntity>;
     private notify: (events:vscode.FileChangeEvent[])=>void;
 
+    public readonly projectName;
+
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
         const {userId,projectId,projectName} = parseUri(uri);
+        this.projectName = projectName;
         this.origin = uri.with({path: '/'+projectName});
         this.serverName = uri.authority;
         this.userId = userId;
@@ -771,6 +774,12 @@ export class VirtualFileSystem {
         } else {
             return false;
         }
+    }
+
+    async downloadProjectArchive(version: number) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.downloadZipOfVersion(identity, this.projectId, version);
+        return res.content;
     }
 
     async getMessages() {
