@@ -394,7 +394,9 @@ class CommandCompletionProvider extends IntellisenseProvider implements vscode.C
         const wordRange = document.getWordRangeAtPosition(position, this.contextRegex);
         if (wordRange) {
             const partial = document.getText(wordRange);
-            return this.getCompletionItems(document.uri, partial, wordRange);
+            const pos = partial.search(/\\/); 
+            const delRange = pos !== -1 ? new vscode.Range(wordRange.start.translate(0,pos), wordRange.start.translate(0, pos + 1)) : wordRange;
+            return this.getCompletionItems(document.uri, partial, delRange);
         }
         return Promise.resolve([]);
     }
