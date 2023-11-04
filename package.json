@@ -203,6 +203,18 @@
         "icon": "$(close-all)"
       },
       {
+        "command": "projectHistory.comparePrevious",
+        "title": "Compare with Previous Version"
+      },
+      {
+        "command": "projectHistory.compareCurrent",
+        "title": "Compare with Current Version"
+      },
+      {
+        "command": "projectHistory.compareOthers",
+        "title": "Compare with Other Version ..."
+      },
+      {
         "command": "projectHistory.downloadProject",
         "title": "Download Project",
         "icon": "$(cloud-download)"
@@ -407,15 +419,33 @@
         },
         {
           "command": "projectHistory.createLabel",
-          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/"
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "1_labelActions@0"
         },
         {
           "command": "projectHistory.deleteLabel",
-          "when": "view == projectHistory && viewItem == historyItemLabelled"
+          "when": "view == projectHistory && viewItem == historyItemLabelled",
+          "group": "1_labelActions@1"
+        },
+        {
+          "command": "projectHistory.comparePrevious",
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "2_scmActions@1"
+        },
+        {
+          "command": "projectHistory.compareCurrent",
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "2_scmActions@0"
+        },
+        {
+          "command": "projectHistory.compareOthers",
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "2_scmActions@2"
         },
         {
           "command": "projectHistory.downloadProject",
-          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/"
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "z_downloadAction"
         }
       ]
     },

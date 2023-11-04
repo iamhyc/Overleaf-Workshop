@@ -8,10 +8,10 @@ import { ProjectLabelResponseSchema } from '../api/base';
 interface HistoryRecord {
     before?: number,
     currentVersion?: number,
-    keyVersions: number[], //array of all `fromV` values
+    keyVersions: number[], //array of all `toV` values
     revisions: {
-        [fromV:number]: {
-            toV: number,
+        [toV:number]: {
+            fromV: number,
             timestamp: number,
             users: {
                 id: string,
@@ -61,6 +61,7 @@ class HistoryItem extends vscode.TreeItem {
     constructor(
         label: string,
         readonly version: number,
+        readonly prevVersion: number,
         readonly tags?: ProjectLabelResponseSchema[]
     ) {
         const _tag = tags?.map(t=>t.comment).join(' | ');
@@ -112,6 +113,8 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
             const item = new HistoryItem(
                 `Version ${_version}`,
                 _version,
+                //prevVersion
+                _history.revisions[_version].fromV || _version,
                 _history.labels[_version],
             );
             const revision = _history.revisions[_version];
@@ -126,24 +129,16 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
                 item.tooltip.appendMarkdown(`\`$(tag) ${label.comment}\` \n`);
             }
             item.tooltip.supportThemeIcons = true;
-            if (this._path) {
-                item.command = {
-                    command: 'vscode.diff',
-                    title: 'Compare with Previous',
-                    arguments: [
-                        vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${_version}`),
-                        vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${revision.toV}`),
-                        `${this._path} (v${_version} vs v${revision.toV})`,
-                    ],
-                };
-            } else {
-                //TODO: display global diff
-            }
+            item.command = {
+                command: 'projectHistory.comparePrevious',
+                title: 'Compare with Previous',
+                arguments: [item],
+            };
             return item;
         }) || [];
 
         if (this._history.before) {
-            const item = new HistoryItem('Load More ...', NaN);
+            const item = new HistoryItem('Load More ...', NaN,NaN);
             item.iconPath = undefined;
             item.command = {
                 command: 'projectHistory.loadMore',
@@ -217,6 +212,41 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
                     this.refresh();
                 }
             }),
+            vscode.commands.registerCommand('projectHistory.comparePrevious', async (item: HistoryItem) => {
+                vscode.commands.executeCommand('vscode.diff',
+                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
+                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.prevVersion}`),
+                    `${this._path} (v${item.version} vs v${item.prevVersion})`,
+                );
+            }),
+            vscode.commands.registerCommand('projectHistory.compareCurrent', async (item: HistoryItem) => {
+                vscode.commands.executeCommand('vscode.diff',
+                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
+                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${this._history?.currentVersion}`),
+                    `${this._path} (v${item.version} vs v${this._history?.currentVersion})`,
+                );
+            }),
+            vscode.commands.registerCommand('projectHistory.compareOthers', async (item: HistoryItem) => {
+                const otherVersions = this._history?.keyVersions.filter(v=>v!==item.version);
+                if (!otherVersions) { return; }
+
+                vscode.window.showQuickPick(otherVersions.map(v => {
+                    return {
+                        label: `version ${v}`,
+                        description: formatTime(this._history?.revisions[v].timestamp || 0),
+                        version: v,
+                    };
+                }), {
+                    placeHolder: 'Select a version to compare',
+                }).then(async (select) => {
+                    if (!select) { return; }
+                    vscode.commands.executeCommand('vscode.diff',
+                        vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
+                        vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${select.version}`),
+                        `${this._path} (v${item.version} vs v${select.version})`,
+                    );
+                });
+            }),
             vscode.commands.registerCommand('projectHistory.downloadProject', async (item:HistoryItem) => {
                 const uri = vscode.workspace.workspaceFolders?.[0].uri;
                 if (!uri) { return; }
@@ -255,28 +285,35 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
         this._history.before = updates?.nextBeforeTimestamp;
         
         // parse updates
-        for (const update of updates?.updates!) {
-            this._history.keyVersions.push(update.fromV);
-            this._history.revisions[update.fromV] = {
-                toV: update.toV,
-                timestamp: update.meta.start_ts,
-                users: update.meta.users,
-            };
-            this._history.labels[update.fromV] = update.labels;
-            for (const path of update.pathnames) {
-                this._history.diff[path] ?
-                this._history.diff[path].push(update.fromV)
-                : this._history.diff[path] = [update.fromV];
-            }
-            for (const op of update.project_ops) {
-                if (op.add) {
-                    this._history.diff[op.add.pathname] ?
-                    this._history.diff[op.add.pathname].push(op.atV)
-                    : this._history.diff[op.add.pathname] = [op.atV];
-                } else if (op.remove) {
-                    this._history.diff[op.remove.pathname] ?
-                    this._history.diff[op.remove.pathname].push(op.atV)
-                    : this._history.diff[op.remove.pathname] = [op.atV];
+        if (updates?.updates) {
+            // iterate all `toV`
+            for (const update of updates.updates) {
+                const version = update.toV;
+                // update `keyVersions`, `revisions` and `labels`
+                this._history.keyVersions.push(version);
+                this._history.revisions[version] = {
+                    fromV: update.fromV,
+                    timestamp: update.meta.end_ts,
+                    users: update.meta.users,
+                };
+                this._history.labels[version] = update.labels;
+                // update path-related versions
+                for (const path of update.pathnames) {
+                    this._history.diff[path] ?
+                    this._history.diff[path].push(version)
+                    : this._history.diff[path] = [version];
+                }
+                // record updates
+                for (const op of update.project_ops) {
+                    if (op.add) {
+                        this._history.diff[op.add.pathname] ?
+                        this._history.diff[op.add.pathname].push(op.atV)
+                        : this._history.diff[op.add.pathname] = [op.atV];
+                    } else if (op.remove) {
+                        this._history.diff[op.remove.pathname] ?
+                        this._history.diff[op.remove.pathname].push(op.atV)
+                        : this._history.diff[op.remove.pathname] = [op.atV];
+                    }
                 }
             }
         }
