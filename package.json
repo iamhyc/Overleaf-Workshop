@@ -424,7 +424,7 @@
     "download-latex-basics": "download -o data/vendor -s 1 -e https://github.com/jlelong/vscode-latex-basics/archive/refs/tags/v1.5.4.zip",
     "postinstall": "patch-package; npm run download-pdfjs; npm run download-latex-basics",
     "vscode:prepublish": "npm run compile",
-    "compile": "cd views/chat-view && npm run build; tsc -p ./",
+    "compile": "tsc -p ./; cd views/chat-view && npm run build",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
