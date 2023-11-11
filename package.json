@@ -174,13 +174,18 @@
       },
       {
         "command": "projectManager.openProjectInCurrentWindow",
-        "title": "Open Project in Current Window ...",
+        "title": "Open Project in Current Window",
         "icon": "$(arrow-right)"
       },
       {
         "command": "projectManager.openProjectInNewWindow",
-        "title": "Open Project in New Window ...",
+        "title": "Open Project in New Window",
         "icon": "$(empty-window)"
+      },
+      {
+        "command": "projectManager.openProjectLocalDouble",
+        "title": "Open Project Locally ...",
+        "icon": "$(file-directory)"
       },
       {
         "command": "projectHistory.refresh",
@@ -218,6 +223,11 @@
         "command": "projectHistory.downloadProject",
         "title": "Download Project",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "projectHistory.configSCM",
+        "title": "Configure SCM",
+        "icon": "$(gear)"
       },
       {
         "command": "compileManager.compile",
@@ -323,15 +333,20 @@
           "group": "navigation"
         },
         {
+          "command": "projectHistory.configSCM",
+          "when": "view == projectHistory",
+          "group": "navigation@1"
+        },
+        {
           "command": "projectHistory.refresh",
           "when": "view == projectHistory",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "projectHistory.clearSelection",
           "when": "view == projectHistory",
-          "group": "navigation"
-        }
+          "group": "navigation@3"
+        } 
       ],
       "view/item/context": [
         {
@@ -360,7 +375,8 @@
         },
         {
           "command": "projectManager.renameProject",
-          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/"
+          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.deleteProject",
@@ -369,7 +385,8 @@
         },
         {
           "command": "projectManager.archiveProject",
-          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/"
+          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.unarchiveProject",
@@ -378,7 +395,8 @@
         },
         {
           "command": "projectManager.trashProject",
-          "when": "view == projectManager && viewItem =~ /^(?!trashed).*project/"
+          "when": "view == projectManager && viewItem =~ /^(?!trashed).*project/",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.untrashProject",
@@ -401,11 +419,13 @@
         },
         {
           "command": "projectManager.addProjectToTag",
-          "when": "view == projectManager && viewItem == project"
+          "when": "view == projectManager && viewItem == project",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.removeProjectFromTag",
-          "when": "view == projectManager && viewItem == project_in_tag"
+          "when": "view == projectManager && viewItem == project_in_tag",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.openProjectInCurrentWindow",
@@ -416,6 +436,21 @@
           "command": "projectManager.openProjectInNewWindow",
           "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "inline@4"
+        },
+        {
+          "command": "projectManager.openProjectInCurrentWindow",
+          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "group": "1_openActions@1"
+        },
+        {
+          "command": "projectManager.openProjectInNewWindow",
+          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "group": "1_openActions@2"
+        },
+        {
+          "command": "projectManager.openProjectLocalDouble",
+          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "group": "1_openActions@3"
         },
         {
           "command": "projectHistory.createLabel",

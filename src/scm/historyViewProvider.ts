@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
 import { EventBus } from '../utils/eventBus';
-import { RemoteFileSystemProvider, parseUri } from '../core/remoteFileSystemProvider';
+import { VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { ProjectLabelResponseSchema } from '../api/base';
 
@@ -72,11 +72,11 @@ class HistoryItem extends vscode.TreeItem {
     }
 }
 
-export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscode.TextDocumentContentProvider {
+class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscode.TextDocumentContentProvider {
     private _path?: string;
     private _history?: HistoryRecord;
 
-    constructor(private readonly vfsm: RemoteFileSystemProvider) {
+    constructor(private readonly vfs: VirtualFileSystem) {
         setInterval(this.refresh.bind(this), 30*1000);
     }
 
@@ -155,8 +155,7 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
         const _uri = vscode.workspace.workspaceFolders?.[0].uri;
         if (!_uri) { return Promise.reject(); }
 
-        return this.vfsm.prefetch(_uri)
-        .then(vfs => vfs.getFileDiff(pathname, Number(version), Number(version)))
+        return this.vfs.getFileDiff(pathname, Number(version), Number(version))
         .then(diff => {
             const text = diff?.diff[0]?.u;
             return Promise.resolve(text);
@@ -184,8 +183,7 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
                 const uri = vscode.workspace.workspaceFolders?.[0].uri;
                 if (!uri) { return; }
 
-                const vfs = await this.vfsm.prefetch(uri);
-                const res = await vfs.createLabel(label, item.version);
+                const res = await this.vfs.createLabel(label, item.version);
                 if (res) {
                     this._history?.labels[item.version].push(res);
                     this.refresh();
@@ -201,10 +199,9 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
                 const uri = vscode.workspace.workspaceFolders?.[0].uri;
                 if (!uri) { return; }
 
-                const vfs = await this.vfsm.prefetch(uri);
                 const version = item.version;
                 const labelId = item.tags?.find(t=>t.comment===label)?.id;
-                const res = labelId && await vfs.deleteLabel(labelId);
+                const res = labelId && await this.vfs.deleteLabel(labelId);
                 if (res) {
                     this._history?.labels[version].splice(
                         this._history?.labels[version].findIndex(t=>t.id===labelId), 1
@@ -250,10 +247,9 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
             vscode.commands.registerCommand('projectHistory.downloadProject', async (item:HistoryItem) => {
                 const uri = vscode.workspace.workspaceFolders?.[0].uri;
                 if (!uri) { return; }
-                const vfs = await this.vfsm.prefetch(uri);
                 const version = item.version;
-                const content = await vfs.downloadProjectArchive(version);
-                const filename = `${vfs.projectName}-v${version}.zip`;
+                const content = await this.vfs.downloadProjectArchive(version);
+                const filename = `${this.vfs.projectName}-v${version}.zip`;
 
                 const savePath = await vscode.window.showSaveDialog({
                     defaultUri: vscode.Uri.file(filename),
@@ -280,8 +276,7 @@ export class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>
             return Promise.resolve(this._history);
         }
 
-        const vfs = await this.vfsm.prefetch(uri);
-        const updates = await vfs.getUpdates(before);
+        const updates = await this.vfs.getUpdates(before);
         this._history.before = updates?.nextBeforeTimestamp;
         
         // parse updates
@@ -326,8 +321,8 @@ export class HistoryViewProvider {
     private treeDataProvider: HistoryDataProvider;
     private historyView: vscode.TreeView<HistoryItem>;
 
-    constructor(vfsm: RemoteFileSystemProvider) {
-        const treeDataProvider = new HistoryDataProvider(vfsm);
+    constructor(vfs: VirtualFileSystem) {
+        const treeDataProvider = new HistoryDataProvider(vfs);
         this.historyView = vscode.window.createTreeView('projectHistory', { treeDataProvider});
         this.treeDataProvider = treeDataProvider;
         this.updateView();
@@ -340,6 +335,7 @@ export class HistoryViewProvider {
 
     get triggers() {
         return [
+            // register tree view
             ...this.treeDataProvider.triggers,
             // register commands
             vscode.commands.registerCommand('projectHistory.clearSelection', async() => {

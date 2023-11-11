@@ -42,8 +42,4 @@ export function activate(context: vscode.ExtensionContext) {
     // Register: LangIntellisenseProvider
     const langIntellisenseProvider = new LangIntellisenseProvider(context, remoteFileSystemProvider);
     context.subscriptions.push( ...langIntellisenseProvider.triggers );
-
-    // Register: HistoryViewProvider on Explorer
-    const historyDataProvider = new HistoryViewProvider(remoteFileSystemProvider);
-    context.subscriptions.push( ...historyDataProvider.triggers );
 }

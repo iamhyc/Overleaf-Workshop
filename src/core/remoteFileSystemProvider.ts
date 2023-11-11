@@ -7,6 +7,7 @@ import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { GlobalStateManager } from '../utils/globalStateManager';
 import { ClientManager } from '../collaboration/clientManager';
 import { EventBus } from '../utils/eventBus';
+import { SCMCollectionProvider } from '../scm/scmCollectionProvider';
 
 const __OUTPUTS_ID = `${ROOT_NAME}-outputs`;
 
@@ -108,16 +109,16 @@ export class VirtualFileSystem {
     private context: vscode.ExtensionContext;
     private api: BaseAPI;
     private socket: SocketIOAPI;
-    private origin: vscode.Uri;
-    private serverName: string;
     private publicId?: string;
     private userId: string;
-    private projectId: string;
     private isDirty: boolean = true;
     private initializing?: Promise<ProjectEntity>;
     private notify: (events:vscode.FileChangeEvent[])=>void;
 
-    public readonly projectName;
+    public readonly origin: vscode.Uri;
+    public readonly projectName: string;
+    public readonly serverName: string;
+    public readonly projectId: string;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
         const {userId,projectId,projectName} = parseUri(uri);
@@ -158,6 +159,8 @@ export class VirtualFileSystem {
                 this.root = project;
                 const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
                 clientManager.triggers; // init and then dispose
+                const scmCollection = new SCMCollectionProvider(this, this.context);
+                scmCollection.triggers; // init and then dispose
                 vscode.commands.executeCommand('compileManager.compile');
                 return project;
             });
@@ -441,9 +444,15 @@ export class VirtualFileSystem {
                 });
             });
         } else {
-            const content = await GlobalStateManager.getProjectFile(this.context, this.api, this.serverName, this.projectId, fileEntity._id);
-            content && EventBus.fire('fileWillOpenEvent', {uri});
-            return content || new Uint8Array(0);
+            const fileId = fileEntity._id;
+            const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+            const res = await this.api.getFile(identity, this.projectId, fileId);
+            if (res.type==='success' && res.content) {
+                EventBus.fire('fileWillOpenEvent', {uri});
+                return res.content;
+            } else {
+                return new Uint8Array(0);
+            }
         }
     }
 
@@ -454,14 +463,23 @@ export class VirtualFileSystem {
         }
 
         let res = undefined;
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+
         if (content.length===0) {
-            const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
             const _res = await this.api.addDoc(identity, this.projectId, parentFolder._id, fileName);
             if (_res.type==='success') {
                 res = _res.entity;
             }
         } else {
-            res = await GlobalStateManager.uploadProjectFile(this.context, this.api, this.serverName, this.projectId, parentFolder._id, fileName, content);
+            const parentFolderId = parentFolder._id;
+            const _res = await this.api.uploadFile(identity, this.projectId, parentFolderId, fileName, content);
+            if (_res.type==='success' && _res.entity!==undefined) {
+                res = _res.entity;
+            } else {
+                if (_res.message!==undefined) {
+                    vscode.window.showErrorMessage(_res.message);
+                }
+            }
         }
         if (res && res._type) {
             this.insertEntity(parentFolder, res._type, res);
@@ -542,18 +560,30 @@ export class VirtualFileSystem {
 
     async mkdir(uri: vscode.Uri) {
         const {parentFolder, fileName} = await this._resolveUri(uri);
-        const res = await GlobalStateManager.addProjectFolder(this.context, this.api, this.serverName, this.projectId, fileName, parentFolder._id);
-        if (res) {
-            this.insertEntity(parentFolder, 'folder', res);
+        const [folderName, parentFolderId] = [fileName, parentFolder._id];
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.addFolder(identity, this.projectId, folderName, parentFolderId);
+
+        if (res.type==='success' && res.entity!==undefined) {
+            this.insertEntity(parentFolder, 'folder', res.entity as FolderEntity);
+        } else {
+            if (res.message!==undefined) {
+                vscode.window.showErrorMessage(res.message);
+            }
         }
     }
 
     async remove(uri: vscode.Uri, recursive: boolean) {
         const {parentFolder, fileType, fileEntity} = await this._resolveUri(uri);
         if (fileType && fileEntity) {
-            const res = await GlobalStateManager.deleteProjectEntity(this.context, this.api, this.serverName, this.projectId, fileType, fileEntity._id);
-            if (res) {
+            const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+            const res = await this.api.deleteEntity(identity, this.projectId, fileType, fileEntity._id);
+            if (res.type==='success') {
                 this.removeEntityById(parentFolder, fileType, fileEntity._id, recursive);
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
             }
         }
     }
@@ -570,16 +600,25 @@ export class VirtualFileSystem {
                 this.removeEntity(newPath.parentFolder, newPath.fileType, newPath.fileEntity);
             }
             // rename or move
-            const res = (oldPath.parentFolder===newPath.parentFolder) ? (
-                        // rename   
-                        await GlobalStateManager.renameProjectEntity(this.context, this.api, this.serverName, this.projectId, oldPath.fileType, oldPath.fileEntity._id, newPath.fileName) ) : (
-                        // move
-                        await GlobalStateManager.moveProjectEntity(this.context, this.api, this.serverName, this.projectId, oldPath.fileType, oldPath.fileEntity._id, newPath.parentFolder._id) );
-            if (res) {
+            let res = undefined;
+            const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+            if (oldPath.parentFolder===newPath.parentFolder) {
+                const [entityType, entityId, newName] = [oldPath.fileType, oldPath.fileEntity._id, newPath.fileName];
+                res = await this.api.renameEntity(identity, this.projectId, entityType, entityId, newName);
+            } else {
+                const [entityType, entityId, newParentFolderId] = [oldPath.fileType, oldPath.fileEntity._id, newPath.parentFolder._id];
+                res = await this.api.moveEntity(identity, this.projectId, entityType, entityId, newParentFolderId);
+            }
+            // update local cache
+            if (res?.type==='success') {
                 const newEntity = Object.assign(oldPath.fileEntity);
                 newEntity.name = newPath.fileName;
                 this.insertEntity(newPath.parentFolder, oldPath.fileType, newEntity);
                 this.removeEntity(oldPath.parentFolder, oldPath.fileType, oldPath.fileEntity);
+            } else {
+                if (res?.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
+                }
             }
         }
     }
@@ -594,15 +633,22 @@ export class VirtualFileSystem {
             catch (e){
                 needCacheClearFirst = true;
             }
-            return GlobalStateManager.compileProjectEntity(this.context, this.api, this.serverName, this.projectId, needCacheClearFirst)
-            .then((res) => {
-                if (res) {
-                    this.updateOutputs(res.outputFiles);
-                    return true;
-                } else {
-                    return false;
+            const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+            // clear cache if needed
+            if (needCacheClearFirst){
+                await this.api.deleteAuxFiles(identity, this.projectId);
+            }
+            // compile project
+            const res = await this.api.compile(identity, this.projectId);
+            if (res.type==='success' && res.compile) {
+                this.updateOutputs(res.compile.outputFiles);
+                return true;
+            } else {
+                if (res.message!==undefined) {
+                    vscode.window.showErrorMessage(res.message);
                 }
-            });
+                return false;
+            }
         }
         return Promise.resolve(undefined);
     }
@@ -638,11 +684,29 @@ export class VirtualFileSystem {
     }
 
     async syncCode(filePath: string, line:number, column:number) {
-        return GlobalStateManager.syncCode(this.context, this.api, this.serverName, this.projectId, filePath, line, column);
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.proxySyncCode(identity, this.projectId, filePath, line, column);
+        if (res.type==='success') {
+            return res.syncCode;
+        } else {
+            if (res.message!==undefined) {
+                vscode.window.showErrorMessage(res.message);
+            }
+            return undefined;
+        }
     }
 
     async syncPdf(page:number, h:number, v:number) {
-        return GlobalStateManager.syncPdf(this.context, this.api, this.serverName, this.projectId, page, h, v);
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.proxySyncPdf(identity, this.projectId, page, h, v);
+        if (res.type==='success') {
+            return res.syncPdf;
+        } else {
+            if (res.message!==undefined) {
+                vscode.window.showErrorMessage(res.message);
+            }
+            return undefined;
+        }
     }
 
     async spellCheck(uri: vscode.Uri, words: string[]) {
@@ -708,6 +772,15 @@ export class VirtualFileSystem {
 
     getDictionary() {
         return this.root?.settings.learnedWords;
+    }
+
+    getProjectSCMPersist(scmKey: string) {
+        const scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, this.serverName, this.projectId);
+        return scmPersists[scmKey];
+    }
+
+    setProjectSCMPersist(scmKey: string, persist: any) {
+        GlobalStateManager.updateServerProjectSCMPersist(this.context, this.serverName, this.projectId, scmKey, persist);
     }
 
     async updateSettings(setting: any) {

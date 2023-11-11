@@ -90,6 +90,7 @@ export interface ProjectPersist {
     accessLevel: 'owner' | 'collaborator' | 'readOnly';
     archived?: boolean;
     trashed?: boolean;
+    scm?: any; //injected by SCMCollectionProvider
 }
 
 export interface ProjectTagsResponseSchema {
