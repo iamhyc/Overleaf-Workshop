@@ -104,7 +104,7 @@ export function parseUri(uri: vscode.Uri) {
     return {userId, projectId, projectName, identifier, pathParts};
 }
 
-export class VirtualFileSystem {
+export class VirtualFileSystem extends vscode.Disposable {
     private root?: ProjectEntity;
     private context: vscode.ExtensionContext;
     private api: BaseAPI;
@@ -114,6 +114,8 @@ export class VirtualFileSystem {
     private isDirty: boolean = true;
     private initializing?: Promise<ProjectEntity>;
     private notify: (events:vscode.FileChangeEvent[])=>void;
+    private clientManagerItem?: {manager: ClientManager, triggers: vscode.Disposable[]};
+    private scmCollectionItem?: {collection: SCMCollectionProvider, triggers: vscode.Disposable[]};
 
     public readonly origin: vscode.Uri;
     public readonly projectName: string;
@@ -121,16 +123,27 @@ export class VirtualFileSystem {
     public readonly projectId: string;
 
     constructor(context: vscode.ExtensionContext, uri: vscode.Uri, notify: (events:vscode.FileChangeEvent[])=>void) {
+        // define the dispose behavior
+        super(() => {
+            // dispose all triggers of clientManager
+            this.clientManagerItem?.triggers.forEach((trigger) => trigger.dispose());
+            this.clientManagerItem = undefined;
+            // dispose all triggers of scmCollection
+            this.scmCollectionItem?.triggers.forEach((trigger) => trigger.dispose());
+            this.scmCollectionItem = undefined;
+            // disconnect socketio
+            // this.socket.disconnect();
+        });
+
         const {userId,projectId,projectName} = parseUri(uri);
         this.projectName = projectName;
         this.origin = uri.with({path: '/'+projectName});
         this.serverName = uri.authority;
         this.userId = userId;
         this.projectId = projectId;
-        //
         this.context = context;
         this.notify = notify;
-        //
+
         const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
         if (res) {
             this.api = res.api;
@@ -155,12 +168,20 @@ export class VirtualFileSystem {
                 // fetch project settings
                 const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
                 project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
-                // setup project
                 this.root = project;
+                // Register: [collaboration] ClientManager on Statusbar
                 const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
-                clientManager.triggers; // init and then dispose
+                this.clientManagerItem = {
+                    manager: clientManager,
+                    triggers: clientManager.triggers,
+                };
+                // Register: [scm] SCMCollectionProvider in explorer
                 const scmCollection = new SCMCollectionProvider(this, this.context);
-                scmCollection.triggers; // init and then dispose
+                this.scmCollectionItem = {
+                    collection: scmCollection,
+                    triggers: scmCollection.triggers,
+                };
+                // trigger the first compile
                 vscode.commands.executeCommand('compileManager.compile');
                 return project;
             });
@@ -483,6 +504,9 @@ export class VirtualFileSystem {
         }
         if (res && res._type) {
             this.insertEntity(parentFolder, res._type, res);
+            this.notify([
+                {type: vscode.FileChangeType.Created, uri: uri},
+            ]);
         }
     }
 
@@ -566,6 +590,9 @@ export class VirtualFileSystem {
 
         if (res.type==='success' && res.entity!==undefined) {
             this.insertEntity(parentFolder, 'folder', res.entity as FolderEntity);
+            this.notify([
+                {type: vscode.FileChangeType.Created, uri: uri},
+            ]);
         } else {
             if (res.message!==undefined) {
                 vscode.window.showErrorMessage(res.message);
@@ -580,6 +607,9 @@ export class VirtualFileSystem {
             const res = await this.api.deleteEntity(identity, this.projectId, fileType, fileEntity._id);
             if (res.type==='success') {
                 this.removeEntityById(parentFolder, fileType, fileEntity._id, recursive);
+                this.notify([
+                    {type: vscode.FileChangeType.Deleted, uri: uri},
+                ]);
             } else {
                 if (res.message!==undefined) {
                     vscode.window.showErrorMessage(res.message);
@@ -615,6 +645,10 @@ export class VirtualFileSystem {
                 newEntity.name = newPath.fileName;
                 this.insertEntity(newPath.parentFolder, oldPath.fileType, newEntity);
                 this.removeEntity(oldPath.parentFolder, oldPath.fileType, oldPath.fileEntity);
+                this.notify([
+                    {type: vscode.FileChangeType.Deleted, uri: oldUri},
+                    {type: vscode.FileChangeType.Created, uri: newUri},
+                ]);
             } else {
                 if (res?.message!==undefined) {
                     vscode.window.showErrorMessage(res.message);

@@ -18,7 +18,7 @@ type ServerPersistMap = {[name: string]: ServerPersist};
 
 export interface ProjectSCMPersist {
     label: string;
-    baseUri: vscode.Uri;
+    baseUri: string;
     settings: JSON;
 }
 type ProjectSCMPersistMap = {[name: string]: ProjectSCMPersist};
@@ -118,9 +118,17 @@ export class GlobalStateManager {
                 Object.values(res.projects).forEach(project => {
                     project.userId = (server.login as any).userId;
                 });
-                server.login.projects = res.projects;
+                const projects = res.projects.map(project => {
+                    const existProject = server.login?.projects?.find(p => p.id===project.id);
+                    // merge existing scm
+                    if (existProject) {
+                        project.scm = existProject.scm;
+                    }
+                    return project;
+                });
+                server.login.projects = projects;
                 context.globalState.update(keyServerPersists, persists);
-                return res.projects;
+                return projects;
             } else {
                 if (res.message!==undefined) {
                     vscode.window.showErrorMessage(res.message);
@@ -163,13 +171,14 @@ export class GlobalStateManager {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[serverName];
         const project  = server.login?.projects?.find(project => project.id===projectId);
-        if (project?.scm) {
-            const scmPersists = project.scm as ProjectSCMPersistMap;
+        if (project) {
+            const scmPersists = (project.scm ?? {}) as ProjectSCMPersistMap;
             if (scmPersist===undefined) {
                 delete scmPersists[scmKey];
             } else {
                 scmPersists[scmKey] = scmPersist;
             }
+            project.scm = scmPersists;
             context.globalState.update(keyServerPersists, persists);
         }
     }

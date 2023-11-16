@@ -1,31 +1,28 @@
 import * as vscode from 'vscode';
-import { OUTPUT_FOLDER_NAME } from '../consts';
 import { VirtualFileSystem } from '../core/remoteFileSystemProvider';
 
-import { BaseSCM, CommitItem } from ".";
-import { LocalDoubleSCMProvider } from './localDoubleSCM';
-import { LocalGitBridgeSCMProvider } from './localGitBridgeSCMProvider'; 
+import { BaseSCM, CommitItem, SettingItem } from ".";
+import { LocalReplicaSCMProvider } from './localReplicaSCM';
+import { LocalGitBridgeSCMProvider } from './localGitBridgeSCM'; 
 import { HistoryViewProvider } from './historyViewProvider';
 import { GlobalStateManager } from '../utils/globalStateManager';
 
-interface ExtendedSCM extends BaseSCM {}
-
 const supportedSCMs = [
-    LocalDoubleSCMProvider,
+    LocalReplicaSCMProvider,
     // LocalGitBridgeSCMProvider,
 ];
 type SupportedSCM = typeof supportedSCMs[number];
 
 class CoreSCMProvider extends BaseSCM {
-
     constructor(protected readonly vfs: VirtualFileSystem) {
         super(vfs, vfs.origin);
     }
 
-    get triggers() { return[]; }
-    get settingItems() { return[]; }
+    validateBaseUri() { return Promise.resolve(true); }
     async syncFromSCM() {}
     async apply(commitItem: CommitItem) {};
+    get triggers() { return Promise.resolve([]); }
+    get settingItems() { return[]; }
 
     writeFile(path: string, content: Uint8Array): Thenable<void> {
         const uri = this.vfs.pathToUri(path);
@@ -40,32 +37,16 @@ class CoreSCMProvider extends BaseSCM {
     list(): Iterable<CommitItem> {
         return [];
     }
+}
 
-    async overwrite(dstSCM: BaseSCM, root: string='/') {
-        const baseUri = this.vfs.pathToUri(root);
-        vscode.workspace.fs.readDirectory(baseUri).then( async (files) => {
-            for (const [name, type] of files) {
-                // bypass folders
-                if (['.git', '.vscode', `${OUTPUT_FOLDER_NAME}`].includes(name)) {
-                    continue;
-                }
-                // recursively overwrite
-                if (type === vscode.FileType.Directory) {
-                    const nextRoot = root+name+'/';
-                    await this.overwrite(dstSCM, nextRoot);
-                } else {
-                    const path = vscode.Uri.joinPath(baseUri, name).path;
-                    const content = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(baseUri, name));
-                    await dstSCM.writeFile(path, content);
-                }
-            }
-        });
-    }
+interface SCMRecord {
+    scm: BaseSCM;
+    triggers: vscode.Disposable[];
 }
 
 export class SCMCollectionProvider {
     private readonly core: CoreSCMProvider;
-    private readonly scms: {scm:BaseSCM, triggers: vscode.Disposable[]}[] = [];
+    private readonly scms: SCMRecord[] = [];
     private historyDataProvider: HistoryViewProvider;
 
     constructor(
@@ -79,27 +60,91 @@ export class SCMCollectionProvider {
 
     private initSCMs() {
         const scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, this.vfs.serverName, this.vfs.projectId);
-        Object.values(scmPersists).forEach(scmPersist => {
+        Object.values(scmPersists).forEach(async scmPersist => {
             const scmProto = supportedSCMs.find(scm => scm.label===scmPersist.label);
             if (scmProto!==undefined) {
-                this.createSCM(scmProto, this.vfs.origin, scmPersist.settings);
+                const baseUri = vscode.Uri.parse(scmPersist.baseUri);
+                await this.createSCM(scmProto, baseUri);
             }
         });
     }
 
-    private createSCM(scmProto: SupportedSCM, baseUri: vscode.Uri, settings?: JSON) {
-        const scm = new scmProto(this.vfs, baseUri, settings);
-        const triggers = scm.triggers;
+    private async createSCM(scmProto: SupportedSCM, baseUri: vscode.Uri, newSCM=false) {
+        const scm = new scmProto(this.vfs, baseUri);
+        const triggers = await scm.triggers;
+        // insert into global state
+        if (newSCM) {
+            this.vfs.setProjectSCMPersist(scm.scmKey, {
+                label: scmProto.label,
+                baseUri: scm.baseUri.toString(),
+                settings: {} as JSON,
+            });
+        }
+        // insert into collection
         this.scms.push({scm,triggers});
         return scm;
     }
 
-    private removeSCM(item: {scm:BaseSCM, triggers: vscode.Disposable[]}) {
+    private removeSCM(item: SCMRecord) {
         const index = this.scms.indexOf(item);
         if (index!==-1) {
+            // remove from collection
             item.triggers.forEach(trigger => trigger.dispose());
             this.scms.splice(index, 1);
+            // remove from global state
+            this.vfs.setProjectSCMPersist(item.scm.scmKey, undefined);
         }
+    }
+
+    private createNewSCM(scmProto: SupportedSCM) {
+        return new Promise(resolve => {
+            const inputBox = scmProto.baseUriInputBox;
+            inputBox.ignoreFocusOut = true;
+            inputBox.show();
+            //
+            inputBox.onDidAccept(() => {
+                if (inputBox.selectedItems.length===0) {
+                    inputBox.hide();
+                    resolve(inputBox.value);
+                }
+            });
+        })
+        .then((uri) => scmProto.validateBaseUri(uri as string || ''))
+        .then(async (baseUri) => {
+            if (baseUri) {
+                const scm = await this.createSCM(scmProto, baseUri, true);
+                vscode.window.showInformationMessage(`"${scmProto.label}" created: ${scm.baseUri.toString()}.`);
+            }
+        });
+    }
+
+    private configSCM(scmItem: SCMRecord) {
+        const baseUri = scmItem.scm.baseUri.toString();
+        const settingItems = scmItem.scm.settingItems as SettingItem[];
+        const quickPickItems = [
+            {label:'Remove', description:`${baseUri}`},
+            {label:'', kind:vscode.QuickPickItemKind.Separator},
+            ...settingItems,
+        ];
+
+        return vscode.window.showQuickPick(quickPickItems)
+        .then((select) => {
+            if (select===undefined) { return; }
+            switch (select.label) {
+                case 'Remove':
+                    vscode.window.showInformationMessage(`Remove ${baseUri}?`, 'Yes', 'No')
+                    .then((select) => {
+                        if (select==='Yes') {
+                            this.removeSCM(scmItem);
+                        }
+                    });
+                    break;
+                default:
+                    const settingItem = settingItems.find(item => item.label===select.label);
+                    settingItem?.callback();
+                    break;
+            }
+        });
     }
 
     showSCMConfiguration() {
@@ -119,7 +164,7 @@ export class SCMCollectionProvider {
         // group 2: create new scm
         const createItems: vscode.QuickPickItem[] = supportedSCMs.map((scmProto) => {
             return {
-                label: `Create Source Control: ${scmProto.label} ...`,
+                label: `Create Source Control: ${scmProto.label}`,
                 scmProto,
             };
         });
@@ -132,31 +177,11 @@ export class SCMCollectionProvider {
                 const _select = select as any;
                 // configure existing scm
                 if (_select.item) {
-                    vscode.window.showQuickPick(['Remove', 'Configure...'])
-                    .then((action) => {
-                        switch (action) {
-                            case 'Remove':
-                                this.removeSCM(_select.item);
-                                break;
-                            case 'Configure...':
-                                // this.showSCMSettings(_select.item);
-                                break;
-                        }
-                    });
+                    this.configSCM( _select.item as SCMRecord );
                 }
                 // create new scm
                 if ( _select.scmProto ) {
-                    vscode.window.showInputBox({
-                        prompt: 'Please input the baseUri of the SCM',
-                        placeHolder: _select.scmProto.uriPrompt,
-                    }).then((uri) => {
-                        if (uri) {
-                            const baseUri = vscode.Uri.parse(uri);
-                            this.createSCM(_select.scmProto, baseUri);
-                        } else {
-                            return;
-                        }
-                    });
+                    this.createNewSCM(_select.scmProto as SupportedSCM );
                 }
             }
         });
@@ -167,8 +192,11 @@ export class SCMCollectionProvider {
             // Register: HistoryViewProvider
             ...this.historyDataProvider.triggers,
             // register commands
-            vscode.commands.registerCommand('projectHistory.configSCM', () => {
-                this.showSCMConfiguration();
+            vscode.commands.registerCommand('projectSCM.configSCM', () => {
+                return this.showSCMConfiguration();
+            }),
+            vscode.commands.registerCommand('projectSCM.newSCM', (scmProto) => {
+                return this.createNewSCM(scmProto);
             }),
         ];
     }

@@ -183,7 +183,7 @@
         "icon": "$(empty-window)"
       },
       {
-        "command": "projectManager.openProjectLocalDouble",
+        "command": "projectManager.openProjectLocalReplica",
         "title": "Open Project Locally ...",
         "icon": "$(file-directory)"
       },
@@ -225,7 +225,7 @@
         "icon": "$(cloud-download)"
       },
       {
-        "command": "projectHistory.configSCM",
+        "command": "projectSCM.configSCM",
         "title": "Configure SCM",
         "icon": "$(gear)"
       },
@@ -333,7 +333,7 @@
           "group": "navigation"
         },
         {
-          "command": "projectHistory.configSCM",
+          "command": "projectSCM.configSCM",
           "when": "view == projectHistory",
           "group": "navigation@1"
         },
@@ -346,7 +346,7 @@
           "command": "projectHistory.clearSelection",
           "when": "view == projectHistory",
           "group": "navigation@3"
-        } 
+        }
       ],
       "view/item/context": [
         {
@@ -448,7 +448,7 @@
           "group": "1_openActions@2"
         },
         {
-          "command": "projectManager.openProjectLocalDouble",
+          "command": "projectManager.openProjectLocalReplica",
           "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "1_openActions@3"
         },
@@ -518,13 +518,13 @@
     "diff-match-patch": "^1.0.5",
     "form-data": "^4.0.0",
     "mime-types": "^2.1.35",
+    "minimatch": "^9.0.3",
     "node-fetch": "^2.6.13",
     "socket.io-client": "github:overleaf/socket.io-client#0.9.17-overleaf-5",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/diff-match-patch": "^1.0.34",
-    "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "20.2.5",
     "@types/node-fetch": "^2.6.4",
@@ -536,7 +536,6 @@
     "@vscode/test-electron": "^2.3.2",
     "download-cli": "^1.1.1",
     "eslint": "^8.41.0",
-    "glob": "^8.1.0",
     "mocha": "^10.2.0",
     "patch-package": "^7.0.2",
     "typescript": "^5.1.3"

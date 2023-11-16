@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import { VirtualFileSystem } from "../core/remoteFileSystemProvider";
-import { ProjectSCMPersist } from "../utils/globalStateManager";
 
 export interface SettingItem extends vscode.QuickPickItem {
     callback: () => Promise<void>;
@@ -49,7 +48,6 @@ export class CommitItem {
 
 export abstract class BaseSCM {
     public static readonly label: string;
-    public static readonly uriPrompt: string = 'Enter the URI of the SCM';
 
     public readonly iconPath: vscode.ThemeIcon = new vscode.ThemeIcon('git-branch');
 
@@ -59,9 +57,24 @@ export abstract class BaseSCM {
     constructor(
         protected readonly vfs: VirtualFileSystem,
         public readonly baseUri: vscode.Uri,
-        settings?: JSON,
-    ) {
-        this.settings = settings || {} as JSON;
+    ) {}
+
+    /**
+     * Validate the base URI of the SCM.
+     * 
+     * @returns A promise that resolves to the validated URI
+     */
+    public static async validateBaseUri(uri: string): Promise<vscode.Uri> {
+        return Promise.resolve( vscode.Uri.parse(uri) );
+    }
+
+    /**
+     * Get the input box for the base URI.
+     * 
+     * @returns The input box
+     */
+    public static get baseUriInputBox(): vscode.QuickPick<vscode.QuickPickItem> {
+        return vscode.window.createQuickPick();
     }
 
     /**
@@ -86,21 +99,21 @@ export abstract class BaseSCM {
      * 
      * @param commitItem The commit to apply
      */
-    abstract apply(commitItem: CommitItem): Promise<void>;
+    abstract apply(commitItem: CommitItem): Thenable<void>;
 
     /**
      * Sync commits from the other SCM.
      * 
      * @param commits The commits to sync
      */
-    abstract syncFromSCM(commits: Iterable<CommitItem>): Promise<void>;
+    abstract syncFromSCM(commits: Iterable<CommitItem>): Thenable<void>;
 
     /**
      * Define when the SCM should be called.
      * 
      * @returns A list of disposable objects
      */
-    abstract get triggers(): vscode.Disposable[];
+    abstract get triggers(): Promise<vscode.Disposable[]>;
 
     /**
      * Get the configuration items to be shown in QuickPick.

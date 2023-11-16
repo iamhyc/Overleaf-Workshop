@@ -115,6 +115,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
 
     private showLineRef(path:string, range:vscode.Range) {
+        //FIXME: need to deal with local replica uri
         const uri = this.vfs.pathToUri(path);
         vscode.window.showTextDocument(uri).then(editor => {
             editor.revealRange(range);

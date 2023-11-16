@@ -106,6 +106,10 @@ export class SocketIOAPI {
         });
     }
 
+    disconnect() {
+        this.socket.disconnect();
+    }
+
     get handlers() {
         return this._handlers;
     }
