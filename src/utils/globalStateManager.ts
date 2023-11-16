@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { Identity, BaseAPI, ProjectPersist } from '../api/base';
 import { SocketIOAPI } from '../api/socketio';
-import { FileType, FolderEntity } from '../core/remoteFileSystemProvider';
 
 const keyServerPersists: string = 'overleaf-servers';
 
@@ -15,10 +14,14 @@ export interface ServerPersist {
         projects?: ProjectPersist[]
     };
 }
+type ServerPersistMap = {[name: string]: ServerPersist};
 
-interface ServerPersistMap {
-    [name: string]: ServerPersist,
+export interface ProjectSCMPersist {
+    label: string;
+    baseUri: string;
+    settings: JSON;
 }
+type ProjectSCMPersistMap = {[name: string]: ProjectSCMPersist};
 
 export class GlobalStateManager {
 
@@ -115,9 +118,17 @@ export class GlobalStateManager {
                 Object.values(res.projects).forEach(project => {
                     project.userId = (server.login as any).userId;
                 });
-                server.login.projects = res.projects;
+                const projects = res.projects.map(project => {
+                    const existProject = server.login?.projects?.find(p => p.id===project.id);
+                    // merge existing scm
+                    if (existProject) {
+                        project.scm = existProject.scm;
+                    }
+                    return project;
+                });
+                server.login.projects = projects;
                 context.globalState.update(keyServerPersists, persists);
-                return res.projects;
+                return projects;
             } else {
                 if (res.message!==undefined) {
                     vscode.window.showErrorMessage(res.message);
@@ -137,159 +148,6 @@ export class GlobalStateManager {
                 Promise.reject();
     }
 
-    static async getProjectFile(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileId:string) {
-        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name];
-
-        if (server.login!==undefined) {
-            const res = await api.getFile(server.login.identity, projectId, fileId);
-            if (res.type==='success' && res.content!==undefined) {
-                return res.content;
-            } else {
-                return undefined;
-            }
-        } else {
-            return undefined;
-        }
-    }
-
-    static async uploadProjectFile(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, parentFolderId:string, fileName:string, content:Uint8Array) {
-        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name];
-
-        if (server.login!==undefined) {
-            const res = await api.uploadFile(server.login.identity, projectId, parentFolderId, fileName, content);
-            if (res.type==='success' && res.entity!==undefined) {
-                return res.entity;
-            } else {
-                if (res.message!==undefined) {
-                    vscode.window.showErrorMessage(res.message);
-                }
-            }
-        }
-    }
-
-    static async addProjectFolder(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, folderName:string, parentFolderId:string): Promise<FolderEntity|undefined> {
-        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name];
-
-        if (server.login!==undefined) {
-            const res = await api.addFolder(server.login.identity, projectId, folderName, parentFolderId);
-            if (res.type==='success' && res.entity!==undefined) {
-                return res.entity as FolderEntity;
-            } else {
-                if (res.message!==undefined) {
-                    vscode.window.showErrorMessage(res.message);
-                }
-            }
-        }
-        return;
-    }
-
-    static async deleteProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, fileType:FileType, fileId:string) {
-        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name];
-
-        if (server.login!==undefined) {
-            const res = await api.deleteEntity(server.login.identity, projectId, fileType, fileId);
-            if (res.type==='success') {
-                return true;
-            } else {
-                if (res.message!==undefined) {
-                    vscode.window.showErrorMessage(res.message);
-                }
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-
-    static async renameProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, entityType:string, entityId:string, newName:string) {
-        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name];
-
-        if (server.login!==undefined) {
-            const res = await api.renameEntity(server.login.identity, projectId, entityType, entityId, newName);
-            if (res.type==='success') {
-                return true;
-            } else {
-                if (res.message!==undefined) {
-                    vscode.window.showErrorMessage(res.message);
-                }
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-
-    static async moveProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, entityType:string, entityId:string, newParentId:string) {
-        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name];
-
-        if (server.login!==undefined) {
-            const res = await api.moveEntity(server.login.identity, projectId, entityType, entityId, newParentId);
-            if (res.type==='success') {
-                return true;
-            } else {
-                if (res.message!==undefined) {
-                    vscode.window.showErrorMessage(res.message);
-                }
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-
-    static async compileProjectEntity(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, needCacheClearFirst:boolean) {
-        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
-        const server   = persists[name];
-        if (server.login!==undefined) {
-            if (needCacheClearFirst){
-                await api.deleteAuxFiles(server.login.identity, projectId);
-            }
-            const res = await api.compile(server.login.identity, projectId);
-            if (res.type==='success') {
-                return res.compile;
-            } else {
-                if (res.message!==undefined) {
-                    vscode.window.showErrorMessage(res.message);
-                }
-                return undefined;
-            }
-        } else {
-            return undefined;
-        }
-    }
-
-    static async syncCode(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, filePath:string, line:number, column:number) {
-        const identity = await this.authenticate(context, name);
-        const res = await api.proxySyncCode(identity, projectId, filePath, line, column);
-        if (res.type==='success') {
-            return res.syncCode;
-        } else {
-            if (res.message!==undefined) {
-                vscode.window.showErrorMessage(res.message);
-            }
-            return undefined;
-        }
-    }
-
-    static async syncPdf(context:vscode.ExtensionContext, api:BaseAPI, name:string, projectId:string, page:number, h:number, v:number) {
-        const identity = await this.authenticate(context, name);
-        const res = await api.proxySyncPdf(identity, projectId, page, h, v);
-        if (res.type==='success') {
-            return res.syncPdf;
-        } else {
-            if (res.message!==undefined) {
-                vscode.window.showErrorMessage(res.message);
-            }
-            return undefined;
-        }
-    }
-
     static initSocketIOAPI(context:vscode.ExtensionContext, name:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
@@ -301,4 +159,27 @@ export class GlobalStateManager {
         }
     }
 
+    static getServerProjectSCMPersists(context:vscode.ExtensionContext, serverName:string, projectId:string) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[serverName];
+        const project  = server.login?.projects?.find(project => project.id===projectId);
+        const scmPersists = project?.scm ? project.scm as ProjectSCMPersistMap : {};
+        return scmPersists;
+    }
+
+    static updateServerProjectSCMPersist(context:vscode.ExtensionContext, serverName:string, projectId:string, scmKey:string, scmPersist?:ProjectSCMPersist) {
+        const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
+        const server   = persists[serverName];
+        const project  = server.login?.projects?.find(project => project.id===projectId);
+        if (project) {
+            const scmPersists = (project.scm ?? {}) as ProjectSCMPersistMap;
+            if (scmPersist===undefined) {
+                delete scmPersists[scmKey];
+            } else {
+                scmPersists[scmKey] = scmPersist;
+            }
+            project.scm = scmPersists;
+            context.globalState.update(keyServerPersists, persists);
+        }
+    }
 }

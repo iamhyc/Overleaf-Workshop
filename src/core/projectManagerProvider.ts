@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
 import { ProjectTagsResponseSchema } from '../api/base';
 import { GlobalStateManager } from '../utils/globalStateManager';
+import { VirtualFileSystem } from './remoteFileSystemProvider';
+import { LocalReplicaSCMProvider } from '../scm/localReplicaSCM';
 
 class DataItem extends vscode.TreeItem {
     constructor(
@@ -287,6 +289,33 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                     });
                     break;
                 case 'Upload Project':
+                    vscode.window.showOpenDialog({
+                        canSelectFiles: true,
+                        canSelectFolders: false,
+                        canSelectMany: false,
+                        filters: {
+                            // eslint-disable-next-line @typescript-eslint/naming-convention
+                            'Archive File': ['zip'],
+                        },
+                        title: 'Upload Zipped Project',
+                    }).then((uri) => {
+                        if (!uri) { return; }
+                        vscode.workspace.fs.readFile(uri[0])
+                        .then(fileContent => {
+                            const filename = uri[0].path.split('/').pop();
+                            if (filename) {
+                                GlobalStateManager.authenticate(this.context, server.name)
+                                .then(identity => server.api.uploadProject(identity, filename, fileContent))
+                                .then(res => {
+                                    if (res.type==='success') {
+                                        this.refresh();
+                                    } else {
+                                        vscode.window.showErrorMessage(res.message);
+                                    }
+                                });
+                            }
+                        });
+                    });
                     break;
             }
         });
@@ -499,6 +528,46 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         });
     }
 
+    async openProjectLocalReplica(project: ProjectItem) {
+        // should close other open vfs firstly
+        const vfsFolder = vscode.workspace.workspaceFolders?.find(folder => folder.uri.scheme===ROOT_NAME);
+        if (vfsFolder) {
+            vscode.window.showWarningMessage('Please close the open remote overleaf folder firstly.');
+            return;
+        }
+
+        const uri = vscode.Uri.parse(project.uri);
+        const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
+        await vfs.init();
+        // fetch existing local replica scm
+        let scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, vfs.serverName, vfs.projectId);
+        const replicas = Object.values(scmPersists).filter(scmPersist => scmPersist.label===LocalReplicaSCMProvider.label);
+        // if not exist, create new one
+        if (replicas.length===0) {
+            const answer = await vscode.window.showInformationMessage(`No local replica found, create one for project "${project.label}" ?`, "Yes", "No");
+            if (answer === "Yes") {
+                await (await vscode.commands.executeCommand('projectSCM.newSCM', LocalReplicaSCMProvider));
+            } else {
+                vfs.dispose();
+                return;
+            }
+        }
+
+        // open local replica
+        scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, vfs.serverName, vfs.projectId);
+        const replicasPath = replicas.map(scmPersist => vscode.Uri.parse(scmPersist.baseUri).fsPath);
+        if (replicasPath.length===0) { return; }
+        const path = await vscode.window.showQuickPick(replicasPath, {
+            canPickMany:false,
+            placeHolder:'Select the local replica below.'
+        });
+        if (path) {
+            // always open in current window
+            vscode.workspace.updateWorkspaceFolders(0, 0, {uri: vscode.Uri.file(path)});
+            vscode.commands.executeCommand('workbench.view.explorer');
+        }
+    }
+
     get triggers() {
         return [
             // register server-related commands
@@ -561,6 +630,9 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             }),
             vscode.commands.registerCommand('projectManager.openProjectInNewWindow', (item) => {
                 this.openProjectInNewWindow(item);
+            }),
+            vscode.commands.registerCommand('projectManager.openProjectLocalReplica', (item) => {
+                this.openProjectLocalReplica(item);
             }),
         ];
     }

@@ -6,19 +6,18 @@ import { ProjectManagerProvider } from './core/projectManagerProvider';
 import { PdfViewEditorProvider } from './core/pdfViewEditorProvider';
 import { CompileManager } from './compile/compileManager';
 import { LangIntellisenseProvider } from './intellisense/langIntellisenseProvider';
-import { HistoryViewProvider } from './scm/historyViewProvider';
 
 export function activate(context: vscode.ExtensionContext) {
-    // Register: RemoteFileSystemProvider
+    // Register: [core] RemoteFileSystemProvider
     const remoteFileSystemProvider = new RemoteFileSystemProvider(context);
     context.subscriptions.push(
         vscode.workspace.registerFileSystemProvider(ROOT_NAME, remoteFileSystemProvider, { isCaseSensitive: true })
     );
     vscode.commands.registerCommand('remoteFileSystem.prefetch', (uri: vscode.Uri) => {
-        remoteFileSystemProvider.prefetch(uri);
+        return remoteFileSystemProvider.prefetch(uri);
     });
 
-    // Register: PdfViewEditorProvider
+    // Register: [core] PdfViewEditorProvider
     const pdfViewEditorProvider = new PdfViewEditorProvider(context);
     context.subscriptions.push(
         vscode.window.registerCustomEditorProvider(`${ROOT_NAME}.pdfViewer`, pdfViewEditorProvider, {
@@ -29,21 +28,17 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Register: ProjectManagerProvider on Activitybar
+    // Register: [core] ProjectManagerProvider on Activitybar
     const projectManagerProvider = new ProjectManagerProvider(context);
     vscode.window.registerTreeDataProvider('projectManager', projectManagerProvider);
     context.subscriptions.push( ...projectManagerProvider.triggers );
 
-    // Register: CompileManager on Statusbar
+    // Register: [compile] CompileManager on Statusbar
     const compileManager = new CompileManager(remoteFileSystemProvider);
     context.subscriptions.push( compileManager.status );
     context.subscriptions.push( ...compileManager.triggers );
 
-    // Register: LangIntellisenseProvider
+    // Register: [intellisense] LangIntellisenseProvider
     const langIntellisenseProvider = new LangIntellisenseProvider(context, remoteFileSystemProvider);
     context.subscriptions.push( ...langIntellisenseProvider.triggers );
-
-    // Register: HistoryViewProvider on Explorer
-    const historyDataProvider = new HistoryViewProvider(remoteFileSystemProvider);
-    context.subscriptions.push( ...historyDataProvider.triggers );
 }

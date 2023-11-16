@@ -107,6 +107,7 @@ export class ClientManager {
     private jumpToUser(id: string) {
         const user = this.onlineUsers[id];
         const doc = this.vfs._resolveById(user.doc_id);
+        //FIXME: need to deal with local replica uri
         const uri = doc ? this.vfs.pathToUri(doc.path) : undefined;
         uri && vscode.window.showTextDocument(uri, {
             selection: new vscode.Selection(user.row, user.column, user.row, user.column),
@@ -117,6 +118,7 @@ export class ClientManager {
     private refreshDecorations(visibleTextEditors: readonly vscode.TextEditor[]) {
         Object.values(this.onlineUsers).forEach(user => {
             const doc = this.vfs._resolveById(user.doc_id);
+            //FIXME: need to deal with local replica uri
             const uri = doc && this.vfs.pathToUri(doc.path);
             const editor = uri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString());
             const selection = user.selection;
@@ -145,12 +147,14 @@ export class ClientManager {
         // remove decoration
         const oldDoc = this.vfs._resolveById(this.onlineUsers[clientId]?.doc_id);
         if (oldDoc && oldDoc.fileEntity._id !== docId && selection) {
+            //FIXME: need to deal with local replica uri
             const oldUri = this.vfs.pathToUri(oldDoc.path);
             const oldEditor = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === oldUri.toString());
             oldEditor && oldEditor.setDecorations(selection.decoration, []);
         }
         // update decoration
         const newDoc = this.vfs._resolveById(docId);
+        //FIXME: need to deal with local replica uri
         const newUri = newDoc && this.vfs.pathToUri(newDoc.path);
         const newEditor = newUri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === newUri.toString());
         if (selection===undefined) {
@@ -185,6 +189,7 @@ export class ClientManager {
 
     private removePosition(clientId:string) {
         const doc = this.vfs._resolveById(this.onlineUsers[clientId]?.doc_id);
+        //FIXME: need to deal with local replica uri
         const uri = doc && this.vfs.pathToUri(doc.path);
         const editor = uri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString());
         // delete decoration
@@ -263,6 +268,7 @@ export class ClientManager {
 
     get triggers() {
         return [
+            this.status,
             // register commands
             vscode.commands.registerCommand('collaboration.insertText', (text) => {
                 this.chatViewer.insertText(text);

@@ -174,18 +174,28 @@
       },
       {
         "command": "projectManager.openProjectInCurrentWindow",
-        "title": "Open Project in Current Window ...",
+        "title": "Open Project in Current Window",
         "icon": "$(arrow-right)"
       },
       {
         "command": "projectManager.openProjectInNewWindow",
-        "title": "Open Project in New Window ...",
+        "title": "Open Project in New Window",
         "icon": "$(empty-window)"
+      },
+      {
+        "command": "projectManager.openProjectLocalReplica",
+        "title": "Open Project Locally ...",
+        "icon": "$(file-directory)"
       },
       {
         "command": "projectHistory.refresh",
         "title": "Refresh Project History",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "projectHistory.clearSelection",
+        "title": "Clear Selection",
+        "icon": "$(clear-all)"
       },
       {
         "command": "projectHistory.createLabel",
@@ -196,6 +206,28 @@
         "command": "projectHistory.deleteLabel",
         "title": "Delete Label",
         "icon": "$(close-all)"
+      },
+      {
+        "command": "projectHistory.comparePrevious",
+        "title": "Compare with Previous Version"
+      },
+      {
+        "command": "projectHistory.compareCurrent",
+        "title": "Compare with Current Version"
+      },
+      {
+        "command": "projectHistory.compareOthers",
+        "title": "Compare with Other Version ..."
+      },
+      {
+        "command": "projectHistory.downloadProject",
+        "title": "Download Project",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "projectSCM.configSCM",
+        "title": "Configure SCM",
+        "icon": "$(gear)"
       },
       {
         "command": "compileManager.compile",
@@ -301,9 +333,19 @@
           "group": "navigation"
         },
         {
+          "command": "projectSCM.configSCM",
+          "when": "view == projectHistory",
+          "group": "navigation@1"
+        },
+        {
           "command": "projectHistory.refresh",
           "when": "view == projectHistory",
-          "group": "navigation"
+          "group": "navigation@2"
+        },
+        {
+          "command": "projectHistory.clearSelection",
+          "when": "view == projectHistory",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -333,7 +375,8 @@
         },
         {
           "command": "projectManager.renameProject",
-          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/"
+          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.deleteProject",
@@ -342,7 +385,8 @@
         },
         {
           "command": "projectManager.archiveProject",
-          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/"
+          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.unarchiveProject",
@@ -351,7 +395,8 @@
         },
         {
           "command": "projectManager.trashProject",
-          "when": "view == projectManager && viewItem =~ /^(?!trashed).*project/"
+          "when": "view == projectManager && viewItem =~ /^(?!trashed).*project/",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.untrashProject",
@@ -374,11 +419,13 @@
         },
         {
           "command": "projectManager.addProjectToTag",
-          "when": "view == projectManager && viewItem == project"
+          "when": "view == projectManager && viewItem == project",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.removeProjectFromTag",
-          "when": "view == projectManager && viewItem == project_in_tag"
+          "when": "view == projectManager && viewItem == project_in_tag",
+          "group": "1_editActions"
         },
         {
           "command": "projectManager.openProjectInCurrentWindow",
@@ -391,12 +438,49 @@
           "group": "inline@4"
         },
         {
+          "command": "projectManager.openProjectInCurrentWindow",
+          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "group": "1_openActions@1"
+        },
+        {
+          "command": "projectManager.openProjectInNewWindow",
+          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "group": "1_openActions@2"
+        },
+        {
+          "command": "projectManager.openProjectLocalReplica",
+          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "group": "1_openActions@3"
+        },
+        {
           "command": "projectHistory.createLabel",
-          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/"
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "1_labelActions@0"
         },
         {
           "command": "projectHistory.deleteLabel",
-          "when": "view == projectHistory && viewItem == historyItemLabelled"
+          "when": "view == projectHistory && viewItem == historyItemLabelled",
+          "group": "1_labelActions@1"
+        },
+        {
+          "command": "projectHistory.comparePrevious",
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "2_scmActions@1"
+        },
+        {
+          "command": "projectHistory.compareCurrent",
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "2_scmActions@0"
+        },
+        {
+          "command": "projectHistory.compareOthers",
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "2_scmActions@2"
+        },
+        {
+          "command": "projectHistory.downloadProject",
+          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "group": "z_downloadAction"
         }
       ]
     },
@@ -434,23 +518,24 @@
     "diff-match-patch": "^1.0.5",
     "form-data": "^4.0.0",
     "mime-types": "^2.1.35",
+    "minimatch": "^9.0.3",
     "node-fetch": "^2.6.13",
-    "socket.io-client": "github:overleaf/socket.io-client#0.9.17-overleaf-5"
+    "socket.io-client": "github:overleaf/socket.io-client#0.9.17-overleaf-5",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/diff-match-patch": "^1.0.34",
-    "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "20.2.5",
     "@types/node-fetch": "^2.6.4",
     "@types/socket.io-client": "^1.4.36",
+    "@types/uuid": "^9.0.6",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "@typescript-eslint/parser": "^5.59.8",
     "@vscode/test-electron": "^2.3.2",
     "download-cli": "^1.1.1",
     "eslint": "^8.41.0",
-    "glob": "^8.1.0",
     "mocha": "^10.2.0",
     "patch-package": "^7.0.2",
     "typescript": "^5.1.3"
