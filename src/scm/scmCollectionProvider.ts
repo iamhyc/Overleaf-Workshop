@@ -71,7 +71,6 @@ export class SCMCollectionProvider {
 
     private async createSCM(scmProto: SupportedSCM, baseUri: vscode.Uri, newSCM=false) {
         const scm = new scmProto(this.vfs, baseUri);
-        const triggers = await scm.triggers;
         // insert into global state
         if (newSCM) {
             this.vfs.setProjectSCMPersist(scm.scmKey, {
@@ -81,6 +80,7 @@ export class SCMCollectionProvider {
             });
         }
         // insert into collection
+        const triggers = await scm.triggers;
         this.scms.push({scm,triggers});
         return scm;
     }

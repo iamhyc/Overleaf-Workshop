@@ -117,7 +117,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         console.log(`syncFromVFS ${type}: ${relPath}`);
         if (this.bypassSync(relPath, type)) { return; }
         this.syncCache.push(`${type} ${relPath}`);
-        console.log(`${type}: ${relPath} --> ${localUri.fsPath}`);
+        console.log(`${type}: ${relPath} --> ${localUri.path}`);
 
         // apply update
         if (type === 'update') {
@@ -135,8 +135,8 @@ export class LocalReplicaSCMProvider extends BaseSCM {
 
     private async syncToVFS(localUri: vscode.Uri, type: 'update'|'delete') {
         // get relative path to baseUri
-        const basePath = this.baseUri.fsPath;
-        const relPath = localUri.fsPath.slice(basePath.length);
+        const basePath = this.baseUri.path;
+        const relPath = localUri.path.slice(basePath.length);
         const vfsUri = this.vfs.pathToUri(relPath);
 
         console.log(`syncToVFS ${type}: ${relPath}`);
