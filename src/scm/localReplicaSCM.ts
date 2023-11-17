@@ -31,6 +31,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         '**/*.lot',
         '**/*.out',
         '**/*.run.xml',
+        '**/*.synctex(busy)',
         '**/*.synctex.gz',
         '**/*.toc',
         '**/*.xdv',

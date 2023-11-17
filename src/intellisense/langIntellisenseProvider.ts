@@ -698,6 +698,8 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
 
     async activate() {
         const uri = vscode.workspace.workspaceFolders?.[0].uri;
+        if (uri?.scheme!==ROOT_NAME) { return; }
+
         const vfs = uri && await this.vfsm.prefetch(uri);
         const languageItem = vfs?.getSpellCheckLanguage();
         if (languageItem) {
