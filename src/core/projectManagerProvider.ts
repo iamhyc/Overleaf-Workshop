@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
 import { ProjectTagsResponseSchema } from '../api/base';
 import { GlobalStateManager } from '../utils/globalStateManager';
-import { VirtualFileSystem } from './remoteFileSystemProvider';
+import { VirtualFileSystem, parseUri } from './remoteFileSystemProvider';
 import { LocalReplicaSCMProvider } from '../scm/localReplicaSCM';
 
 class DataItem extends vscode.TreeItem {
@@ -537,13 +537,14 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         }
 
         const uri = vscode.Uri.parse(project.uri);
-        const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
-        await vfs.init();
+        const {serverName,projectId} = parseUri(uri);
         // fetch existing local replica scm
-        let scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, vfs.serverName, vfs.projectId);
+        let scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, serverName, projectId);
         const replicas = Object.values(scmPersists).filter(scmPersist => scmPersist.label===LocalReplicaSCMProvider.label);
         // if not exist, create new one
         if (replicas.length===0) {
+            const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
+            await vfs.init();
             const answer = await vscode.window.showInformationMessage(`No local replica found, create one for project "${project.label}" ?`, "Yes", "No");
             if (answer === "Yes") {
                 await (await vscode.commands.executeCommand('projectSCM.newSCM', LocalReplicaSCMProvider));
@@ -551,10 +552,11 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                 vfs.dispose();
                 return;
             }
+            vfs.dispose();
         }
 
         // open local replica
-        scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, vfs.serverName, vfs.projectId);
+        scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, serverName, projectId);
         const replicasPath = replicas.map(scmPersist => vscode.Uri.parse(scmPersist.baseUri).fsPath);
         if (replicasPath.length===0) { return; }
         const path = await vscode.window.showQuickPick(replicasPath, {
@@ -562,9 +564,15 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             placeHolder:'Select the local replica below.'
         });
         if (path) {
+            const uri = vscode.Uri.file(path);
             // always open in current window
-            vscode.workspace.updateWorkspaceFolders(0, 0, {uri: vscode.Uri.file(path)});
-            vscode.commands.executeCommand('workbench.view.explorer');
+            vscode.commands.executeCommand('vscode.openFolder', uri, false)
+            .then(() => setTimeout(async () => {
+                const uri = vscode.Uri.parse(project.uri);
+                const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
+                await vfs.init();
+                vscode.commands.executeCommand('workbench.view.explorer');
+            }, 500));
         }
     }
 

@@ -98,10 +98,11 @@ export function parseUri(uri: vscode.Uri) {
     }, {});
     const [userId, projectId] = [query.user, query.project];
     const _pathParts = uri.path.split('/');
+    const serverName = uri.authority;
     const projectName = _pathParts[1];
     const pathParts = _pathParts.splice(2);
     const identifier = `${userId}/${projectId}/${projectName}`;
-    return {userId, projectId, projectName, identifier, pathParts};
+    return {userId, projectId, serverName, projectName, identifier, pathParts};
 }
 
 export class VirtualFileSystem extends vscode.Disposable {
@@ -135,10 +136,10 @@ export class VirtualFileSystem extends vscode.Disposable {
             // this.socket.disconnect();
         });
 
-        const {userId,projectId,projectName} = parseUri(uri);
+        const {userId,projectId,serverName,projectName} = parseUri(uri);
+        this.serverName = serverName;
         this.projectName = projectName;
         this.origin = uri.with({path: '/'+projectName});
-        this.serverName = uri.authority;
         this.userId = userId;
         this.projectId = projectId;
         this.context = context;
