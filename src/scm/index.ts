@@ -1,8 +1,14 @@
 import * as vscode from "vscode";
 import { VirtualFileSystem } from "../core/remoteFileSystemProvider";
+import { EventBus } from "../utils/eventBus";
 
 export interface SettingItem extends vscode.QuickPickItem {
     callback: () => Promise<void>;
+}
+
+export interface StatusInfo {
+    status: 'push' | 'pull' | 'idle' | 'need-attention',
+    message?: string,
 }
 
 export interface CommitTag {
@@ -47,6 +53,7 @@ export class CommitItem {
 }
 
 export abstract class BaseSCM {
+    private _status: StatusInfo = {status: 'idle', message: ''};
     public static readonly label: string;
 
     public readonly iconPath: vscode.ThemeIcon = new vscode.ThemeIcon('git-branch');
@@ -122,6 +129,14 @@ export abstract class BaseSCM {
      */
     abstract get settingItems(): SettingItem[];
 
+    get status(): StatusInfo {
+        return this._status;
+    }
+
+    protected set status(status: StatusInfo) {
+        this._status = status;
+        EventBus.fire('scmStatusChangeEvent', {status});
+    }
 
     get scmKey(): string {
         return this.baseUri.toString();

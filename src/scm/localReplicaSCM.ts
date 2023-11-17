@@ -87,7 +87,6 @@ export class LocalReplicaSCMProvider extends BaseSCM {
                 await this.overwrite(nextRoot);
             } else {
                 const content = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(vfsUri, name));
-                this.syncCache.push(`update ${relPath}`); //avoid loop call
                 await this.writeFile(relPath, content);
             }
         }
@@ -102,7 +101,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         // bypass loop call
         const key = `${type} ${relPath}`;
         if (this.syncCache.includes(key)) {
-            this.syncCache = this.syncCache.filter(path => path!==relPath);
+            this.syncCache = this.syncCache.filter(item => item!==key);
             return true;
         }
 
@@ -120,6 +119,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         console.log(`${type}: ${relPath} --> ${localUri.path}`);
 
         // apply update
+        this.status = {status: 'pull', message: `${type}: ${relPath}`};
         if (type === 'update') {
             const stat = await vscode.workspace.fs.stat(vfsUri);
             if (stat.type===vscode.FileType.File) {
@@ -131,6 +131,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         } else {
             await vscode.workspace.fs.delete(localUri, {recursive:true});
         }
+        this.status = {status: 'idle', message: ''};
     }
 
     private async syncToVFS(localUri: vscode.Uri, type: 'update'|'delete') {
@@ -145,6 +146,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         console.log(`${type}: ${relPath} --> ${vfsUri.toString()}`);
 
         // apply update
+        this.status = {status: 'push', message: `${type}: ${relPath}`};
         if (type === 'update') {
             const stat = await vscode.workspace.fs.stat(localUri);
             if (stat.type===vscode.FileType.File) {
@@ -156,6 +158,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         } else {
             await vscode.workspace.fs.delete(localUri, {recursive:true});
         }
+        this.status = {status: 'idle', message: ''};
     }
 
     private async initWatch() {

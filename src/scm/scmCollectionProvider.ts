@@ -6,6 +6,7 @@ import { LocalReplicaSCMProvider } from './localReplicaSCM';
 import { LocalGitBridgeSCMProvider } from './localGitBridgeSCM'; 
 import { HistoryViewProvider } from './historyViewProvider';
 import { GlobalStateManager } from '../utils/globalStateManager';
+import { EventBus } from '../utils/eventBus';
 
 const supportedSCMs = [
     LocalReplicaSCMProvider,
@@ -47,6 +48,8 @@ interface SCMRecord {
 export class SCMCollectionProvider {
     private readonly core: CoreSCMProvider;
     private readonly scms: SCMRecord[] = [];
+    private readonly statusBarItem: vscode.StatusBarItem;
+    private readonly statusListener: vscode.Disposable;
     private historyDataProvider: HistoryViewProvider;
 
     constructor(
@@ -56,6 +59,54 @@ export class SCMCollectionProvider {
         this.core = new CoreSCMProvider( vfs );
         this.historyDataProvider = new HistoryViewProvider( vfs );
         this.initSCMs();
+
+        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        this.statusBarItem.command = 'projectSCM.configSCM';
+        this.statusListener = EventBus.on('scmStatusChangeEvent', () => {this.updateStatus();});
+    }
+
+    private updateStatus() {
+        let numPush = 0, numPull = 0;
+        let tooltip = new vscode.MarkdownString(`**Project Source Control**\n\n`);
+        tooltip.supportHtml = true;
+        tooltip.supportThemeIcons = true;
+
+        // update status bar item tooltip
+        if (this.scms.length===0) {
+            tooltip.appendMarkdown(`*Click to configure.*\n\n`);
+        } else {
+            for (const {scm} of this.scms) {
+                const icon = scm.iconPath.id;
+                const label = (scm.constructor as any).label;
+                const uri = scm.baseUri.toString();
+                const slideUri = uri.length<=30? uri : uri.replace(/^(.{15}).*(.{15})$/, '$1...$2');
+                tooltip.appendMarkdown(`----\n\n$(${icon}) **${label}**: [${slideUri}](${uri})\n\n`);
+                //
+                if (scm.status.status==='idle') {
+                    tooltip.appendMarkdown('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*Synced.*\n\n');
+                } else {
+                    // show status message
+                    tooltip.appendMarkdown(`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;***${scm.status.message}***\n\n`);
+                    // update counters
+                    switch (scm.status.status) {
+                        case 'push': numPush++; break;
+                        case 'pull': numPull++; break;
+                    }
+                }
+            }   
+        }
+        this.statusBarItem.tooltip = tooltip;
+
+        // update status bar item text
+        if (numPush!==0) {
+            this.statusBarItem.text = `$(cloud-upload)`;
+        } else if (numPull!==0) {
+            this.statusBarItem.text = `$(cloud-download)`;
+        } else {
+            this.statusBarItem.text = `$(cloud)`;
+        }
+
+        this.statusBarItem.show();
     }
 
     private initSCMs() {
@@ -82,6 +133,7 @@ export class SCMCollectionProvider {
         // insert into collection
         const triggers = await scm.triggers;
         this.scms.push({scm,triggers});
+        this.updateStatus();
         return scm;
     }
 
@@ -93,6 +145,7 @@ export class SCMCollectionProvider {
             this.scms.splice(index, 1);
             // remove from global state
             this.vfs.setProjectSCMPersist(item.scm.scmKey, undefined);
+            this.updateStatus();
         }
     }
 
@@ -191,6 +244,9 @@ export class SCMCollectionProvider {
         return [
             // Register: HistoryViewProvider
             ...this.historyDataProvider.triggers,
+            // register status bar item
+            this.statusBarItem,
+            this.statusListener,
             // register commands
             vscode.commands.registerCommand('projectSCM.configSCM', () => {
                 return this.showSCMConfiguration();
