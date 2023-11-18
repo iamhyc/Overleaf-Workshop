@@ -62,6 +62,19 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         }
     }
 
+    public static async pathToUri(path: string): Promise<vscode.Uri | undefined> {
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri;
+        if (workspaceRoot===undefined || workspaceRoot?.scheme!=='file') { return undefined; }
+
+        const settingUri = vscode.Uri.joinPath(workspaceRoot, '.overleaf/settings.json');
+        try {
+            await vscode.workspace.fs.stat(settingUri);
+            return vscode.Uri.joinPath(workspaceRoot, path);
+        } catch (error) {
+            return undefined;
+        }
+    }
+
     private matchIgnorePatterns(path: string): boolean {
         const ignorePatterns = this.getSetting<string[]>(IGNORE_SETTING_KEY) || this.ignorePatterns;
         for (const pattern of ignorePatterns) {
@@ -114,10 +127,10 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         const relPath = '/' + pathParts.join('/');
         const localUri = vscode.Uri.joinPath(this.baseUri, relPath);
 
-        console.log(`syncFromVFS ${type}: ${relPath}`);
+        // console.log(`syncFromVFS ${type}: ${relPath}`);
         if (this.bypassSync(relPath, type)) { return; }
         this.syncCache.push(`${type} ${relPath}`);
-        console.log(`${type}: ${relPath} --> ${localUri.path}`);
+        console.log(`${new Date().toLocaleString()} ${type}: ${relPath} --> ${localUri.path}`);
 
         // apply update
         this.status = {status: 'pull', message: `${type}: ${relPath}`};
@@ -141,10 +154,10 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         const relPath = localUri.path.slice(basePath.length);
         const vfsUri = this.vfs.pathToUri(relPath);
 
-        console.log(`syncToVFS ${type}: ${relPath}`);
+        // console.log(`syncToVFS ${type}: ${relPath}`);
         if (this.bypassSync(relPath, type)) { return; }
         this.syncCache.push(`${type} ${relPath}`);
-        console.log(`${type}: ${relPath} --> ${vfsUri.toString()}`);
+        console.log(`${new Date().toLocaleString()} ${type}: ${relPath} --> ${vfsUri.toString()}`);
 
         // apply update
         this.status = {status: 'push', message: `${type}: ${relPath}`};
@@ -163,6 +176,20 @@ export class LocalReplicaSCMProvider extends BaseSCM {
     }
 
     private async initWatch() {
+        // write ".overleaf/settings.json" if not exist
+        const settingUri = vscode.Uri.joinPath(this.baseUri, '.overleaf/settings.json');
+        try {
+            await vscode.workspace.fs.stat(settingUri);
+        } catch (error) {
+            await vscode.workspace.fs.writeFile(settingUri, Buffer.from(
+                JSON.stringify({
+                    'serverName': this.vfs.serverName,
+                    'projectName': this.vfs.projectName,
+                    'uri': this.vfs.origin.toString(),
+                }, null, 4)
+            ));
+        }
+
         await this.overwrite();
         this.vfsWatcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern( this.vfs.origin, '**/*' )

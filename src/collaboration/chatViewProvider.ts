@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { SocketIOAPI } from '../api/socketio';
 import { ProjectMessageResponseSchema } from '../api/base';
 import { VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
+import { ROOT_NAME } from '../consts';
+import { LocalReplicaSCMProvider } from '../scm/localReplicaSCM';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
     private hasUnreadMessages = 0;
@@ -114,9 +116,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         return ref;
     }
 
-    private showLineRef(path:string, range:vscode.Range) {
-        //FIXME: need to deal with local replica uri
-        const uri = this.vfs.pathToUri(path);
+    private async showLineRef(path:string, range:vscode.Range) {
+        const uri = (vscode.workspace.workspaceFolders?.[0].uri.scheme===ROOT_NAME) ?
+                    this.vfs.pathToUri(path) : await LocalReplicaSCMProvider.pathToUri(path);
+        if (uri === undefined) { return; }
+
         vscode.window.showTextDocument(uri).then(editor => {
             editor.revealRange(range);
             editor.selection = new vscode.Selection(range.start, range.end);

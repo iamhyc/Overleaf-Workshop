@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
-import { ELEGANT_NAME } from '../consts';
+import { ELEGANT_NAME, ROOT_NAME } from '../consts';
 import { SocketIOAPI, UpdateUserSchema } from '../api/socketio';
 import { VirtualFileSystem } from '../core/remoteFileSystemProvider';
 import { ChatViewProvider } from './chatViewProvider';
+import { LocalReplicaSCMProvider } from '../scm/localReplicaSCM';
 
 interface ExtendedUpdateUserSchema extends UpdateUserSchema {
     selection?: {
@@ -104,11 +105,13 @@ export class ClientManager {
         this.updateStatus();
     }
 
-    private jumpToUser(id: string) {
+    private async jumpToUser(id: string) {
         const user = this.onlineUsers[id];
-        const doc = this.vfs._resolveById(user.doc_id);
-        //FIXME: need to deal with local replica uri
-        const uri = doc ? this.vfs.pathToUri(doc.path) : undefined;
+        const docPath = this.vfs._resolveById(user.doc_id)?.path;
+        if (docPath === undefined) { return; }
+
+        const uri = (vscode.workspace.workspaceFolders?.[0].uri.scheme===ROOT_NAME) ?
+                    this.vfs.pathToUri(docPath) : await LocalReplicaSCMProvider.pathToUri(docPath);
         uri && vscode.window.showTextDocument(uri, {
             selection: new vscode.Selection(user.row, user.column, user.row, user.column),
             preview: false,
@@ -116,17 +119,19 @@ export class ClientManager {
     }
 
     private refreshDecorations(visibleTextEditors: readonly vscode.TextEditor[]) {
-        Object.values(this.onlineUsers).forEach(user => {
-            const doc = this.vfs._resolveById(user.doc_id);
-            //FIXME: need to deal with local replica uri
-            const uri = doc && this.vfs.pathToUri(doc.path);
+        Object.values(this.onlineUsers).forEach(async user => {
+            const docPath = this.vfs._resolveById(user.doc_id)?.path;
+            if (docPath === undefined) { return; }
+
+            const uri = (vscode.workspace.workspaceFolders?.[0].uri.scheme===ROOT_NAME) ?
+                        this.vfs.pathToUri(docPath) : await LocalReplicaSCMProvider.pathToUri(docPath);
             const editor = uri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString());
             const selection = user.selection;
             selection && editor?.setDecorations(selection.decoration, selection.ranges);
         });
     }
 
-    private updatePosition(clientId:string, docId: string, row: number, column: number, details?:UpdateUserSchema) {
+    private async updatePosition(clientId:string, docId: string, row: number, column: number, details?:UpdateUserSchema) {
         if (clientId === this.publicId) { return; }
 
         // update record
@@ -147,15 +152,18 @@ export class ClientManager {
         // remove decoration
         const oldDoc = this.vfs._resolveById(this.onlineUsers[clientId]?.doc_id);
         if (oldDoc && oldDoc.fileEntity._id !== docId && selection) {
-            //FIXME: need to deal with local replica uri
-            const oldUri = this.vfs.pathToUri(oldDoc.path);
-            const oldEditor = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === oldUri.toString());
+            const oldUri = (vscode.workspace.workspaceFolders?.[0].uri.scheme===ROOT_NAME) ?
+                        this.vfs.pathToUri(oldDoc.path) : await LocalReplicaSCMProvider.pathToUri(oldDoc.path);
+
+            const oldEditor = oldUri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === oldUri.toString());
             oldEditor && oldEditor.setDecorations(selection.decoration, []);
         }
+
         // update decoration
         const newDoc = this.vfs._resolveById(docId);
-        //FIXME: need to deal with local replica uri
-        const newUri = newDoc && this.vfs.pathToUri(newDoc.path);
+        if (newDoc === undefined) { return; }
+        const newUri = (vscode.workspace.workspaceFolders?.[0].uri.scheme===ROOT_NAME) ?
+                    this.vfs.pathToUri(newDoc.path) : await LocalReplicaSCMProvider.pathToUri(newDoc.path);
         const newEditor = newUri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === newUri.toString());
         if (selection===undefined) {
             const length = Object.keys(this.onlineUsers).length;
@@ -187,10 +195,13 @@ export class ClientManager {
         }
     }
 
-    private removePosition(clientId:string) {
+    private async removePosition(clientId:string) {
         const doc = this.vfs._resolveById(this.onlineUsers[clientId]?.doc_id);
-        //FIXME: need to deal with local replica uri
-        const uri = doc && this.vfs.pathToUri(doc.path);
+        if (doc === undefined) { return; }
+        // const uri = this.vfs.pathToUri(doc.path);
+        const uri = (vscode.workspace.workspaceFolders?.[0].uri.scheme===ROOT_NAME) ?
+                    this.vfs.pathToUri(doc.path) : await LocalReplicaSCMProvider.pathToUri(doc.path);
+
         const editor = uri && vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString());
         // delete decoration
         const selection = this.onlineUsers[clientId].selection;

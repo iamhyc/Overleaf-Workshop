@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME, ELEGANT_NAME } from './consts';
 
-import { RemoteFileSystemProvider } from './core/remoteFileSystemProvider';
+import { RemoteFileSystemProvider, VirtualFileSystem } from './core/remoteFileSystemProvider';
 import { ProjectManagerProvider } from './core/projectManagerProvider';
 import { PdfViewEditorProvider } from './core/pdfViewEditorProvider';
 import { CompileManager } from './compile/compileManager';
@@ -10,12 +10,11 @@ import { LangIntellisenseProvider } from './intellisense/langIntellisenseProvide
 export function activate(context: vscode.ExtensionContext) {
     // Register: [core] RemoteFileSystemProvider
     const remoteFileSystemProvider = new RemoteFileSystemProvider(context);
-    context.subscriptions.push(
-        vscode.workspace.registerFileSystemProvider(ROOT_NAME, remoteFileSystemProvider, { isCaseSensitive: true })
-    );
-    vscode.commands.registerCommand('remoteFileSystem.prefetch', (uri: vscode.Uri) => {
-        return remoteFileSystemProvider.prefetch(uri);
-    });
+    context.subscriptions.push( ...remoteFileSystemProvider.triggers );
+
+    // Register: [core] ProjectManagerProvider on Activitybar
+    const projectManagerProvider = new ProjectManagerProvider(context);
+    context.subscriptions.push( ...projectManagerProvider.triggers );
 
     // Register: [core] PdfViewEditorProvider
     const pdfViewEditorProvider = new PdfViewEditorProvider(context);
@@ -28,11 +27,6 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Register: [core] ProjectManagerProvider on Activitybar
-    const projectManagerProvider = new ProjectManagerProvider(context);
-    vscode.window.registerTreeDataProvider('projectManager', projectManagerProvider);
-    context.subscriptions.push( ...projectManagerProvider.triggers );
-
     // Register: [compile] CompileManager on Statusbar
     const compileManager = new CompileManager(remoteFileSystemProvider);
     context.subscriptions.push( compileManager.status );
@@ -41,4 +35,25 @@ export function activate(context: vscode.ExtensionContext) {
     // Register: [intellisense] LangIntellisenseProvider
     const langIntellisenseProvider = new LangIntellisenseProvider(context, remoteFileSystemProvider);
     context.subscriptions.push( ...langIntellisenseProvider.triggers );
+
+    // activate vfs for local replica
+    if (vscode.workspace.workspaceFolders?.length===1) {
+        const workspaceRoot = vscode.workspace.workspaceFolders[0].uri;
+        const settingUri = vscode.Uri.joinPath(workspaceRoot, '.overleaf', 'settings.json');
+        vscode.workspace.fs.readFile(settingUri).then(async content => {
+            const setting = JSON.parse( new TextDecoder().decode(content) );
+            if (setting.uri) {
+                const uri = vscode.Uri.parse(setting.uri);
+                if (uri.scheme===ROOT_NAME) {
+                    const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
+                    await vfs.init();
+                    vscode.commands.executeCommand('setContext', `${ROOT_NAME}.activate`, true);
+                }
+            }
+        });
+    }
+}
+
+export function deactivate() {
+    vscode.commands.executeCommand('setContext', `${ROOT_NAME}.activate`, false);
 }

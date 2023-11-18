@@ -341,7 +341,7 @@ export class HistoryViewProvider {
             vscode.commands.registerCommand('projectHistory.clearSelection', async() => {
                 this.updateView(undefined);
             }),
-            // on file open
+            // on vfs file open
             EventBus.on('fileWillOpenEvent', async ({uri}) => {
                 setTimeout(() => {
                     // filter noise read events
@@ -356,6 +356,7 @@ export class HistoryViewProvider {
                     this.updateView( pathParts );
                 }, 100);
             }),
+            //FIXME: on "file://" uri open
         ];
     }
 }

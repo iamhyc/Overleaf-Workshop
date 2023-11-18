@@ -977,4 +977,15 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
             return this.getVFS(oldUri).then( vfs => vfs.rename(oldUri, newUri, options.overwrite) );
         }
     }
+
+    get triggers() {
+        return [
+            // register file system provider
+            vscode.workspace.registerFileSystemProvider(ROOT_NAME, this, { isCaseSensitive: true }),
+            // register commands
+            vscode.commands.registerCommand('remoteFileSystem.prefetch', (uri: vscode.Uri) => {
+                return this.prefetch(uri);
+            }),
+        ];
+    }
 }

@@ -35,7 +35,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onFileSystem:overleaf-workshop"
+    "onFileSystem:overleaf-workshop",
+    "workspaceContains:.overleaf/settings.json"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -311,7 +312,7 @@
           "icon": "$(feedback)",
           "name": "Chat",
           "contextualTitle": "Overleaf Chat",
-          "when": "resourceScheme == overleaf-workshop"
+          "when": "resourceScheme == overleaf-workshop || overleaf-workshop.activate"
         }
       ]
     },
