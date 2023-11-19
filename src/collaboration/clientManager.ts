@@ -298,7 +298,18 @@ export class ClientManager {
             // update this client's position
             vscode.window.onDidChangeTextEditorSelection(async e => {
                 if (e.kind===undefined) { return; }
-                const doc = await this.vfs._resolveUri(e.textEditor.document.uri);
+                let uri = e.textEditor.document.uri;
+                // deal with local replica
+                if (uri.scheme==='file') {
+                    const path = await LocalReplicaSCMProvider.uriToPath(uri);
+                    if (path) {
+                        uri = this.vfs.pathToUri(path);
+                    } else {
+                        return;
+                    }
+                }
+
+                const doc = uri && await this.vfs._resolveUri(uri);
                 const docId = doc?.fileEntity?._id;
                 if (docId) {
                     this.socket.updatePosition(docId, e.selections[0].active.line, e.selections[0].active.character);

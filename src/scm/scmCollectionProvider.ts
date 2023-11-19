@@ -126,15 +126,21 @@ export class SCMCollectionProvider {
         if (newSCM) {
             this.vfs.setProjectSCMPersist(scm.scmKey, {
                 label: scmProto.label,
-                baseUri: scm.baseUri.toString(),
+                baseUri: scm.baseUri.path,
                 settings: {} as JSON,
             });
         }
         // insert into collection
-        const triggers = await scm.triggers;
-        this.scms.push({scm,triggers});
-        this.updateStatus();
-        return scm;
+        try {
+            const triggers = await scm.triggers;
+            this.scms.push({scm,triggers});
+            this.updateStatus();
+            return scm;
+        } catch (error) {
+            // permanently remove failed scm
+            this.vfs.setProjectSCMPersist(scm.scmKey, undefined);
+            return undefined;
+        }
     }
 
     private removeSCM(item: SCMRecord) {
@@ -166,7 +172,11 @@ export class SCMCollectionProvider {
         .then(async (baseUri) => {
             if (baseUri) {
                 const scm = await this.createSCM(scmProto, baseUri, true);
-                vscode.window.showInformationMessage(`"${scmProto.label}" created: ${scm.baseUri.toString()}.`);
+                if (scm) {
+                    vscode.window.showInformationMessage(`"${scmProto.label}" created: ${scm.baseUri.toString()}.`);
+                } else {
+                    vscode.window.showErrorMessage(`"${scmProto.label}" creation failed.`);
+                }
             }
         });
     }

@@ -75,6 +75,19 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         }
     }
 
+    public static async uriToPath(uri: vscode.Uri): Promise<string | undefined> {
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri;
+        if (workspaceRoot===undefined || workspaceRoot?.scheme!=='file') { return undefined; }
+
+        const settingUri = vscode.Uri.joinPath(workspaceRoot, '.overleaf/settings.json');
+        try {
+            await vscode.workspace.fs.stat(settingUri);
+            return uri.path.slice(workspaceRoot.path.length);
+        } catch (error) {
+            return undefined;
+        }
+    }
+
     private matchIgnorePatterns(path: string): boolean {
         const ignorePatterns = this.getSetting<string[]>(IGNORE_SETTING_KEY) || this.ignorePatterns;
         for (const pattern of ignorePatterns) {

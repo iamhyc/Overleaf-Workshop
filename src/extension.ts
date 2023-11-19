@@ -37,8 +37,9 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push( ...langIntellisenseProvider.triggers );
 
     // activate vfs for local replica
-    if (vscode.workspace.workspaceFolders?.length===1) {
-        const workspaceRoot = vscode.workspace.workspaceFolders[0].uri;
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders?.length===1 && workspaceFolders[0].uri.scheme==='file') {
+        const workspaceRoot = workspaceFolders[0].uri;
         const settingUri = vscode.Uri.joinPath(workspaceRoot, '.overleaf', 'settings.json');
         vscode.workspace.fs.readFile(settingUri).then(async content => {
             const setting = JSON.parse( new TextDecoder().decode(content) );
