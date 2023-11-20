@@ -114,6 +114,7 @@ export class VirtualFileSystem extends vscode.Disposable {
     private userId: string;
     private isDirty: boolean = true;
     private initializing?: Promise<ProjectEntity>;
+    private retryConnection: number = 0;
     private notify: (events:vscode.FileChangeEvent[])=>void;
     private clientManagerItem?: {manager: ClientManager, triggers: vscode.Disposable[]};
     private scmCollectionItem?: {collection: SCMCollectionProvider, triggers: vscode.Disposable[]};
@@ -280,31 +281,56 @@ export class VirtualFileSystem extends vscode.Disposable {
         }
     }
 
-    private remoteWatch() {
+    private async joinProjectWithRetry(): Promise<ProjectEntity> {
+        if(this.retryConnection >= 3){
+            vscode.window.showErrorMessage(`Connection lost: ${this.serverName}`, 'Reload').then((choice) => {
+                if (choice==='Reload') {
+                    vscode.commands.executeCommand("workbench.action.reloadWindow");
+                };
+            });
+            throw new Error('Connection lost');
+        }
+        try {
+            console.log("Reconnecting ...");
+            const _handlers = this.socket.handlers;
+            const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
+            if (res) {
+                this.api = res.api;
+                this.socket = res.socket;
+                this.socket.resumeEventHandlers(_handlers);
+                this.root = undefined;
+                const project = await Promise.race([
+                    this.socket.joinProject(this.projectId),
+                    new Promise<ProjectEntity>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+                ]);
+                const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+                project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
+                this.root = project;
+                return project;
+            }
+            else{
+                this.retryConnection += 1;
+                return this.joinProjectWithRetry();
+            }
+        } catch (error) {
+            if (error instanceof Error && error.message === 'Timeout') { // If timeout occurred, retry joining the project
+                this.retryConnection += 1;                 
+                return this.joinProjectWithRetry();
+            } else {
+                console.log(error);
+                throw error;
+            }
+        }
+    }
+    
+    private remoteWatch(): void {
         this.socket.updateEventHandlers({
             onDisconnected: () => {
                 console.log("Disconnected");
-                vscode.window.showErrorMessage(`Connection lost: ${this.serverName}`, 'Reconnect').then((choice) => {
-                    if (choice==='Reconnect') {
-                        console.log("Reconnecting ...");
-                        const _handlers = this.socket.handlers;
-                        const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
-                        if (res) {
-                            this.api = res.api;
-                            this.socket = res.socket;
-                            this.socket.resumeEventHandlers(_handlers);
-                            this.root = undefined;
-                            this.initializing = this.socket.joinProject(this.projectId).then((project) => {
-                                this.root = project;
-                                return project;
-                            });
-                        } else {
-                            throw new Error(`Cannot init SocketIOAPI for ${this.serverName}`);
-                        }
-                    }
-                });
+                this.initializing = this.joinProjectWithRetry();
             },
             onConnectionAccepted: (publicId:string) => {
+                this.retryConnection = 0;
                 this.publicId = publicId;
             },
             onFileCreated: (parentFolderId:string, type:FileType, entity:FileEntity) => {
