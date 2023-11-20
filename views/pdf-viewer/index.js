@@ -10,7 +10,7 @@
     const ColorTheme = {
         'Default': {fontColor:'black', bgColor:'white'},
         'Light': {fontColor:'black', bgColor:'#F5F5DC'},
-        'Dark': {fontColor:'#FBF0D9', bgColor:'#1E1E1E'}
+        'Dark': {fontColor:'#FBF0D9', bgColor:'#4B4B4B'}
     };
 
     // @ts-ignore
