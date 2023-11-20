@@ -250,6 +250,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
     public static get baseUriInputBox(): vscode.QuickPick<vscode.QuickPickItem> {
         const inputBox = vscode.window.createQuickPick();
         inputBox.placeholder = 'e.g., /home/user/empty/local/folder';
+        inputBox.value = '/';
         // enable auto-complete
         inputBox.onDidChangeValue(async value => {
             try {
@@ -267,7 +268,6 @@ export class LocalReplicaSCMProvider extends BaseSCM {
                         candidates.unshift({label:'..', alwaysShow:true, picked:false});
                     }
                     inputBox.items = candidates;
-                    inputBox.activeItems = [];
                 }
             }
             finally {
@@ -292,6 +292,8 @@ export class LocalReplicaSCMProvider extends BaseSCM {
                 callback: async () => {
                     const ignorePatterns = this.getSetting<string[]>(IGNORE_SETTING_KEY) || this.ignorePatterns;
                     const quickPick = vscode.window.createQuickPick();
+                    quickPick.ignoreFocusOut = true;
+                    quickPick.title = 'Press Enter to add a new pattern, or click the trash icon to remove a pattern.';
                     quickPick.items = ignorePatterns.map(pattern => ({
                         label: pattern,
                         buttons: [{iconPath: new vscode.ThemeIcon('trash')}],

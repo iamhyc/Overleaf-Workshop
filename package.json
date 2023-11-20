@@ -227,7 +227,7 @@
       },
       {
         "command": "projectSCM.configSCM",
-        "title": "Configure SCM",
+        "title": "Configure Source Control",
         "icon": "$(gear)"
       },
       {

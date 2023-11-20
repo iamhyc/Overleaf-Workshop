@@ -159,8 +159,14 @@ export class SCMCollectionProvider {
         return new Promise(resolve => {
             const inputBox = scmProto.baseUriInputBox;
             inputBox.ignoreFocusOut = true;
+            inputBox.title = `Create Source Control: ${scmProto.label}`;
+            inputBox.buttons = [{iconPath: new vscode.ThemeIcon('check')}];
             inputBox.show();
             //
+            inputBox.onDidTriggerButton(() => {
+                inputBox.hide();
+                resolve(inputBox.value);
+            });
             inputBox.onDidAccept(() => {
                 if (inputBox.selectedItems.length===0) {
                     inputBox.hide();
@@ -190,8 +196,10 @@ export class SCMCollectionProvider {
             ...settingItems,
         ];
 
-        return vscode.window.showQuickPick(quickPickItems)
-        .then((select) => {
+        return vscode.window.showQuickPick(quickPickItems, {
+            ignoreFocusOut: true,
+            title: 'Project Source Control Management',
+        }).then((select) => {
             if (select===undefined) { return; }
             switch (select.label) {
                 case 'Remove':
@@ -234,7 +242,8 @@ export class SCMCollectionProvider {
 
         // show quick pick
         vscode.window.showQuickPick([...scmItems, ...createItems], {
-            placeHolder: 'Select a SCM to configure',
+            ignoreFocusOut: true,
+            title: 'Project Source Control Management',
         }).then((select) => {
             if (select) {
                 const _select = select as any;

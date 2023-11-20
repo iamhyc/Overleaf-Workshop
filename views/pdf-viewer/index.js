@@ -62,6 +62,7 @@
         // create toggle theme button
         const button = document.createElement('button');
         button.setAttribute('class', 'toolbarButton hiddenMediumView');
+        button.setAttribute('theme-index', initIndex);
         button.setAttribute('tabindex', '30');
         // set button theme attribute
         const setAttribute = (index) => {
