@@ -3,6 +3,7 @@ import { Identity, BaseAPI, ProjectPersist } from '../api/base';
 import { SocketIOAPI } from '../api/socketio';
 
 const keyServerPersists: string = 'overleaf-servers';
+const keyPdfViewPersists: string = 'overleaf-pdf-viewers';
 
 export interface ServerPersist {
     name: string;
@@ -22,6 +23,12 @@ export interface ProjectSCMPersist {
     settings: JSON;
 }
 type ProjectSCMPersistMap = {[name: string]: ProjectSCMPersist};
+
+type PdfViewPersist = {
+    frequency: number,
+    state: any,
+};
+type PdfViewPersistMap = {[uri: string]: PdfViewPersist};
 
 export class GlobalStateManager {
 
@@ -182,4 +189,36 @@ export class GlobalStateManager {
             context.globalState.update(keyServerPersists, persists);
         }
     }
+
+    static getPdfViewPersist(context:vscode.ExtensionContext, uri:string): any {
+        return context.globalState.get<PdfViewPersistMap>(keyPdfViewPersists, {})[uri]?.state;
+    }
+
+    static updatePdfViewPersist(context:vscode.ExtensionContext, uri:string, state:any) {
+        const persists = context.globalState.get<PdfViewPersistMap>(keyPdfViewPersists, {});
+
+        // update record
+        if (persists[uri]!==undefined) {
+            persists[uri].frequency++;
+            persists[uri].state = state;
+        } else {
+            persists[uri] = {frequency: 1, state};
+        }
+
+        // when length>=100, remove first least used record
+        if (Object.keys(persists).length>=100) {
+            let minFrequency = Number.MAX_SAFE_INTEGER;
+            let minUri = '';
+            Object.entries(persists).forEach(([uri, persist]) => {
+                if (persist.frequency<minFrequency) {
+                    minFrequency = persist.frequency;
+                    minUri = uri;
+                }
+            });
+            delete persists[minUri];
+        }
+
+        context.globalState.update(keyPdfViewPersists, persists);
+    }
+
 }

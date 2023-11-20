@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
 import { EventBus } from '../utils/eventBus';
+import { GlobalStateManager } from '../utils/globalStateManager';
 
 export class PdfDocument implements vscode.CustomDocument {
     cache: Uint8Array = new Uint8Array(0);
@@ -64,6 +65,8 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
         webviewPanel.webview.options = {enableScripts:true};
         webviewPanel.webview.html = await this.getHtmlForWebview(webviewPanel.webview);
         webviewPanel.webview.postMessage({type:'update', content:doc.cache.buffer});
+
+        // register event listeners
         webviewPanel.onDidChangeViewState((e) => {
             if (e.webviewPanel.active) {
                 EventBus.fire('fileWillOpenEvent', {uri: doc.uri});
@@ -73,6 +76,15 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
             switch (e.type) {
                 case 'syncPdf':
                     vscode.commands.executeCommand('compileManager.syncPdf', e.content);
+                    break;
+                case 'saveState':
+                    GlobalStateManager.updatePdfViewPersist(this.context, doc.uri.toString(), e.content);
+                    break;
+                case 'ready':
+                    const state = GlobalStateManager.getPdfViewPersist(this.context, doc.uri.toString());
+                    if (state!==undefined) {
+                        webviewPanel.webview.postMessage({type:'initState', content:state});
+                    }
                     break;
                 default:
                     break;
