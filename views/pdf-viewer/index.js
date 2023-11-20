@@ -170,7 +170,9 @@
                     syncCode(message.content);
                     break;
                 case 'initState':
-                    Object.assign(globalPdfViewerState, message.content);
+                    if (message.content!==undefined) {
+                        Object.assign(globalPdfViewerState, message.content);
+                    }
                     updatePdfViewerState();
                     enableThemeToggleButton( Object.keys(ColorTheme).indexOf(globalPdfViewerState.colorTheme) );
                     break;

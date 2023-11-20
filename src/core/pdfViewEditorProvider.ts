@@ -82,9 +82,7 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
                     break;
                 case 'ready':
                     const state = GlobalStateManager.getPdfViewPersist(this.context, doc.uri.toString());
-                    if (state!==undefined) {
-                        webviewPanel.webview.postMessage({type:'initState', content:state});
-                    }
+                    webviewPanel.webview.postMessage({type:'initState', content:state});
                     break;
                 default:
                     break;
