@@ -6,6 +6,7 @@ import { ProjectManagerProvider } from './core/projectManagerProvider';
 import { PdfViewEditorProvider } from './core/pdfViewEditorProvider';
 import { CompileManager } from './compile/compileManager';
 import { LangIntellisenseProvider } from './intellisense/langIntellisenseProvider';
+import { LocalReplicaSCMProvider } from './scm/localReplicaSCM';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register: [core] RemoteFileSystemProvider
@@ -37,22 +38,17 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push( ...langIntellisenseProvider.triggers );
 
     // activate vfs for local replica
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (workspaceFolders?.length===1 && workspaceFolders[0].uri.scheme==='file') {
-        const workspaceRoot = workspaceFolders[0].uri;
-        const settingUri = vscode.Uri.joinPath(workspaceRoot, '.overleaf', 'settings.json');
-        vscode.workspace.fs.readFile(settingUri).then(async content => {
-            const setting = JSON.parse( new TextDecoder().decode(content) );
-            if (setting.uri) {
-                const uri = vscode.Uri.parse(setting.uri);
-                if (uri.scheme===ROOT_NAME) {
-                    const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
-                    await vfs.init();
-                    vscode.commands.executeCommand('setContext', `${ROOT_NAME}.activate`, true);
-                }
+    LocalReplicaSCMProvider.readSettings()
+    .then(async setting => {
+        if (setting?.uri) {
+            const uri = vscode.Uri.parse(setting.uri);
+            if (uri.scheme===ROOT_NAME) {
+                const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
+                await vfs.init();
+                vscode.commands.executeCommand('setContext', `${ROOT_NAME}.activate`, true);
             }
-        });
-    }
+        }
+    });
 }
 
 export function deactivate() {

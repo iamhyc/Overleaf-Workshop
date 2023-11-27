@@ -88,6 +88,20 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         }
     }
 
+    public static async readSettings(): Promise<any | undefined> {
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri;
+        if (vscode.workspace.workspaceFolders?.length!==1 || workspaceRoot?.scheme!=='file') { return undefined; }
+
+        const settingUri = vscode.Uri.joinPath(workspaceRoot, '.overleaf/settings.json');
+        try {
+            await vscode.workspace.fs.stat(settingUri);
+            const content = await vscode.workspace.fs.readFile(settingUri);
+            return JSON.parse( new TextDecoder().decode(content) );
+        } catch (error) {
+            return undefined;
+        }
+    }
+
     private matchIgnorePatterns(path: string): boolean {
         const ignorePatterns = this.getSetting<string[]>(IGNORE_SETTING_KEY) || this.ignorePatterns;
         for (const pattern of ignorePatterns) {
@@ -196,9 +210,9 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         } catch (error) {
             await vscode.workspace.fs.writeFile(settingUri, Buffer.from(
                 JSON.stringify({
+                    'uri': this.vfs.origin.toString(),
                     'serverName': this.vfs.serverName,
                     'projectName': this.vfs.projectName,
-                    'uri': this.vfs.origin.toString(),
                 }, null, 4)
             ));
         }

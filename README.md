@@ -16,31 +16,31 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
   > 
   > For more details, please refer to [How to Login with Cookies](#how-to-login-with-cookies), and related discussions in [this issue on Github](https://github.com/iamhyc/Overleaf-Workshop/issues/18).
 
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo01-login.gif" height=300px/>
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo01-login.gif" height=400px/>
 
 - On-the-fly Compiling and Previewing
 
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo02-compile.gif" height=300px/>
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo03-synctex.gif" height=400px/>
 
 - Jump between Tex and PDF
 
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo03-synctex.gif" heigh=300px/>
-
-- View PDF in Bright/Dark Mode
-
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo04-dark-mode.gif" heigh=300px/>
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo03-synctex.gif" height=400px/>
 
 - Spell Check, Auto Completion and Compile Messages
 
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo05-intellisense.png" heigh=300px/>
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo05-intellisense.png" height=400px/>
 
 - Chat with Collaborators
 
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo06-chat.gif" heigh=300px/>
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo06-chat.gif" height=400px/>
+
+- Open Project Locally, with [LaTex-Workshop](https://github.com/James-Yu/LaTeX-Workshop)
+
+    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo07-local.gif" height=400px/>
 
 ### How to Login with Cookies
 
-<img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/login_with_cookie.png" heigh=300px/>
+<img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/login_with_cookie.png" height=400px/>
 
 In an already logged-in browser (Firefox for example):
 

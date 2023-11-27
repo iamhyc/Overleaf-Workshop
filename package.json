@@ -320,11 +320,11 @@
       "editor/context": [
         {
           "command": "collaboration.copyLineRef",
-          "when": "resourceScheme == overleaf-workshop"
+          "when": "resourceScheme == overleaf-workshop || overleaf-workshop.activate"
         },
         {
           "command": "collaboration.insertLineRef",
-          "when": "resourceScheme == overleaf-workshop"
+          "when": "resourceScheme == overleaf-workshop || overleaf-workshop.activate"
         }
       ],
       "view/title": [
