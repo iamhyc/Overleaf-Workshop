@@ -323,7 +323,7 @@ export class HistoryViewProvider {
 
     constructor(vfs: VirtualFileSystem) {
         const treeDataProvider = new HistoryDataProvider(vfs);
-        this.historyView = vscode.window.createTreeView('projectHistory', { treeDataProvider});
+        this.historyView = vscode.window.createTreeView('projectHistory', {treeDataProvider});
         this.treeDataProvider = treeDataProvider;
         this.updateView();
     }

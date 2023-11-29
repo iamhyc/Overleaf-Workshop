@@ -22,10 +22,6 @@ Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo03-synctex.gif" height=400px/>
 
-- Jump between Tex and PDF
-
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo03-synctex.gif" height=400px/>
-
 - Spell Check, Auto Completion and Compile Messages
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo05-intellisense.png" height=400px/>
