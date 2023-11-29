@@ -25,6 +25,7 @@
         pdfViewerSpreadMode: SpreadMode.NONE,
         pdfSidebarView: SidebarView.NONE,
     };
+    let firstLoaded = true;
 
     function updatePdfViewerState() {
         const pdfViewerState = vscode.getState() || globalPdfViewerState;
@@ -93,7 +94,11 @@
             cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.10.111/cmaps/',
             cMapPacked: true
         }).promise;
-        backupPdfViewerState();
+        if (firstLoaded) {
+            firstLoaded = false;
+        } else {
+            backupPdfViewerState();
+        }
         PDFViewerApplication.load(doc);
     }
 
@@ -123,6 +128,7 @@
             // vertical scrolling
             container.scrollTop = scrollY - document.body.offsetHeight * 0.4;
         }
+        backupPdfViewerState();
     }
 
     //Reference: https://github.com/overleaf/overleaf/blob/main/services/web/frontend/js/features/pdf-preview/util/pdf-js-wrapper.js#L163
@@ -138,6 +144,7 @@
             type: 'syncPdf',
             content: { page: Number(pageNum), h: left, v: top, identifier: innerText},
         });
+        backupPdfViewerState();
     }
 
     window.addEventListener('load', async () => {
