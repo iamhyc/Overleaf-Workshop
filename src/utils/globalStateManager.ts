@@ -18,6 +18,7 @@ export interface ServerPersist {
 type ServerPersistMap = {[name: string]: ServerPersist};
 
 export interface ProjectSCMPersist {
+    enabled: boolean;
     label: string;
     baseUri: string;
     settings: JSON;

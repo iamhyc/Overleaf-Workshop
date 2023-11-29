@@ -42,6 +42,7 @@ class CoreSCMProvider extends BaseSCM {
 
 interface SCMRecord {
     scm: BaseSCM;
+    enabled: boolean;
     triggers: vscode.Disposable[];
 }
 
@@ -66,6 +67,8 @@ export class SCMCollectionProvider {
     }
 
     private updateStatus() {
+        if (!this.statusBarItem) { return; }
+
         let numPush = 0, numPull = 0;
         let tooltip = new vscode.MarkdownString(`**Project Source Control**\n\n`);
         tooltip.supportHtml = true;
@@ -75,14 +78,16 @@ export class SCMCollectionProvider {
         if (this.scms.length===0) {
             tooltip.appendMarkdown(`*Click to configure.*\n\n`);
         } else {
-            for (const {scm} of this.scms) {
+            for (const {scm,enabled} of this.scms) {
                 const icon = scm.iconPath.id;
                 const label = (scm.constructor as any).label;
                 const uri = scm.baseUri.toString();
                 const slideUri = uri.length<=30? uri : uri.replace(/^(.{15}).*(.{15})$/, '$1...$2');
                 tooltip.appendMarkdown(`----\n\n$(${icon}) **${label}**: [${slideUri}](${uri})\n\n`);
                 //
-                if (scm.status.status==='idle') {
+                if (!enabled) {
+                    tooltip.appendMarkdown('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*Disabled.*\n\n');
+                } else if (scm.status.status==='idle') {
                     tooltip.appendMarkdown('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*Synced.*\n\n');
                 } else {
                     // show status message
@@ -114,17 +119,19 @@ export class SCMCollectionProvider {
         Object.values(scmPersists).forEach(async scmPersist => {
             const scmProto = supportedSCMs.find(scm => scm.label===scmPersist.label);
             if (scmProto!==undefined) {
+                const enabled = scmPersist.enabled ?? true;
                 const baseUri = vscode.Uri.parse(scmPersist.baseUri);
-                await this.createSCM(scmProto, baseUri);
+                await this.createSCM(scmProto, baseUri, false, enabled);
             }
         });
     }
 
-    private async createSCM(scmProto: SupportedSCM, baseUri: vscode.Uri, newSCM=false) {
+    private async createSCM(scmProto: SupportedSCM, baseUri: vscode.Uri, newSCM=false, enabled=true) {
         const scm = new scmProto(this.vfs, baseUri);
         // insert into global state
         if (newSCM) {
             this.vfs.setProjectSCMPersist(scm.scmKey, {
+                enabled: enabled,
                 label: scmProto.label,
                 baseUri: scm.baseUri.path,
                 settings: {} as JSON,
@@ -132,8 +139,8 @@ export class SCMCollectionProvider {
         }
         // insert into collection
         try {
-            const triggers = await scm.triggers;
-            this.scms.push({scm,triggers});
+            const triggers = enabled ? await scm.triggers : [];
+            this.scms.push({scm,enabled,triggers});
             this.updateStatus();
             return scm;
         } catch (error) {
@@ -190,7 +197,9 @@ export class SCMCollectionProvider {
     private configSCM(scmItem: SCMRecord) {
         const baseUri = scmItem.scm.baseUri.toString();
         const settingItems = scmItem.scm.settingItems as SettingItem[];
+        const status = scmItem.enabled? scmItem.scm.status.status : 'disabled';
         const quickPickItems = [
+            {label:scmItem.enabled?'Disable':'Enable', description:`Status: ${status}`},
             {label:'Remove', description:`${baseUri}`},
             {label:'', kind:vscode.QuickPickItemKind.Separator},
             ...settingItems,
@@ -199,9 +208,26 @@ export class SCMCollectionProvider {
         return vscode.window.showQuickPick(quickPickItems, {
             ignoreFocusOut: true,
             title: 'Project Source Control Management',
-        }).then((select) => {
+        }).then(async (select) => {
             if (select===undefined) { return; }
             switch (select.label) {
+                case 'Enable':
+                case 'Disable':
+                    const persist = this.vfs.getProjectSCMPersist(scmItem.scm.scmKey);
+                    persist.enabled = !(persist.enabled ?? true);
+                    this.vfs.setProjectSCMPersist(scmItem.scm.scmKey, persist);
+                    //
+                    const scmIndex = this.scms.indexOf(scmItem);
+                    this.scms[scmIndex].enabled = persist.enabled;
+                    if (persist.enabled) {
+                        scmItem.triggers = await scmItem.scm.triggers;
+                    } else {
+                        scmItem.triggers.forEach(trigger => trigger.dispose());
+                        scmItem.triggers = [];
+                    }
+                    this.updateStatus();
+                    vscode.window.showInformationMessage(`"${(scmItem.scm.constructor as any).label}" ${persist.enabled?'enabled':'disabled'}: ${baseUri}.`);
+                    break;
                 case 'Remove':
                     vscode.window.showInformationMessage(`Remove ${baseUri}?`, 'Yes', 'No')
                     .then((select) => {
