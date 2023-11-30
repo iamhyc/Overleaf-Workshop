@@ -146,7 +146,7 @@ export class VirtualFileSystem extends vscode.Disposable {
         this.context = context;
         this.notify = notify;
 
-        const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
+        const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName, projectId);
         if (res) {
             this.api = res.api;
             this.socket = res.socket;
@@ -166,29 +166,57 @@ export class VirtualFileSystem extends vscode.Disposable {
 
         if (!this.initializing) {
             this.remoteWatch();
-            this.initializing = this.socket.joinProject(this.projectId).then(async (project) => {
-                // fetch project settings
-                const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
-                project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
-                this.root = project;
-                // Register: [collaboration] ClientManager on Statusbar
-                const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
-                this.clientManagerItem = {
-                    manager: clientManager,
-                    triggers: clientManager.triggers,
-                };
-                // Register: [scm] SCMCollectionProvider in explorer
-                const scmCollection = new SCMCollectionProvider(this, this.context);
-                this.scmCollectionItem = {
-                    collection: scmCollection,
-                    triggers: scmCollection.triggers,
-                };
-                // trigger the first compile
-                vscode.commands.executeCommand('compileManager.compile');
-                return project;
-            });
+            this.initializing = this.initializingPromise;
         }
         return this.initializing;
+    }
+
+    private get initializingPromise(): Promise<ProjectEntity> {
+        // if retry connection failed 3 times, throw error
+        if (this.retryConnection >= 3) {
+            vscode.window.showErrorMessage(`Connection lost: ${this.serverName}`, 'Reload').then((choice) => {
+                if (choice==='Reload') {
+                    vscode.commands.executeCommand("workbench.action.reloadWindow");
+                };
+            });
+            throw new Error('Connection lost');
+        }
+        // if evert connection failed, reset socketio
+        if (this.retryConnection > 0) {
+            this.socket.init();
+        }
+
+        this.root = undefined;
+        return this.socket.joinProject(this.projectId).then(async (project) => {
+            // fetch project settings
+            const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+            project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
+            this.root = project;
+            // Register: [collaboration] ClientManager on Statusbar
+            if (this.clientManagerItem?.triggers) {
+                this.clientManagerItem.triggers.forEach((trigger) => trigger.dispose());
+            }
+            const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
+            this.clientManagerItem = {
+                manager: clientManager,
+                triggers: clientManager.triggers,
+            };
+            // Register: [scm] SCMCollectionProvider in explorer
+            if (this.scmCollectionItem?.triggers) {
+                this.scmCollectionItem.triggers.forEach((trigger) => trigger.dispose());
+            }
+            const scmCollection = new SCMCollectionProvider(this, this.context);
+            this.scmCollectionItem = {
+                collection: scmCollection,
+                triggers: scmCollection.triggers,
+            };
+            // trigger the first compile
+            vscode.commands.executeCommand('compileManager.compile');
+            return project;
+        }).catch((err) => {
+            this.retryConnection += 1;
+            return this.initializingPromise;
+        });
     }
 
     async _resolveUri(uri: vscode.Uri) {
@@ -281,53 +309,13 @@ export class VirtualFileSystem extends vscode.Disposable {
         }
     }
 
-    private async joinProjectWithRetry(): Promise<ProjectEntity> {
-        if(this.retryConnection >= 3){
-            vscode.window.showErrorMessage(`Connection lost: ${this.serverName}`, 'Reload').then((choice) => {
-                if (choice==='Reload') {
-                    vscode.commands.executeCommand("workbench.action.reloadWindow");
-                };
-            });
-            throw new Error('Connection lost');
-        }
-        try {
-            console.log("Reconnecting ...");
-            const _handlers = this.socket.handlers;
-            const res = GlobalStateManager.initSocketIOAPI(this.context, this.serverName);
-            if (res) {
-                this.api = res.api;
-                this.socket = res.socket;
-                this.socket.resumeEventHandlers(_handlers);
-                this.root = undefined;
-                const project = await Promise.race([
-                    this.socket.joinProject(this.projectId),
-                    new Promise<ProjectEntity>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
-                ]);
-                const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
-                project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
-                this.root = project;
-                return project;
-            }
-            else{
-                this.retryConnection += 1;
-                return this.joinProjectWithRetry();
-            }
-        } catch (error) {
-            if (error instanceof Error && error.message === 'Timeout') { // If timeout occurred, retry joining the project
-                this.retryConnection += 1;                 
-                return this.joinProjectWithRetry();
-            } else {
-                console.log(error);
-                throw error;
-            }
-        }
-    }
-    
     private remoteWatch(): void {
         this.socket.updateEventHandlers({
             onDisconnected: () => {
+                if (this.root===undefined) { return; } // bypass the first initialization
                 console.log("Disconnected");
-                this.initializing = this.joinProjectWithRetry();
+                this.retryConnection += 1;
+                this.initializing = this.initializingPromise;
             },
             onConnectionAccepted: (publicId:string) => {
                 this.retryConnection = 0;

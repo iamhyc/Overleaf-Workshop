@@ -9,6 +9,7 @@ export type Events = {
     'spellCheckLanguageUpdateEvent': {language:string},
     'compilerUpdateEvent': {compiler:string},
     'scmStatusChangeEvent': {status:StatusInfo},
+    'socketioConnectedEvent': {publicId:string},
 };
 
 export class EventBus {

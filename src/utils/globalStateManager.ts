@@ -156,13 +156,13 @@ export class GlobalStateManager {
                 Promise.reject();
     }
 
-    static initSocketIOAPI(context:vscode.ExtensionContext, name:string) {
+    static initSocketIOAPI(context:vscode.ExtensionContext, name:string, projectId:string) {
         const persists = context.globalState.get<ServerPersistMap>(keyServerPersists, {});
         const server   = persists[name];
 
         if (server.login!==undefined) {
             const api = new BaseAPI(server.url);
-            const socket = new SocketIOAPI(server.url, api, server.login.identity);
+            const socket = new SocketIOAPI(server.url, api, server.login.identity, projectId);
             return {api, socket};
         }
     }

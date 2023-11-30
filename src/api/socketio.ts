@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Identity, BaseAPI, ProjectMessageResponseSchema } from './base';
 import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../core/remoteFileSystemProvider';
+import { EventBus } from '../utils/eventBus';
 
 export interface UpdateUserSchema {
     id: string,
@@ -65,14 +66,38 @@ export interface EventsHandler {
     onCompilerUpdated?: (compiler:string) => void,
 }
 
+type ConnectionScheme = 'v1' | 'v2';
+
 export class SocketIOAPI {
+    private scheme: ConnectionScheme = 'v1';
+    private record?: Promise<ProjectEntity>;
     private _handlers: Array<EventsHandler> = [];
 
     private socket?: any;
     private emit: any;
 
-    constructor(private readonly url:string, api:BaseAPI, identity:Identity) {
-        this.socket = api._initSocketV0(identity);
+    constructor(private readonly url:string,
+                private readonly api:BaseAPI,
+                private readonly identity:Identity,
+                private readonly projectId:string)
+    {
+        this.init();
+    }
+
+    init() {
+        const needResume = this.socket!==undefined;
+        // connect
+        switch(this.scheme) {
+            case 'v1':
+                this.socket = this.api._initSocketV0(this.identity);
+                break;
+            case 'v2':
+                this.record = undefined;
+                const query = `?projectId=${this.projectId}&t=${Date.now()}`;
+                this.socket = this.api._initSocketV0(this.identity, query);
+                break;
+        }
+        // create emit
         (this.socket.emit)[require('util').promisify.custom] = (event:string, ...args:any[]) => {
             return new Promise((resolve, reject) => {
                 this.socket.emit(event, ...args, (err:any, ...data:any[]) => {
@@ -85,10 +110,14 @@ export class SocketIOAPI {
             });
         };
         this.emit = require('util').promisify(this.socket.emit).bind(this.socket);
-        this.connect();
+        // resume handlers
+        this.initInternalHandlers();
+        if (needResume) {
+            this.resumeEventHandlers(this._handlers);
+        }
     }
 
-    private connect() {
+    private initInternalHandlers() {
         this.socket.on('connect', () => {
             console.log('SocketIOAPI: connected');
         });
@@ -99,11 +128,22 @@ export class SocketIOAPI {
             console.log('SocketIOAPI: forceDisconnect', message);
         });
         this.socket.on('connectionRejected', (err:any) => {
-            throw new Error(err);
+            console.log('SocketIOAPI: connectionRejected.', err.message);
         });
         this.socket.on('error', (err:any) => {
             throw new Error(err);
         });
+
+        if (this.scheme==='v2') {
+            this.record = new Promise(resolve => {
+                this.socket.on('joinProjectResponse', (res:any) => {
+                    const publicId = res.publicId as string;
+                    const project = res.project as ProjectEntity;
+                    EventBus.fire('socketioConnectedEvent', {publicId});
+                    resolve(project);
+                });
+            });
+        }
     }
 
     disconnect() {
@@ -165,6 +205,9 @@ export class SocketIOAPI {
                     this.socket.on('connectionAccepted', (_:any, publicId:any) => {
                         handler(publicId);
                     });
+                    EventBus.on('socketioConnectedEvent', (arg:{publicId:string}) => {
+                        handler(arg.publicId);
+                    });
                     break;
                 case handlers.onClientUpdated:
                     this.socket.on('clientTracking.clientUpdated', (user:UpdateUserSchema) => {
@@ -203,11 +246,24 @@ export class SocketIOAPI {
      * @returns {Promise}
      */
     async joinProject(project_id:string): Promise<ProjectEntity> {
-        return this.emit('joinProject', {project_id})
+        switch(this.scheme) {
+            case 'v1':
+                const publicId = '';
+                const joinPromise = this.emit('joinProject', {project_id})
                 .then((returns:[ProjectEntity, string, number]) => {
                     const [project, permissionsLevel, protocolVersion] = returns;
                     return project;
                 });
+                const rejectPromise = new Promise((_, reject) => {
+                    this.socket.on('connectionRejected', (err:any) => {
+                        this.scheme = 'v2';
+                        reject(err.message);
+                    });
+                });
+                return Promise.race([joinPromise, rejectPromise]);
+            case 'v2':
+                return this.record!;
+        }
     }
 
     /**
