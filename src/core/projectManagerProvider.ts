@@ -15,7 +15,7 @@ class DataItem extends vscode.TreeItem {
 }
 
 class ServerItem extends DataItem {
-    tags?: {name:string, id:string}[];
+    tags?: {name:string, tid:string}[];
     constructor(
         readonly api: any,
         public readonly name: string,
@@ -34,7 +34,7 @@ class TagItem extends DataItem {
     constructor(
         readonly api: any,
         public readonly serverName: string,
-        public readonly id: string,
+        public readonly tid: string,
         public readonly name: string,
         readonly projects: ProjectItem[],
     ) {
@@ -45,20 +45,23 @@ class TagItem extends DataItem {
 }
 
 class ProjectItem extends DataItem {
-    tag?: {name:string, id:string};
+    tag?: {name:string, tid:string};
     constructor(
         readonly api: any,
-        public uri: string,
+        readonly uri: string,
         readonly parent: ServerItem,
-        readonly id: string,
+        readonly pid: string,
         readonly label: string,
-        status: 'normal' | 'archived' | 'trashed',
+        readonly status: 'normal' | 'archived' | 'trashed',
     ) {
         const _label = status==='normal' ? label : `[${status}] ${label}`;
         super(_label, vscode.TreeItemCollapsibleState.None);
-        this.uri = uri;
         this.tooltip = _label;
         this.setStatus(status);
+    }
+
+    static clone(project: ProjectItem) {
+        return new ProjectItem(project.api, project.uri, project.parent, project.pid, project.label, project.status);
     }
 
     setStatus(status:'normal' | 'archived' | 'trashed') {
@@ -111,7 +114,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                     });
                 })
                 .then(({projects, tags}) => {
-                    const allTags:{name:string, id:string}[] = [];
+                    const allTags:{name:string, tid:string}[] = [];
                     // get project items
                     const normalProjects = [], trashedProjects = [], archivedProjects = [];
                     for (const project of projects) {
@@ -124,23 +127,28 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                             case 'trashed': trashedProjects.push(item); break;
                         }
                     }
-                    const projectItems = [...normalProjects, ...archivedProjects, ...trashedProjects];
-                    // get tag items
-                    const tagItems:TagItem[] = tags.map(tag => {
-                        const _tag = {name:tag.name, id:tag._id};
+                    const allProjectItems = [...normalProjects, ...archivedProjects, ...trashedProjects];
+                    // create tag items
+                    const tagProjectItems:TagItem[] = tags.map(tag => {
+                        const _tag = {name:tag.name, tid:tag._id};
                         allTags.push( _tag );
-                        const _projectItems:ProjectItem[] = tag.project_ids.map(id => {
-                            const index = projectItems.findIndex(project => project.id===id);
-                            const item = projectItems.splice(index, 1)[0];
-                            item.contextValue = 'project_in_tag';
-                            item.tag = _tag;
-                            return item;
-                        });
-                        return new TagItem(element.api, element.name, tag._id, tag.name, _projectItems);
+                        const _projects:ProjectItem[] = tag.project_ids.map(pid => {
+                            const item = allProjectItems.find(project => project.pid===pid);
+                            if (item) {
+                                const _item = ProjectItem.clone(item);
+                                item.tag = _tag; // for filter purpose
+                                _item.contextValue = 'project_in_tag';
+                                _item.tag = _tag;
+                                return _item;
+                            }
+                        }).filter(item => item) as ProjectItem[];
+                        return new TagItem(element.api, element.name, tag._id, tag.name, _projects);
                     });
+                    // get remaining projects
+                    const remainingProjects = allProjectItems.filter(project => !project.tag);
                     // return all items
                     element.tags = allTags;
-                    return [...tagItems, ...projectItems];
+                    return [...tagProjectItems, ...remainingProjects];
                 });
             } else if (element instanceof TagItem) {
                 return Promise.resolve(element.projects);
@@ -329,7 +337,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         .then(newName => {
             if (newName && newName!==project.label) {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
-                .then(identity => project.api.renameProject(identity, project.id, newName))
+                .then(identity => project.api.renameProject(identity, project.pid, newName))
                 .then(res => {
                     if (res.type==='success') {
                         this.refresh();
@@ -346,7 +354,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
-                .then(identity => project.api.deleteProject(identity, project.id))
+                .then(identity => project.api.deleteProject(identity, project.pid))
                 .then(res => {
                     if (res.type==='success') {
                         this.refresh();
@@ -363,7 +371,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
-                .then(identity => project.api.archiveProject(identity, project.id))
+                .then(identity => project.api.archiveProject(identity, project.pid))
                 .then(res => {
                     if (res.type==='success') {
                         this.refresh();
@@ -377,7 +385,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
 
     unarchiveProject(project: ProjectItem) {
         GlobalStateManager.authenticate(this.context, project.parent.name)
-        .then(identity => project.api.unarchiveProject(identity, project.id))
+        .then(identity => project.api.unarchiveProject(identity, project.pid))
         .then(res => {
             if (res.type==='success') {
                 this.refresh();
@@ -392,7 +400,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
-                .then(identity => project.api.trashProject(identity, project.id))
+                .then(identity => project.api.trashProject(identity, project.pid))
                 .then(res => {
                     if (res.type==='success') {
                         this.refresh();
@@ -406,7 +414,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
 
     untrashProject(project: ProjectItem) {
         GlobalStateManager.authenticate(this.context, project.parent.name)
-        .then(identity => project.api.untrashProject(identity, project.id))
+        .then(identity => project.api.untrashProject(identity, project.pid))
         .then(res => {
             if (res.type==='success') {
                 this.refresh();
@@ -441,7 +449,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         .then(newName => {
             if (newName && newName!==tag.label) {
                 GlobalStateManager.authenticate(this.context, tag.serverName)
-                .then(identity => tag.api.renameTag(identity, tag.id, newName))
+                .then(identity => tag.api.renameTag(identity, tag.tid, newName))
                 .then(res => {
                     if (res.type==='success') {
                         this.refresh();
@@ -458,7 +466,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, tag.serverName)
-                .then(identity => tag.api.deleteTag(identity, tag.id))
+                .then(identity => tag.api.deleteTag(identity, tag.tid))
                 .then(res => {
                     if (res.type==='success') {
                         this.refresh();
@@ -479,9 +487,9 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             return Promise.resolve(selection);
         })
         .then(tagName => {
-            const tagId = project.parent.tags?.find(tag => tag.name===tagName)?.id;
+            const tagId = project.parent.tags?.find(tag => tag.name===tagName)?.tid;
             GlobalStateManager.authenticate(this.context, project.parent.name)
-            .then(identity => project.api.addProjectToTag(identity, tagId, project.id))
+            .then(identity => project.api.addProjectToTag(identity, tagId, project.pid))
             .then(res => {
                 if (res.type==='success') {
                     this.refresh();
@@ -497,7 +505,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
-                .then(identity => project.api.removeProjectFromTag(identity, project.tag?.id, project.id))
+                .then(identity => project.api.removeProjectFromTag(identity, project.tag?.tid, project.pid))
                 .then(res => {
                     if (res.type==='success') {
                         this.refresh();
