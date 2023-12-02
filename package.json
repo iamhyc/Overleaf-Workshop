@@ -93,166 +93,229 @@
       {
         "command": "projectManager.addServer",
         "title": "Add New Server",
-        "icon": "$(add)"
+        "icon": "$(add)",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.removeServer",
         "title": "Remove Server",
-        "icon": "$(trash)"
+        "icon": "$(trash)",
+        "enablement": "viewItem == server_login || viewItem == server_no_login",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.loginServer",
         "title": "Login Server",
-        "icon": "$(log-in)"
+        "icon": "$(log-in)",
+        "enablement": "viewItem == server_no_login",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.logoutServer",
         "title": "Logout Server",
-        "icon": "$(debug-disconnect)"
+        "icon": "$(debug-disconnect)",
+        "enablement": "viewItem == server_login",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.refreshServer",
         "title": "Refresh Project List",
-        "icon": "$(refresh)"
+        "icon": "$(refresh)",
+        "enablement": "viewItem == server_login",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.newProject",
         "title": "New Project",
-        "icon": "$(add)"
+        "icon": "$(add)",
+        "enablement": "viewItem == server_login",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.renameProject",
         "title": "Rename Project",
-        "icon": "$(edit)"
+        "icon": "$(edit)",
+        "enablement": "viewItem =~ /^(?!archived).*project/",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.deleteProject",
         "title": "Delete Project",
-        "icon": "$(circle-slash)"
+        "icon": "$(circle-slash)",
+        "enablement": "viewItem == trashed_project",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.archiveProject",
         "title": "Archive Project",
-        "icon": "$(archive)"
+        "icon": "$(archive)",
+        "enablement": "viewItem =~ /^(?!archived).*project/",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.unarchiveProject",
         "title": "Unarchive Project",
-        "icon": "$(reply)"
+        "icon": "$(reply)",
+        "enablement": "viewItem == archived_project",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.trashProject",
         "title": "Move Project to Trash",
-        "icon": "$(trash)"
+        "icon": "$(trash)",
+        "enablement": "viewItem =~ /^(?!trashed).*project/",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.untrashProject",
         "title": "Restore Project",
-        "icon": "$(reply)"
+        "icon": "$(reply)",
+        "enablement": "viewItem == trashed_project",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.createTag",
-        "title": "Create New Tag"
+        "title": "Create New Tag",
+        "icon": "$(tag)",
+        "enablement": "viewItem == server_login",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.renameTag",
         "title": "Rename Tag",
-        "icon": "$(edit)"
+        "icon": "$(edit)",
+        "enablement": "viewItem == tag",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.deleteTag",
         "title": "Delete Tag",
-        "icon": "$(close-all)"
+        "icon": "$(close-all)",
+        "enablement": "viewItem == tag",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.addProjectToTag",
         "title": "Move Project to Tag",
-        "icon": "$(tag)"
+        "icon": "$(tag)",
+        "enablement": "viewItem == project",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.removeProjectFromTag",
-        "title": "Remove Project from Tag"
+        "title": "Remove Project from Tag",
+        "enablement": "viewItem == project_in_tag",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.openProjectInCurrentWindow",
         "title": "Open Project in Current Window",
-        "icon": "$(arrow-right)"
+        "icon": "$(arrow-right)",
+        "enablement": "viewItem == project || viewItem == project_in_tag",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.openProjectInNewWindow",
         "title": "Open Project in New Window",
-        "icon": "$(empty-window)"
+        "icon": "$(empty-window)",
+        "enablement": "viewItem == project || viewItem == project_in_tag",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectManager.openProjectLocalReplica",
         "title": "Open Project Locally ...",
-        "icon": "$(file-directory)"
+        "icon": "$(file-directory)",
+        "enablement": "viewItem == project || viewItem == project_in_tag",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectHistory.refresh",
         "title": "Refresh Project History",
-        "icon": "$(refresh)"
+        "icon": "$(refresh)",
+        "enablement": "resourceScheme == overleaf-workshop",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectHistory.clearSelection",
         "title": "Clear Selection",
-        "icon": "$(clear-all)"
+        "icon": "$(clear-all)",
+        "enablement": "view == projectHistory",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectHistory.createLabel",
         "title": "Add New Label",
-        "icon": "$(tag)"
+        "icon": "$(tag)",
+        "enablement": "viewItem =~ /historyItem(Labelled)?/",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectHistory.deleteLabel",
         "title": "Delete Label",
-        "icon": "$(close-all)"
+        "icon": "$(close-all)",
+        "enablement": "viewItem == historyItemLabelled",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectHistory.comparePrevious",
-        "title": "Compare with Previous Version"
+        "title": "Compare with Previous Version",
+        "enablement": "viewItem =~ /historyItem(Labelled)?/",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectHistory.compareCurrent",
-        "title": "Compare with Current Version"
+        "title": "Compare with Current Version",
+        "enablement": "viewItem =~ /historyItem(Labelled)?/",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectHistory.compareOthers",
-        "title": "Compare with Other Version ..."
+        "title": "Compare with Other Version ...",
+        "enablement": "viewItem =~ /historyItem(Labelled)?/",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectHistory.downloadProject",
         "title": "Download Project",
-        "icon": "$(cloud-download)"
+        "icon": "$(cloud-download)",
+        "enablement": "viewItem =~ /historyItem(Labelled)?/",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "projectSCM.configSCM",
         "title": "Configure Source Control",
-        "icon": "$(gear)"
+        "icon": "$(gear)",
+        "enablement": "resourceScheme == overleaf-workshop || overleaf-workshop.activate",
+        "category": "Overleaf Workshop"
       },
       {
         "command": "compileManager.compile",
         "title": "Compile Project",
+        "enablement": "resourceScheme == overleaf-workshop && resourceExtname == .tex",
         "category": "Overleaf Workshop"
       },
       {
         "command": "compileManager.viewPdf",
         "title": "View Compiled PDF",
+        "enablement": "resourceScheme == overleaf-workshop && resourceExtname == .tex",
         "category": "Overleaf Workshop"
       },
       {
         "command": "compileManager.syncCode",
         "title": "Jump to PDF",
+        "enablement": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex",
         "category": "Overleaf Workshop"
       },
       {
         "command": "collaboration.copyLineRef",
         "title": "Overleaf: Copy Line Reference",
+        "enablement": "editorTextFocus && resourceScheme == overleaf-workshop",
         "category": "Overleaf Workshop"
       },
       {
         "command": "collaboration.insertLineRef",
         "title": "Overleaf: Insert Line Reference",
+        "enablement": "editorTextFocus && resourceScheme == overleaf-workshop",
         "category": "Overleaf Workshop"
       }
     ],
