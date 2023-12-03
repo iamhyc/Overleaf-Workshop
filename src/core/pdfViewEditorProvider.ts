@@ -75,7 +75,7 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
         webviewPanel.webview.onDidReceiveMessage((e) => {
             switch (e.type) {
                 case 'syncPdf':
-                    vscode.commands.executeCommand('compileManager.syncPdf', e.content);
+                    vscode.commands.executeCommand(`${ROOT_NAME}.compileManager.syncPdf`, e.content);
                     break;
                 case 'saveState':
                     GlobalStateManager.updatePdfViewPersist(this.context, doc.uri.toString(), e.content);

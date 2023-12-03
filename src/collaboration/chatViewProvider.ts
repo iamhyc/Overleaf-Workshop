@@ -91,8 +91,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         return this.hasUnreadMessages;
     }
 
-    revealChatView() {
-        this.webviewView?.show(true);
+    revealChatView(focus: boolean = true) {
+        // this.webviewView?.show(true);
+        vscode.commands.executeCommand(`${ROOT_NAME}.chatWebview.focus`);
         this.hasUnreadMessages = 0;
     }
 
@@ -130,16 +131,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     get triggers() {
         return [
             // register commands
-            vscode.commands.registerCommand('collaboration.copyLineRef', () => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.copyLineRef`, () => {
                 const ref = this.getLineRef();
                 ref && vscode.env.clipboard.writeText(ref);
             }),
-            vscode.commands.registerCommand('collaboration.insertLineRef', () => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.insertLineRef`, () => {
                 const ref = this.getLineRef();
                 ref && this.insertText(ref + ' ');
             }),
             // register chat webview
-            vscode.window.registerWebviewViewProvider('chatWebview', this, {webviewOptions:{retainContextWhenHidden:true}}),
+            vscode.window.registerWebviewViewProvider(`${ROOT_NAME}.chatWebview`, this, {webviewOptions:{retainContextWhenHidden:true}}),
         ];
     }
 }

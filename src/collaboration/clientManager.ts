@@ -224,7 +224,7 @@ export class ClientManager {
                 break;
             case true:
                 const prefixText = this.chatViewer.hasUnread? `$(bell-dot) ${this.chatViewer.hasUnread} ` : '';
-                this.status.command = 'collaboration.revealChatView';
+                this.status.command = `${ROOT_NAME}.collaboration.revealChatView`;
                 this.status.backgroundColor = this.chatViewer.hasUnread? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
 
                 switch (count) {
@@ -241,11 +241,11 @@ export class ClientManager {
 
                         Object.values(this.onlineUsers).forEach(user => {
                             const userArgs = JSON.stringify([`@[[${user.name}#${user.user_id}]] `]);
-                            const userCommandUri = vscode.Uri.parse(`command:collaboration.insertText?${encodeURIComponent(userArgs)}`);
+                            const userCommandUri = vscode.Uri.parse(`command:${ROOT_NAME}.collaboration.insertText?${encodeURIComponent(userArgs)}`);
                             const userInfo = `<a href=${userCommandUri}>@<span style="color:${user.selection?.color};"><b>${user.name}</b></span></a>`;
 
                             const jumpArgs = JSON.stringify([user.id]);
-                            const jumpCommandUri = vscode.Uri.parse(`command:collaboration.jumpToUser?${encodeURIComponent(jumpArgs)}`);
+                            const jumpCommandUri = vscode.Uri.parse(`command:${ROOT_NAME}.collaboration.jumpToUser?${encodeURIComponent(jumpArgs)}`);
                                     const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
                                     const cursorInfo = user.row ? ` at <a href="${jumpCommandUri}">${docPath}#L${user.row+1}</a>` : '';
                 
@@ -281,16 +281,16 @@ export class ClientManager {
         return [
             this.status,
             // register commands
-            vscode.commands.registerCommand('collaboration.insertText', (text) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.insertText`, (text) => {
                 this.chatViewer.insertText(text);
             }),
-            vscode.commands.registerCommand('collaboration.jumpToUser', (uid) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.jumpToUser`, (uid) => {
                 this.jumpToUser(uid);
             }),
-            vscode.commands.registerCommand('collaboration.revealChatView', () => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.revealChatView`, () => {
                 this.chatViewer.revealChatView();
             }),
-            vscode.commands.registerCommand('collaboration.settings', () => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.settings`, () => {
                 this.collaborationSettings();
             }),
             // register chat view provider

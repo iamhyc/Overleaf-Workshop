@@ -91,231 +91,243 @@
     ],
     "commands": [
       {
-        "command": "projectManager.addServer",
+        "command": "overleaf-workshop.projectManager.addServer",
         "title": "Add New Server",
         "icon": "$(add)",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.removeServer",
+        "command": "overleaf-workshop.projectManager.removeServer",
         "title": "Remove Server",
         "icon": "$(trash)",
         "enablement": "viewItem == server_login || viewItem == server_no_login",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.loginServer",
+        "command": "overleaf-workshop.projectManager.loginServer",
         "title": "Login Server",
         "icon": "$(log-in)",
         "enablement": "viewItem == server_no_login",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.logoutServer",
+        "command": "overleaf-workshop.projectManager.logoutServer",
         "title": "Logout Server",
         "icon": "$(debug-disconnect)",
         "enablement": "viewItem == server_login",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.refreshServer",
+        "command": "overleaf-workshop.projectManager.refreshServer",
         "title": "Refresh Project List",
         "icon": "$(refresh)",
         "enablement": "viewItem == server_login",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.newProject",
+        "command": "overleaf-workshop.projectManager.newProject",
         "title": "New Project",
         "icon": "$(add)",
         "enablement": "viewItem == server_login",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.renameProject",
+        "command": "overleaf-workshop.projectManager.renameProject",
         "title": "Rename Project",
         "icon": "$(edit)",
         "enablement": "viewItem =~ /^(?!archived).*project/",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.deleteProject",
+        "command": "overleaf-workshop.projectManager.deleteProject",
         "title": "Delete Project",
         "icon": "$(circle-slash)",
         "enablement": "viewItem == trashed_project",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.archiveProject",
+        "command": "overleaf-workshop.projectManager.archiveProject",
         "title": "Archive Project",
         "icon": "$(archive)",
         "enablement": "viewItem =~ /^(?!archived).*project/",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.unarchiveProject",
+        "command": "overleaf-workshop.projectManager.unarchiveProject",
         "title": "Unarchive Project",
         "icon": "$(reply)",
         "enablement": "viewItem == archived_project",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.trashProject",
+        "command": "overleaf-workshop.projectManager.trashProject",
         "title": "Move Project to Trash",
         "icon": "$(trash)",
         "enablement": "viewItem =~ /^(?!trashed).*project/",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.untrashProject",
+        "command": "overleaf-workshop.projectManager.untrashProject",
         "title": "Restore Project",
         "icon": "$(reply)",
         "enablement": "viewItem == trashed_project",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.createTag",
+        "command": "overleaf-workshop.projectManager.createTag",
         "title": "Create New Tag",
         "icon": "$(tag)",
         "enablement": "viewItem == server_login",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.renameTag",
+        "command": "overleaf-workshop.projectManager.renameTag",
         "title": "Rename Tag",
         "icon": "$(edit)",
         "enablement": "viewItem == tag",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.deleteTag",
+        "command": "overleaf-workshop.projectManager.deleteTag",
         "title": "Delete Tag",
         "icon": "$(close-all)",
         "enablement": "viewItem == tag",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.addProjectToTag",
+        "command": "overleaf-workshop.projectManager.addProjectToTag",
         "title": "Move Project to Tag",
         "icon": "$(tag)",
         "enablement": "viewItem == project",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.removeProjectFromTag",
+        "command": "overleaf-workshop.projectManager.removeProjectFromTag",
         "title": "Remove Project from Tag",
         "enablement": "viewItem == project_in_tag",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.openProjectInCurrentWindow",
+        "command": "overleaf-workshop.projectManager.openProjectInCurrentWindow",
         "title": "Open Project in Current Window",
         "icon": "$(arrow-right)",
         "enablement": "viewItem == project || viewItem == project_in_tag",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.openProjectInNewWindow",
+        "command": "overleaf-workshop.projectManager.openProjectInNewWindow",
         "title": "Open Project in New Window",
         "icon": "$(empty-window)",
         "enablement": "viewItem == project || viewItem == project_in_tag",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectManager.openProjectLocalReplica",
+        "command": "overleaf-workshop.projectManager.openProjectLocalReplica",
         "title": "Open Project Locally ...",
         "icon": "$(file-directory)",
         "enablement": "viewItem == project || viewItem == project_in_tag",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectHistory.refresh",
+        "command": "overleaf-workshop.projectHistory.refresh",
         "title": "Refresh Project History",
         "icon": "$(refresh)",
         "enablement": "resourceScheme == overleaf-workshop",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectHistory.clearSelection",
+        "command": "overleaf-workshop.projectHistory.clearSelection",
         "title": "Clear Selection",
         "icon": "$(clear-all)",
-        "enablement": "view == projectHistory",
+        "enablement": "view == overleaf-workshop.projectHistory",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectHistory.createLabel",
+        "command": "overleaf-workshop.projectHistory.createLabel",
         "title": "Add New Label",
         "icon": "$(tag)",
         "enablement": "viewItem =~ /historyItem(Labelled)?/",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectHistory.deleteLabel",
+        "command": "overleaf-workshop.projectHistory.deleteLabel",
         "title": "Delete Label",
         "icon": "$(close-all)",
         "enablement": "viewItem == historyItemLabelled",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectHistory.comparePrevious",
+        "command": "overleaf-workshop.projectHistory.comparePrevious",
         "title": "Compare with Previous Version",
         "enablement": "viewItem =~ /historyItem(Labelled)?/",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectHistory.compareCurrent",
+        "command": "overleaf-workshop.projectHistory.compareCurrent",
         "title": "Compare with Current Version",
         "enablement": "viewItem =~ /historyItem(Labelled)?/",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectHistory.compareOthers",
+        "command": "overleaf-workshop.projectHistory.compareOthers",
         "title": "Compare with Other Version ...",
         "enablement": "viewItem =~ /historyItem(Labelled)?/",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectHistory.downloadProject",
+        "command": "overleaf-workshop.projectHistory.downloadProject",
         "title": "Download Project",
         "icon": "$(cloud-download)",
         "enablement": "viewItem =~ /historyItem(Labelled)?/",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "projectSCM.configSCM",
+        "command": "overleaf-workshop.projectHistory.revealHistoryView",
+        "title": "Focus on Overleaf History",
+        "enablement": "resourceScheme == overleaf-workshop",
+        "category": "Overleaf Workshop"
+      },
+      {
+        "command": "overleaf-workshop.projectSCM.configSCM",
         "title": "Configure Source Control",
         "icon": "$(gear)",
         "enablement": "resourceScheme == overleaf-workshop || overleaf-workshop.activate",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "compileManager.compile",
+        "command": "overleaf-workshop.compileManager.compile",
         "title": "Compile Project",
         "enablement": "resourceScheme == overleaf-workshop && resourceExtname == .tex",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "compileManager.viewPdf",
+        "command": "overleaf-workshop.compileManager.viewPdf",
         "title": "View Compiled PDF",
         "enablement": "resourceScheme == overleaf-workshop && resourceExtname == .tex",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "compileManager.syncCode",
+        "command": "overleaf-workshop.compileManager.syncCode",
         "title": "Jump to PDF",
         "enablement": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "collaboration.copyLineRef",
+        "command": "overleaf-workshop.collaboration.copyLineRef",
         "title": "Overleaf: Copy Line Reference",
         "enablement": "editorTextFocus && resourceScheme == overleaf-workshop",
         "category": "Overleaf Workshop"
       },
       {
-        "command": "collaboration.insertLineRef",
+        "command": "overleaf-workshop.collaboration.insertLineRef",
         "title": "Overleaf: Insert Line Reference",
         "enablement": "editorTextFocus && resourceScheme == overleaf-workshop",
+        "category": "Overleaf Workshop"
+      },
+      {
+        "command": "overleaf-workshop.collaboration.revealChatView",
+        "title": "Focus on Overleaf Chat",
+        "enablement": "resourceScheme == overleaf-workshop || overleaf-workshop.activate",
         "category": "Overleaf Workshop"
       }
     ],
@@ -323,25 +335,25 @@
       {
         "key": "ctrl+alt+b",
         "mac": "cmd+alt+b",
-        "command": "compileManager.compile",
+        "command": "overleaf-workshop.compileManager.compile",
         "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
       },
       {
         "key": "ctrl+alt+v",
         "mac": "cmd+vlt+v",
-        "command": "compileManager.viewPdf",
+        "command": "overleaf-workshop.compileManager.viewPdf",
         "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
       },
       {
         "key": "ctrl+alt+j",
         "mac": "cmd+alt+j",
-        "command": "compileManager.syncCode",
+        "command": "overleaf-workshop.compileManager.syncCode",
         "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
       },
       {
         "key": "ctrl+shift+c",
         "mac": "cmd+shift+c",
-        "command": "collaboration.copyLineRef",
+        "command": "overleaf-workshop.collaboration.copyLineRef",
         "when": "editorTextFocus && resourceScheme == overleaf-workshop"
       }
     ],
@@ -357,13 +369,13 @@
     "views": {
       "overleaf-workshop": [
         {
-          "id": "projectManager",
+          "id": "overleaf-workshop.projectManager",
           "name": "Hosts"
         }
       ],
       "explorer": [
         {
-          "id": "projectHistory",
+          "id": "overleaf-workshop.projectHistory",
           "icon": "$(history)",
           "name": "History",
           "contextualTitle": "Overleaf Project History",
@@ -371,7 +383,7 @@
         },
         {
           "type": "webview",
-          "id": "chatWebview",
+          "id": "overleaf-workshop.chatWebview",
           "icon": "$(feedback)",
           "name": "Chat",
           "contextualTitle": "Overleaf Chat",
@@ -382,168 +394,168 @@
     "menus": {
       "editor/context": [
         {
-          "command": "collaboration.copyLineRef",
+          "command": "overleaf-workshop.collaboration.copyLineRef",
           "when": "resourceScheme == overleaf-workshop || overleaf-workshop.activate"
         },
         {
-          "command": "collaboration.insertLineRef",
+          "command": "overleaf-workshop.collaboration.insertLineRef",
           "when": "resourceScheme == overleaf-workshop || overleaf-workshop.activate"
         }
       ],
       "view/title": [
         {
-          "command": "projectManager.addServer",
-          "when": "view == projectManager",
+          "command": "overleaf-workshop.projectManager.addServer",
+          "when": "view == overleaf-workshop.projectManager",
           "group": "navigation"
         },
         {
-          "command": "projectSCM.configSCM",
-          "when": "view == projectHistory",
+          "command": "overleaf-workshop.projectSCM.configSCM",
+          "when": "view == overleaf-workshop.projectHistory",
           "group": "navigation@1"
         },
         {
-          "command": "projectHistory.refresh",
-          "when": "view == projectHistory",
+          "command": "overleaf-workshop.projectHistory.refresh",
+          "when": "view == overleaf-workshop.projectHistory",
           "group": "navigation@2"
         },
         {
-          "command": "projectHistory.clearSelection",
-          "when": "view == projectHistory",
+          "command": "overleaf-workshop.projectHistory.clearSelection",
+          "when": "view == overleaf-workshop.projectHistory",
           "group": "navigation@3"
         }
       ],
       "view/item/context": [
         {
-          "command": "projectManager.loginServer",
-          "when": "view == projectManager && viewItem == server_no_login",
+          "command": "overleaf-workshop.projectManager.loginServer",
+          "when": "view == overleaf-workshop.projectManager && viewItem == server_no_login",
           "group": "inline"
         },
         {
-          "command": "projectManager.newProject",
-          "when": "view == projectManager && viewItem == server_login",
+          "command": "overleaf-workshop.projectManager.newProject",
+          "when": "view == overleaf-workshop.projectManager && viewItem == server_login",
           "group": "inline@1"
         },
         {
-          "command": "projectManager.refreshServer",
-          "when": "view == projectManager && viewItem == server_login",
+          "command": "overleaf-workshop.projectManager.refreshServer",
+          "when": "view == overleaf-workshop.projectManager && viewItem == server_login",
           "group": "inline@2"
         },
         {
-          "command": "projectManager.logoutServer",
-          "when": "view == projectManager && viewItem == server_login",
+          "command": "overleaf-workshop.projectManager.logoutServer",
+          "when": "view == overleaf-workshop.projectManager && viewItem == server_login",
           "group": "inline@3"
         },
         {
-          "command": "projectManager.removeServer",
-          "when": "view == projectManager && viewItem == server_login || viewItem == server_no_login"
+          "command": "overleaf-workshop.projectManager.removeServer",
+          "when": "view == overleaf-workshop.projectManager && viewItem == server_login || viewItem == server_no_login"
         },
         {
-          "command": "projectManager.renameProject",
-          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/",
+          "command": "overleaf-workshop.projectManager.renameProject",
+          "when": "view == overleaf-workshop.projectManager && viewItem =~ /^(?!archived).*project/",
           "group": "1_editActions"
         },
         {
-          "command": "projectManager.deleteProject",
-          "when": "view == projectManager && viewItem == trashed_project",
+          "command": "overleaf-workshop.projectManager.deleteProject",
+          "when": "view == overleaf-workshop.projectManager && viewItem == trashed_project",
           "group": "inline@2"
         },
         {
-          "command": "projectManager.archiveProject",
-          "when": "view == projectManager && viewItem =~ /^(?!archived).*project/",
+          "command": "overleaf-workshop.projectManager.archiveProject",
+          "when": "view == overleaf-workshop.projectManager && viewItem =~ /^(?!archived).*project/",
           "group": "1_editActions"
         },
         {
-          "command": "projectManager.unarchiveProject",
-          "when": "view == projectManager && viewItem == archived_project",
+          "command": "overleaf-workshop.projectManager.unarchiveProject",
+          "when": "view == overleaf-workshop.projectManager && viewItem == archived_project",
           "group": "inline@1"
         },
         {
-          "command": "projectManager.trashProject",
-          "when": "view == projectManager && viewItem =~ /^(?!trashed).*project/",
+          "command": "overleaf-workshop.projectManager.trashProject",
+          "when": "view == overleaf-workshop.projectManager && viewItem =~ /^(?!trashed).*project/",
           "group": "1_editActions"
         },
         {
-          "command": "projectManager.untrashProject",
-          "when": "view == projectManager && viewItem == trashed_project",
+          "command": "overleaf-workshop.projectManager.untrashProject",
+          "when": "view == overleaf-workshop.projectManager && viewItem == trashed_project",
           "group": "inline@1"
         },
         {
-          "command": "projectManager.createTag",
-          "when": "view == projectManager && viewItem == server_login"
+          "command": "overleaf-workshop.projectManager.createTag",
+          "when": "view == overleaf-workshop.projectManager && viewItem == server_login"
         },
         {
-          "command": "projectManager.renameTag",
-          "when": "view == projectManager && viewItem == tag",
+          "command": "overleaf-workshop.projectManager.renameTag",
+          "when": "view == overleaf-workshop.projectManager && viewItem == tag",
           "group": "inline@1"
         },
         {
-          "command": "projectManager.deleteTag",
-          "when": "view == projectManager && viewItem == tag",
+          "command": "overleaf-workshop.projectManager.deleteTag",
+          "when": "view == overleaf-workshop.projectManager && viewItem == tag",
           "group": "inline@2"
         },
         {
-          "command": "projectManager.addProjectToTag",
-          "when": "view == projectManager && viewItem == project",
+          "command": "overleaf-workshop.projectManager.addProjectToTag",
+          "when": "view == overleaf-workshop.projectManager && viewItem == project",
           "group": "1_editActions"
         },
         {
-          "command": "projectManager.removeProjectFromTag",
-          "when": "view == projectManager && viewItem == project_in_tag",
+          "command": "overleaf-workshop.projectManager.removeProjectFromTag",
+          "when": "view == overleaf-workshop.projectManager && viewItem == project_in_tag",
           "group": "1_editActions"
         },
         {
-          "command": "projectManager.openProjectInCurrentWindow",
-          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "command": "overleaf-workshop.projectManager.openProjectInCurrentWindow",
+          "when": "view == overleaf-workshop.projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "inline@3"
         },
         {
-          "command": "projectManager.openProjectInNewWindow",
-          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "command": "overleaf-workshop.projectManager.openProjectInNewWindow",
+          "when": "view == overleaf-workshop.projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "inline@4"
         },
         {
-          "command": "projectManager.openProjectInCurrentWindow",
-          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "command": "overleaf-workshop.projectManager.openProjectInCurrentWindow",
+          "when": "view == overleaf-workshop.projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "1_openActions@1"
         },
         {
-          "command": "projectManager.openProjectInNewWindow",
-          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "command": "overleaf-workshop.projectManager.openProjectInNewWindow",
+          "when": "view == overleaf-workshop.projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "1_openActions@2"
         },
         {
-          "command": "projectManager.openProjectLocalReplica",
-          "when": "view == projectManager && viewItem == project || viewItem == project_in_tag",
+          "command": "overleaf-workshop.projectManager.openProjectLocalReplica",
+          "when": "view == overleaf-workshop.projectManager && viewItem == project || viewItem == project_in_tag",
           "group": "1_openActions@3"
         },
         {
-          "command": "projectHistory.createLabel",
-          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "command": "overleaf-workshop.projectHistory.createLabel",
+          "when": "view == overleaf-workshop.projectHistory && viewItem =~ /historyItem(Labelled)?/",
           "group": "1_labelActions@0"
         },
         {
-          "command": "projectHistory.deleteLabel",
-          "when": "view == projectHistory && viewItem == historyItemLabelled",
+          "command": "overleaf-workshop.projectHistory.deleteLabel",
+          "when": "view == overleaf-workshop.projectHistory && viewItem == historyItemLabelled",
           "group": "1_labelActions@1"
         },
         {
-          "command": "projectHistory.comparePrevious",
-          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "command": "overleaf-workshop.projectHistory.comparePrevious",
+          "when": "view == overleaf-workshop.projectHistory && viewItem =~ /historyItem(Labelled)?/",
           "group": "2_scmActions@1"
         },
         {
-          "command": "projectHistory.compareCurrent",
-          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "command": "overleaf-workshop.projectHistory.compareCurrent",
+          "when": "view == overleaf-workshop.projectHistory && viewItem =~ /historyItem(Labelled)?/",
           "group": "2_scmActions@0"
         },
         {
-          "command": "projectHistory.compareOthers",
-          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "command": "overleaf-workshop.projectHistory.compareOthers",
+          "when": "view == overleaf-workshop.projectHistory && viewItem =~ /historyItem(Labelled)?/",
           "group": "2_scmActions@2"
         },
         {
-          "command": "projectHistory.downloadProject",
-          "when": "view == projectHistory && viewItem =~ /historyItem(Labelled)?/",
+          "command": "overleaf-workshop.projectHistory.downloadProject",
+          "when": "view == overleaf-workshop.projectHistory && viewItem =~ /historyItem(Labelled)?/",
           "group": "z_downloadAction"
         }
       ]

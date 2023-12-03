@@ -7,6 +7,7 @@ import { LocalGitBridgeSCMProvider } from './localGitBridgeSCM';
 import { HistoryViewProvider } from './historyViewProvider';
 import { GlobalStateManager } from '../utils/globalStateManager';
 import { EventBus } from '../utils/eventBus';
+import { ROOT_NAME } from '../consts';
 
 const supportedSCMs = [
     LocalReplicaSCMProvider,
@@ -62,7 +63,7 @@ export class SCMCollectionProvider {
         this.initSCMs();
 
         this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        this.statusBarItem.command = 'projectSCM.configSCM';
+        this.statusBarItem.command = `${ROOT_NAME}.projectSCM.configSCM`;
         this.statusListener = EventBus.on('scmStatusChangeEvent', () => {this.updateStatus();});
     }
 
@@ -293,10 +294,10 @@ export class SCMCollectionProvider {
             this.statusBarItem,
             this.statusListener,
             // register commands
-            vscode.commands.registerCommand('projectSCM.configSCM', () => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectSCM.configSCM`, () => {
                 return this.showSCMConfiguration();
             }),
-            vscode.commands.registerCommand('projectSCM.newSCM', (scmProto) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectSCM.newSCM`, (scmProto) => {
                 return this.createNewSCM(scmProto);
             }),
         ];

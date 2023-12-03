@@ -130,7 +130,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
             }
             item.tooltip.supportThemeIcons = true;
             item.command = {
-                command: 'projectHistory.comparePrevious',
+                command: `${ROOT_NAME}.projectHistory.comparePrevious`,
                 title: 'Compare with Previous',
                 arguments: [item],
             };
@@ -141,7 +141,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
             const item = new HistoryItem('Load More ...', NaN,NaN);
             item.iconPath = undefined;
             item.command = {
-                command: 'projectHistory.loadMore',
+                command: `${ROOT_NAME}.projectHistory.loadMore`,
                 title: 'Load More ...',
                 arguments: [this],
             };
@@ -166,14 +166,14 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
         return [
             vscode.workspace.registerTextDocumentContentProvider(`${ROOT_NAME}-diff`, this),
             // register commands
-            vscode.commands.registerCommand('projectHistory.refresh', async () => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.refresh`, async () => {
                 await this.refreshData(this._path, true);
             }),
-            vscode.commands.registerCommand('projectHistory.loadMore', async (provider: HistoryDataProvider) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.loadMore`, async (provider: HistoryDataProvider) => {
                 await provider.getHistory(provider._history?.before);
                 provider.refresh();
             }),
-            vscode.commands.registerCommand('projectHistory.createLabel', async (item: HistoryItem) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.createLabel`, async (item: HistoryItem) => {
                 const label = await vscode.window.showInputBox({
                     prompt: 'Create a new label',
                     placeHolder: 'Enter a label name',
@@ -189,7 +189,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
                     this.refresh();
                 }
             }),
-            vscode.commands.registerCommand('projectHistory.deleteLabel', async (item: HistoryItem) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.deleteLabel`, async (item: HistoryItem) => {
                 const label = await vscode.window.showQuickPick(
                     item.tags?.map(t=>t.comment) || [],
                     { placeHolder: 'Select a label to delete' }
@@ -209,21 +209,21 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
                     this.refresh();
                 }
             }),
-            vscode.commands.registerCommand('projectHistory.comparePrevious', async (item: HistoryItem) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.comparePrevious`, async (item: HistoryItem) => {
                 vscode.commands.executeCommand('vscode.diff',
                     vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
                     vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.prevVersion}`),
                     `${this._path} (v${item.version} vs v${item.prevVersion})`,
                 );
             }),
-            vscode.commands.registerCommand('projectHistory.compareCurrent', async (item: HistoryItem) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.compareCurrent`, async (item: HistoryItem) => {
                 vscode.commands.executeCommand('vscode.diff',
                     vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
                     vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${this._history?.currentVersion}`),
                     `${this._path} (v${item.version} vs v${this._history?.currentVersion})`,
                 );
             }),
-            vscode.commands.registerCommand('projectHistory.compareOthers', async (item: HistoryItem) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.compareOthers`, async (item: HistoryItem) => {
                 const otherVersions = this._history?.keyVersions.filter(v=>v!==item.version);
                 if (!otherVersions) { return; }
 
@@ -244,7 +244,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
                     );
                 });
             }),
-            vscode.commands.registerCommand('projectHistory.downloadProject', async (item:HistoryItem) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.downloadProject`, async (item:HistoryItem) => {
                 const uri = vscode.workspace.workspaceFolders?.[0].uri;
                 if (!uri) { return; }
                 const version = item.version;
@@ -323,7 +323,7 @@ export class HistoryViewProvider {
 
     constructor(vfs: VirtualFileSystem) {
         const treeDataProvider = new HistoryDataProvider(vfs);
-        this.historyView = vscode.window.createTreeView('projectHistory', {treeDataProvider});
+        this.historyView = vscode.window.createTreeView(`${ROOT_NAME}.projectHistory`, {treeDataProvider});
         this.treeDataProvider = treeDataProvider;
         this.updateView();
     }
@@ -338,8 +338,11 @@ export class HistoryViewProvider {
             // register tree view
             ...this.treeDataProvider.triggers,
             // register commands
-            vscode.commands.registerCommand('projectHistory.clearSelection', async() => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.clearSelection`, async() => {
                 this.updateView(undefined);
+            }),
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.revealHistoryView`, async() => {
+                vscode.commands.executeCommand(`${ROOT_NAME}.projectHistory.focus`);
             }),
             // on vfs file open
             EventBus.on('fileWillOpenEvent', async ({uri}) => {

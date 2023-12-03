@@ -555,7 +555,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             await vfs.init();
             const answer = await vscode.window.showInformationMessage(`No local replica found, create one for project "${project.label}" ?`, "Yes", "No");
             if (answer === "Yes") {
-                await (await vscode.commands.executeCommand('projectSCM.newSCM', LocalReplicaSCMProvider));
+                await (await vscode.commands.executeCommand(`${ROOT_NAME}.projectSCM.newSCM`, LocalReplicaSCMProvider));
                 // fetch local replica scm again
                 scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, serverName, projectId);
                 replicas = Object.values(scmPersists).filter(scmPersist => scmPersist.label===LocalReplicaSCMProvider.label);
@@ -584,69 +584,69 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     get triggers() {
         return [
             // register tree data provider
-            vscode.window.registerTreeDataProvider('projectManager', this),
+            vscode.window.registerTreeDataProvider(`${ROOT_NAME}.projectManager`, this),
             // register server-related commands
-            vscode.commands.registerCommand('projectManager.addServer', () => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.addServer`, () => {
                 this.addServer();
             }),
-            vscode.commands.registerCommand('projectManager.removeServer', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.removeServer`, (item) => {
                 this.removeServer(item.name);
             }),
-            vscode.commands.registerCommand('projectManager.loginServer', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.loginServer`, (item) => {
                 this.loginServer(item);
             }),
-            vscode.commands.registerCommand('projectManager.logoutServer', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.logoutServer`, (item) => {
                 this.logoutServer(item);
             }),
-            vscode.commands.registerCommand('projectManager.refreshServer', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.refreshServer`, (item) => {
                 this.refreshServer(item);
             }),
             // register project-related commands
-            vscode.commands.registerCommand('projectManager.newProject', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.newProject`, (item) => {
                 this.newProject(item);
             }),
-            vscode.commands.registerCommand('projectManager.renameProject', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.renameProject`, (item) => {
                 this.renameProject(item);
             }),
-            vscode.commands.registerCommand('projectManager.deleteProject', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.deleteProject`, (item) => {
                 this.deleteProject(item);
             }),
-            vscode.commands.registerCommand('projectManager.archiveProject', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.archiveProject`, (item) => {
                 this.archiveProject(item);
             }),
-            vscode.commands.registerCommand('projectManager.unarchiveProject', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.unarchiveProject`, (item) => {
                 this.unarchiveProject(item);
             }),
-            vscode.commands.registerCommand('projectManager.trashProject', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.trashProject`, (item) => {
                 this.trashProject(item);
             }),
-            vscode.commands.registerCommand('projectManager.untrashProject', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.untrashProject`, (item) => {
                 this.untrashProject(item);
             }),
             // register tag-related commands
-            vscode.commands.registerCommand('projectManager.createTag', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.createTag`, (item) => {
                 this.createTag(item);
             }),
-            vscode.commands.registerCommand('projectManager.renameTag', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.renameTag`, (item) => {
                 this.renameTag(item);
             }),
-            vscode.commands.registerCommand('projectManager.deleteTag', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.deleteTag`, (item) => {
                 this.deleteTag(item);
             }),
-            vscode.commands.registerCommand('projectManager.addProjectToTag', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.addProjectToTag`, (item) => {
                 this.addProjectToTag(item);
             }),
-            vscode.commands.registerCommand('projectManager.removeProjectFromTag', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.removeProjectFromTag`, (item) => {
                 this.removeProjectFromTag(item);
             }),
             // register open project commands
-            vscode.commands.registerCommand('projectManager.openProjectInCurrentWindow', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.openProjectInCurrentWindow`, (item) => {
                 this.openProjectInCurrentWindow(item);
             }),
-            vscode.commands.registerCommand('projectManager.openProjectInNewWindow', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.openProjectInNewWindow`, (item) => {
                 this.openProjectInNewWindow(item);
             }),
-            vscode.commands.registerCommand('projectManager.openProjectLocalReplica', (item) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.openProjectLocalReplica`, (item) => {
                 this.openProjectLocalReplica(item);
             }),
         ];

@@ -102,7 +102,7 @@ class CompileDiagnosticProvider {
     get triggers() {
         return [
             this.diagnosticCollection,
-            vscode.commands.registerCommand('compileManager.compileErrorCheck', async (uri) => {
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.compileErrorCheck`, async (uri) => {
                 return await this.updateDiagnostics(uri);
             }),
         ];
@@ -196,7 +196,7 @@ export class CompileManager {
                 })
                 .then(status =>
                     status ?
-                        vscode.commands.executeCommand('compileManager.compileErrorCheck', uri)
+                        vscode.commands.executeCommand(`${ROOT_NAME}.compileManager.compileErrorCheck`, uri)
                         : Promise.reject()
                 )
                 .then((hasError) => {
@@ -310,11 +310,11 @@ export class CompileManager {
     get triggers() {
         return [
             // register compile commands
-            vscode.commands.registerCommand('compileManager.compile', () => this.compile(true)),
-            vscode.commands.registerCommand('compileManager.viewPdf', () =>  this.openPdf()),
-            vscode.commands.registerCommand('compileManager.syncCode', () => this.syncCode()),
-            vscode.commands.registerCommand('compileManager.syncPdf', (r) => this.syncPdf(r)),
-            vscode.commands.registerCommand('compilerManager.settings', ()=> this.compileSettings()),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.compile`, () => this.compile(true)),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.viewPdf`, () =>  this.openPdf()),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.syncCode`, () => this.syncCode()),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.syncPdf`, (r) => this.syncPdf(r)),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compilerManager.settings`, ()=> this.compileSettings()),
             // register compile conditions
             vscode.workspace.onDidSaveTextDocument((e) => {
                 CompileManager.check.bind(this)(e.uri) && e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i) && this.compile();

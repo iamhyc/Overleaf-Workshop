@@ -211,7 +211,7 @@ export class VirtualFileSystem extends vscode.Disposable {
                 triggers: scmCollection.triggers,
             };
             // trigger the first compile
-            vscode.commands.executeCommand('compileManager.compile');
+            vscode.commands.executeCommand(`${ROOT_NAME}.compileManager.compile`);
             return project;
         }).catch((err) => {
             this.retryConnection += 1;
