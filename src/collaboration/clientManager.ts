@@ -105,7 +105,34 @@ export class ClientManager {
         this.updateStatus();
     }
 
-    private async jumpToUser(id: string) {
+    private async jumpToUser(id?: string) {
+        if (id === undefined) {
+            const onlineUsers = Object.values(this.onlineUsers);
+            if (onlineUsers.length === 0) {
+                vscode.window.showInformationMessage('No online Collaborators.');
+                return;
+            }
+            // select a user
+            const selectedUser = await vscode.window.showQuickPick(
+                Object.keys(this.onlineUsers).map(clientId => {
+                    const user = this.onlineUsers[clientId];
+                    const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
+                    const cursorInfo = user.row ? `At ${docPath}, Line ${user.row+1}` : undefined;
+
+                    return {
+                        label: user.name,
+                        description: cursorInfo,
+                        clientId: clientId,
+                        lastActive: user.last_updated_at!,
+                    };
+                }).filter(x => x).sort((a,b) => a.lastActive-b.lastActive),
+            {
+                placeHolder: 'Select a collaborator below to jump to.',
+            });
+            if (selectedUser === undefined) { return; }
+            id = selectedUser.clientId;
+        }
+
         const user = this.onlineUsers[id];
         const docPath = this.vfs._resolveById(user.doc_id)?.path;
         if (docPath === undefined) { return; }
@@ -246,8 +273,8 @@ export class ClientManager {
 
                             const jumpArgs = JSON.stringify([user.id]);
                             const jumpCommandUri = vscode.Uri.parse(`command:${ROOT_NAME}.collaboration.jumpToUser?${encodeURIComponent(jumpArgs)}`);
-                                    const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
-                                    const cursorInfo = user.row ? ` at <a href="${jumpCommandUri}">${docPath}#L${user.row+1}</a>` : '';
+                            const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
+                            const cursorInfo = user.row ? ` at <a href="${jumpCommandUri}">${docPath}#L${user.row+1}</a>` : '';
                 
                             const since_last_update = user.last_updated_at ? formatTime(Date.now() - user.last_updated_at) : '';
                             const timeInfo = since_last_update==='' ? 'Just now' : `${since_last_update} ago`;
@@ -288,7 +315,7 @@ export class ClientManager {
                 this.jumpToUser(uid);
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.revealChatView`, () => {
-                this.chatViewer.revealChatView();
+                this.chatViewer.insertText();
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.settings`, () => {
                 this.collaborationSettings();

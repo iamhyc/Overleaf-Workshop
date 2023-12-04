@@ -329,6 +329,12 @@
         "title": "Focus on Overleaf Chat",
         "enablement": "resourceScheme == overleaf-workshop || overleaf-workshop.activate",
         "category": "Overleaf Workshop"
+      },
+      {
+        "command": "overleaf-workshop.collaboration.jumpToUser",
+        "title": "Jump to Collaborator ...",
+        "enablement": "resourceScheme == overleaf-workshop || overleaf-workshop.activate",
+        "category": "Overleaf Workshop"
       }
     ],
     "keybindings": [
