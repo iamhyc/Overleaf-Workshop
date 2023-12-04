@@ -246,6 +246,12 @@ export class SocketIOAPI {
      * @returns {Promise}
      */
     async joinProject(project_id:string): Promise<ProjectEntity> {
+        const timeoutPromise: Promise<ProjectEntity> = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject('timeout');
+            }, 5000);
+        });
+
         switch(this.scheme) {
             case 'v1':
                 const joinPromise = this.emit('joinProject', {project_id})
@@ -259,19 +265,9 @@ export class SocketIOAPI {
                         reject(err.message);
                     });
                 });
-                const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => {
-                        reject('timeout');
-                    }, 5000);
-                });
                 return Promise.race([joinPromise, rejectPromise, timeoutPromise]);
             case 'v2':
-                const timeoutPromiseV2 = new Promise((_, reject) => {
-                    setTimeout(() => {
-                        reject('timeout');
-                    }, 5000);
-                });
-                return Promise.race([this.record!, timeoutPromiseV2]);
+                return Promise.race([this.record!, timeoutPromise]);
         }
     }
 
