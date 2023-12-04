@@ -266,7 +266,12 @@ export class SocketIOAPI {
                 });
                 return Promise.race([joinPromise, rejectPromise, timeoutPromise]);
             case 'v2':
-                return this.record!;
+                const timeoutPromiseV2 = new Promise((_, reject) => {
+                    setTimeout(() => {
+                        reject('timeout');
+                    }, 5000);
+                });
+                return Promise.race([this.record!, timeoutPromiseV2]);
         }
     }
 
