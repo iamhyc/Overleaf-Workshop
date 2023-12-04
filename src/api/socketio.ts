@@ -248,7 +248,6 @@ export class SocketIOAPI {
     async joinProject(project_id:string): Promise<ProjectEntity> {
         switch(this.scheme) {
             case 'v1':
-                const publicId = '';
                 const joinPromise = this.emit('joinProject', {project_id})
                 .then((returns:[ProjectEntity, string, number]) => {
                     const [project, permissionsLevel, protocolVersion] = returns;
@@ -260,7 +259,12 @@ export class SocketIOAPI {
                         reject(err.message);
                     });
                 });
-                return Promise.race([joinPromise, rejectPromise]);
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => {
+                        reject('timeout');
+                    }, 5000);
+                });
+                return Promise.race([joinPromise, rejectPromise, timeoutPromise]);
             case 'v2':
                 return this.record!;
         }
