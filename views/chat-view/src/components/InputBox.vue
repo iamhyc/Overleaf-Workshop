@@ -46,7 +46,9 @@
         textAreaElement.selectionStart = selectionStart + text.length;
         textAreaElement.selectionEnd = selectionStart + text.length;
         autoExpand();
-        textAreaElement.focus();
+        setTimeout(() => {
+            textAreaElement.focus();
+        }, 0);
     }
 
     function autoExpand() {

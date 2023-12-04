@@ -91,20 +91,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         return this.hasUnreadMessages;
     }
 
-    revealChatView(focus: boolean = true) {
+    revealChatView() {
         // this.webviewView?.show(true);
         vscode.commands.executeCommand(`${ROOT_NAME}.chatWebview.focus`);
         this.hasUnreadMessages = 0;
     }
 
-    insertText(text: string) {
-        if (this.webviewView !== undefined) {
-            this.revealChatView();
-            this.webviewView.webview.postMessage({
-                type: 'insert-text',
-                content: text,
-            });
+    insertText(text: string='') {
+        this.revealChatView();
+        if (this.webviewView === undefined) {
+            setTimeout(() => this.insertText(text), 100);
+            return;
         }
+
+        this.webviewView.webview.postMessage({
+            type: 'insert-text',
+            content: text,
+        });
     }
 
     private getLineRef() {
