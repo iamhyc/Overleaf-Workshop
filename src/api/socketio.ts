@@ -99,7 +99,12 @@ export class SocketIOAPI {
         }
         // create emit
         (this.socket.emit)[require('util').promisify.custom] = (event:string, ...args:any[]) => {
-            return new Promise((resolve, reject) => {
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject('timeout');
+                }, 3000);
+            });
+            const waitPromise = new Promise((resolve, reject) => {
                 this.socket.emit(event, ...args, (err:any, ...data:any[]) => {
                     if (err) {
                         reject(err);
@@ -108,6 +113,7 @@ export class SocketIOAPI {
                     }
                 });
             });
+            return Promise.race([waitPromise, timeoutPromise]);
         };
         this.emit = require('util').promisify(this.socket.emit).bind(this.socket);
         // resume handlers
