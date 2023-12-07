@@ -193,23 +193,27 @@ export class VirtualFileSystem extends vscode.Disposable {
             project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
             this.root = project;
             // Register: [collaboration] ClientManager on Statusbar
-            if (this.clientManagerItem?.triggers) {
-                this.clientManagerItem.triggers.forEach((trigger) => trigger.dispose());
+            if (vscode.workspace.workspaceFolders?.[0].uri===this.origin) {
+                if (this.clientManagerItem?.triggers) {
+                    this.clientManagerItem.triggers.forEach((trigger) => trigger.dispose());
+                }
+                const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
+                this.clientManagerItem = {
+                    manager: clientManager,
+                    triggers: clientManager.triggers,
+                };
             }
-            const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
-            this.clientManagerItem = {
-                manager: clientManager,
-                triggers: clientManager.triggers,
-            };
             // Register: [scm] SCMCollectionProvider in explorer
-            if (this.scmCollectionItem?.triggers) {
-                this.scmCollectionItem.triggers.forEach((trigger) => trigger.dispose());
+            if (vscode.workspace.workspaceFolders?.[0].uri===this.origin) {
+                if (this.scmCollectionItem?.triggers) {
+                    this.scmCollectionItem.triggers.forEach((trigger) => trigger.dispose());
+                }
+                const scmCollection = new SCMCollectionProvider(this, this.context);
+                this.scmCollectionItem = {
+                    collection: scmCollection,
+                    triggers: scmCollection.triggers,
+                };
             }
-            const scmCollection = new SCMCollectionProvider(this, this.context);
-            this.scmCollectionItem = {
-                collection: scmCollection,
-                triggers: scmCollection.triggers,
-            };
             // trigger the first compile
             vscode.commands.executeCommand(`${ROOT_NAME}.compileManager.compile`);
             return project;
