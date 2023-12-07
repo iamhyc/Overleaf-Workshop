@@ -109,7 +109,7 @@ export class ClientManager {
         if (id === undefined) {
             const onlineUsers = Object.values(this.onlineUsers);
             if (onlineUsers.length === 0) {
-                vscode.window.showInformationMessage('No online Collaborators.');
+                vscode.window.showErrorMessage('No online Collaborators.');
                 return;
             }
             // select a user

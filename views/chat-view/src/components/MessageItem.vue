@@ -15,6 +15,7 @@
         message: Message,
         root?: Message,
     }>();
+    const isFocused = ref(false);
     const container = ref<HTMLDivElement>();
     const showReply = ref(false);
     const hoverButton = ref('');
@@ -88,7 +89,10 @@
 </script>
 
 <template>
-    <div class="message-item" ref="container">
+    <div class="message-item" ref="container" tabindex="0"
+        :aria-label="`${username} said ${formatTimestamp}: ${props.message.content}`"
+        :aria-selected="isFocused" @focus="isFocused=true" @focusout="isFocused=false"
+    >
         <div class="message-item_header">
             <span class="message-item_header_author">
                 <inline class="clickable" @click="insertUsername()" :title="`@${username}`">{{ username }}</inline>
