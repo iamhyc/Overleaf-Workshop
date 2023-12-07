@@ -130,7 +130,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
             }
             item.tooltip.supportThemeIcons = true;
             item.command = {
-                command: `${ROOT_NAME}.projectHistory.comparePrevious`,
+                command: `projectHistory.comparePrevious`,
                 title: 'Compare with Previous',
                 arguments: [item],
             };
@@ -209,6 +209,9 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
                     this.refresh();
                 }
             }),
+            vscode.commands.registerCommand('projectHistory.comparePrevious', async (item: HistoryItem) => {
+                vscode.commands.executeCommand(`${ROOT_NAME}.projectHistory.comparePrevious`, item);
+            }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.comparePrevious`, async (item: HistoryItem) => {
                 vscode.commands.executeCommand('vscode.diff',
                     vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
@@ -281,6 +284,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
         
         // parse updates
         if (updates?.updates) {
+            this._history.currentVersion = updates.updates[0].toV;
             // iterate all `toV`
             for (const update of updates.updates) {
                 const version = update.toV;

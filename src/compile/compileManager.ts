@@ -118,7 +118,7 @@ export class CompileManager {
     ) {
         this.vfsm = vfsm;
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
-        this.status.command = 'compilerManager.settings';
+        this.status.command = `${ROOT_NAME}.compilerManager.settings`;
         this.diagnosticProvider = new CompileDiagnosticProvider(vfsm);
         // listen pdf open event
         EventBus.on('pdfWillOpenEvent', ({uri, doc, webviewPanel}) => {
