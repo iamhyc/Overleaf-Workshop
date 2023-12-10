@@ -107,6 +107,7 @@ export function parseUri(uri: vscode.Uri) {
 
 export class VirtualFileSystem extends vscode.Disposable {
     private root?: ProjectEntity;
+    private currentVersion?: number;
     private context: vscode.ExtensionContext;
     private api: BaseAPI;
     private socket: SocketIOAPI;
@@ -192,8 +193,9 @@ export class VirtualFileSystem extends vscode.Disposable {
             const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
             project.settings = (await this.api.getProjectSettings(identity, this.projectId)).settings!;
             this.root = project;
+            const activeCondition = (vscode.workspace.workspaceFolders===undefined) || (vscode.workspace.workspaceFolders?.[0].uri.scheme!==ROOT_NAME) || (vscode.workspace.workspaceFolders?.[0].uri===this.origin);
             // Register: [collaboration] ClientManager on Statusbar
-            if (vscode.workspace.workspaceFolders?.[0].uri===this.origin) {
+            if (activeCondition) {
                 if (this.clientManagerItem?.triggers) {
                     this.clientManagerItem.triggers.forEach((trigger) => trigger.dispose());
                 }
@@ -204,7 +206,7 @@ export class VirtualFileSystem extends vscode.Disposable {
                 };
             }
             // Register: [scm] SCMCollectionProvider in explorer
-            if (vscode.workspace.workspaceFolders?.[0].uri===this.origin) {
+            if (activeCondition) {
                 if (this.scmCollectionItem?.triggers) {
                     this.scmCollectionItem.triggers.forEach((trigger) => trigger.dispose());
                 }
@@ -880,6 +882,44 @@ export class VirtualFileSystem extends vscode.Disposable {
         } else {
             return undefined;
         }
+    }
+
+    async getCurrentVersion() {
+        const base = this.currentVersion ?? 0;
+        let lb = base;
+        let rb = base+2**4;
+        // firstly try: a) no update `+1`, b) one update `+2`
+        const res = await this.getFileTreeDiff(base+1, base+1);
+        if (res!==undefined) {
+            return this.currentVersion;
+        }
+        const res2 = await this.getFileTreeDiff(base+2, base+2);
+        if (res2!==undefined) {
+            this.currentVersion = base+1;
+            return this.currentVersion;
+        }
+        // locate the actual upper bound
+        do {
+            const res = await this.getFileTreeDiff(rb, rb);
+            if (res!==undefined) {
+                rb = lb + (rb-lb)*2;
+            } else {
+                break;
+            }
+        } while (true);
+        // binary search the current version
+        while (lb<rb) {
+            const mid = Math.floor((lb+rb)/2);
+            const res = await this.getFileTreeDiff(mid, mid);
+            if (res!==undefined) {
+                lb = mid+1;
+            } else {
+                rb = mid;
+            }
+        }
+        // update current version
+        this.currentVersion = rb-1;
+        return this.currentVersion;
     }
 
     async createLabel(comment: string, version: number) {

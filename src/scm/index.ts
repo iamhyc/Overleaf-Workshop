@@ -92,7 +92,7 @@ export abstract class BaseSCM {
     /**
      * Directly read a file from the SCM.
      */
-    abstract readFile(path: string): Thenable<Uint8Array>;
+    abstract readFile(path: string): Thenable<Uint8Array|undefined>;
 
     /**
      * List history commits *in reverse time order* in the SCM.

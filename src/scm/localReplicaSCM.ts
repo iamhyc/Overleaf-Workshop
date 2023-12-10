@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as DiffMatchPatch from 'diff-match-patch';
 import { minimatch } from 'minimatch';
 import { BaseSCM, CommitItem, SettingItem } from ".";
 import { VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
@@ -15,6 +16,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
     public readonly iconPath: vscode.ThemeIcon = new vscode.ThemeIcon('folder-library');
 
     private syncCache: string[] = [];
+    private baseCache: {[key:string]: Uint8Array} = {};
     private vfsWatcher?: vscode.FileSystemWatcher;
     private localWatcher?: vscode.FileSystemWatcher;
     private ignorePatterns: string[] = [
@@ -112,7 +114,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         return false;
     }
 
-    async overwrite(root: string='/') {
+    private async overwrite(root: string='/') {
         const vfsUri = this.vfs.pathToUri(root);
         const files = await vscode.workspace.fs.readDirectory(vfsUri);
 
@@ -127,8 +129,28 @@ export class LocalReplicaSCMProvider extends BaseSCM {
                 const nextRoot = relPath+'/';
                 await this.overwrite(nextRoot);
             } else {
-                const content = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(vfsUri, name));
-                await this.writeFile(relPath, content);
+                const baseContent = this.baseCache[relPath];
+                const localContent = await this.readFile(relPath);
+                const remoteContent = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(vfsUri, name));
+                if (baseContent===undefined || localContent===undefined) {
+                    await this.writeFile(relPath, remoteContent);
+                } else {
+                    const dmp = new DiffMatchPatch();
+                    const baseContentStr = new TextDecoder().decode(baseContent);
+                    const localContentStr = new TextDecoder().decode(localContent);
+                    const remoteContentStr = new TextDecoder().decode(remoteContent);
+                    // merge local and remote changes
+                    const localPatches = dmp.patch_make( baseContentStr, localContentStr );
+                    const remotePatches = dmp.patch_make( baseContentStr, remoteContentStr );
+                    const [mergedContentStr, _results] = dmp.patch_apply( remotePatches, localContentStr );
+                    // write the merged content to local
+                    const mergedContent = new TextEncoder().encode(mergedContentStr);
+                    await this.writeFile(relPath, mergedContent);
+                    // write the merged content to remote
+                    if (localPatches.length!==0) {
+                        await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(vfsUri, name), mergedContent);
+                    }
+                }
             }
         }
     }
@@ -154,7 +176,6 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         const relPath = '/' + pathParts.join('/');
         const localUri = vscode.Uri.joinPath(this.baseUri, relPath);
 
-        // console.log(`syncFromVFS ${type}: ${relPath}`);
         if (this.bypassSync(relPath, type)) { return; }
         this.syncCache.push(`${type} ${relPath}`);
         console.log(`${new Date().toLocaleString()} ${type}: ${relPath} --> ${localUri.path}`);
@@ -166,6 +187,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
             if (stat.type===vscode.FileType.File) {
                 const content = await vscode.workspace.fs.readFile(vfsUri);
                 await this.writeFile(relPath, content);
+                this.baseCache[relPath] = content;
             } else if (stat.type===vscode.FileType.Directory) {
                 await vscode.workspace.fs.createDirectory(localUri);
             }
@@ -181,7 +203,6 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         const relPath = localUri.path.slice(basePath.length);
         const vfsUri = this.vfs.pathToUri(relPath);
 
-        // console.log(`syncToVFS ${type}: ${relPath}`);
         if (this.bypassSync(relPath, type)) { return; }
         this.syncCache.push(`${type} ${relPath}`);
         console.log(`${new Date().toLocaleString()} ${type}: ${relPath} --> ${vfsUri.toString()}`);
@@ -193,6 +214,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
             if (stat.type===vscode.FileType.File) {
                 const content = await vscode.workspace.fs.readFile(localUri);
                 await vscode.workspace.fs.writeFile(vfsUri, content);
+                this.baseCache[relPath] = content;
             } else if (stat.type===vscode.FileType.Directory) {
                 await vscode.workspace.fs.createDirectory(vfsUri);
             }
@@ -242,9 +264,16 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         return vscode.workspace.fs.writeFile(uri, content);
     }
 
-    readFile(relPath: string): Thenable<Uint8Array> {
+    readFile(relPath: string): Thenable<Uint8Array|undefined> {
         const uri = vscode.Uri.joinPath(this.baseUri, relPath);
-        return vscode.workspace.fs.readFile(uri);
+        return new Promise(async (resolve, reject) => {
+            try {
+                const content = await vscode.workspace.fs.readFile(uri);
+                resolve(content);
+            } catch (error) {
+                resolve(undefined);
+            }
+        });
     }
 
     get triggers(): Promise<vscode.Disposable[]> {
