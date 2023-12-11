@@ -73,6 +73,15 @@ export class DocSymbolProvider implements vscode.DocumentSymbolProvider {
         });
         return symbols;
     }
+
+    get triggers(){
+        const latexSelector = ['latex', 'latex-expl3', 'pweave', 'jlweave', 'rsweave'].map( (id) => {
+            return {language: id };
+         });
+        return [
+            vscode.languages.registerDocumentSymbolProvider(latexSelector, new DocSymbolProvider())
+        ];
+    }
 }
 
 // reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/src/utils/parser.ts#L3
@@ -153,11 +162,16 @@ function hierachyStructFormat(struct: TeXElement[]): TeXElement[] {
             prev.children.push(section);
         } else {
             newStruct.push(section);
+            prev.children = hierachyStructFormat(prev.children);
             prev = section;
         }
     }
+    if (prev !== undefined) {
+        prev.children = hierachyStructFormat(prev.children);
+    }
     return newStruct;
 }
+
 
 // reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/src/outline/structurelib/latex.ts#L55
 async function constructFile(filePath: string, structs: FileStructureCache, fileContent:string): Promise<void> {
@@ -171,7 +185,7 @@ async function constructFile(filePath: string, structs: FileStructureCache, file
     const rootElement = { children: [] };
     structs[filePath] = rootElement.children;
     let ast = await unifiedParser.parse(fileContent);
-
+    
     let inAppendix = false;
     for (const node of ast.content) {
         if (['string', 'parbreak', 'whitespace'].includes(node.type)) {
@@ -279,8 +293,4 @@ async function parseNode(
     }
     return inAppendix;
 }
-
-
-
-// function get
 

@@ -3,6 +3,8 @@ import { ROOT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 import { SnippetItemSchema } from '../api/base';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { EventBus } from '../utils/eventBus';
+import { DocSymbolProvider } from './texDocSymbolProvider';
+import { TexDocFormatter } from './texDocFormatter';
 
 type PathFileType = 'text' | 'image' | 'bib';
 
@@ -684,6 +686,8 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
     private filePathCompletion: FilePathCompletionProvider;
     private misspellingCheck: MisspellingCheckProvider;
     private referenceCompletion: ReferenceCompletionProvider;
+    private docSymbolProvider: DocSymbolProvider = new DocSymbolProvider();
+    private texDocFormatter:TexDocFormatter = new TexDocFormatter();
 
     constructor(context: vscode.ExtensionContext, vfsm: RemoteFileSystemProvider) {
         super(vfsm);
@@ -722,12 +726,15 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
             vscode.commands.registerCommand('langIntellisense.settings', () => {
                 this.misspellingCheck.spellCheckSettings();
             }),
+            
             // register other triggers
             ...this.commandCompletion.triggers,
             ...this.constantCompletion.triggers,
             ...this.filePathCompletion.triggers,
             ...this.misspellingCheck.triggers,
             ...this.referenceCompletion.triggers,
+            ...this.docSymbolProvider.triggers,
+            ...this.texDocFormatter.triggers,
         ];
     }
 }

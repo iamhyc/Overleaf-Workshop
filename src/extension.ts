@@ -7,8 +7,6 @@ import { PdfViewEditorProvider } from './core/pdfViewEditorProvider';
 import { CompileManager } from './compile/compileManager';
 import { LangIntellisenseProvider } from './intellisense/langIntellisenseProvider';
 import { LocalReplicaSCMProvider } from './scm/localReplicaSCM';
-import { DocSymbolProvider } from './intellisense/texDocSymbolProvider';
-import { TexDocFormatter } from './intellisense/texDocFormatter';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register: [core] RemoteFileSystemProvider
@@ -38,18 +36,6 @@ export function activate(context: vscode.ExtensionContext) {
     // Register: [intellisense] LangIntellisenseProvider
     const langIntellisenseProvider = new LangIntellisenseProvider(context, remoteFileSystemProvider);
     context.subscriptions.push( ...langIntellisenseProvider.triggers );
-
-    // Register: [intellisense] TexSymbolProvider
-    const latexSelector = ['latex', 'latex-expl3', 'pweave', 'jlweave', 'rsweave'].map( (id) => {
-       return {language: id };
-    });
-    context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(latexSelector, new DocSymbolProvider()));
-
-    // Register: [intellisense] TexDocFormatter
-    const texDocFormatter = new TexDocFormatter();
-    context.subscriptions.push(vscode.languages.registerDocumentFormattingEditProvider(latexSelector, texDocFormatter));
-    context.subscriptions.push(vscode.languages.registerDocumentRangeFormattingEditProvider(latexSelector, texDocFormatter));
-
 
     // activate vfs for local replica
     LocalReplicaSCMProvider.readSettings()
