@@ -85,7 +85,6 @@ export class SocketIOAPI {
     }
 
     init() {
-        const needResume = this.socket!==undefined;
         // connect
         switch(this.scheme) {
             case 'v1':
@@ -102,7 +101,7 @@ export class SocketIOAPI {
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => {
                     reject('timeout');
-                }, 3000);
+                }, 5000);
             });
             const waitPromise = new Promise((resolve, reject) => {
                 this.socket.emit(event, ...args, (err:any, ...data:any[]) => {
@@ -118,9 +117,7 @@ export class SocketIOAPI {
         this.emit = require('util').promisify(this.socket.emit).bind(this.socket);
         // resume handlers
         this.initInternalHandlers();
-        if (needResume) {
-            this.resumeEventHandlers(this._handlers);
-        }
+        // this.resumeEventHandlers(this._handlers);
     }
 
     private initInternalHandlers() {

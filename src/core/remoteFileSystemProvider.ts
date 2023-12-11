@@ -166,7 +166,6 @@ export class VirtualFileSystem extends vscode.Disposable {
         }
 
         if (!this.initializing) {
-            this.remoteWatch();
             this.initializing = this.initializingPromise;
         }
         return this.initializing;
@@ -175,6 +174,7 @@ export class VirtualFileSystem extends vscode.Disposable {
     private get initializingPromise(): Promise<ProjectEntity> {
         // if retry connection failed 3 times, throw error
         if (this.retryConnection >= 3) {
+            this.retryConnection = 0;
             vscode.window.showErrorMessage(`Connection lost: ${this.serverName}`, 'Reload').then((choice) => {
                 if (choice==='Reload') {
                     vscode.commands.executeCommand("workbench.action.reloadWindow");
@@ -187,6 +187,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             this.socket.init();
         }
 
+        this.remoteWatch();
         this.root = undefined;
         return this.socket.joinProject(this.projectId).then(async (project) => {
             // fetch project settings
@@ -198,6 +199,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             if (activeCondition) {
                 if (this.clientManagerItem?.triggers) {
                     this.clientManagerItem.triggers.forEach((trigger) => trigger.dispose());
+                    delete this.clientManagerItem;
                 }
                 const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
                 this.clientManagerItem = {
@@ -209,6 +211,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             if (activeCondition) {
                 if (this.scmCollectionItem?.triggers) {
                     this.scmCollectionItem.triggers.forEach((trigger) => trigger.dispose());
+                    delete this.scmCollectionItem;
                 }
                 const scmCollection = new SCMCollectionProvider(this, this.context);
                 this.scmCollectionItem = {
