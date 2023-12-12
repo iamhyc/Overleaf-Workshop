@@ -302,8 +302,8 @@ export class CompileManager {
         }), {
             canPickMany: false,
             placeHolder: 'Select Compiler',
-        }).then((option) => {
-            option && vfs?.updateSettings({ compiler: option.description });
+        }).then(async (option) => {
+            option && await vfs?.updateSettings({ compiler: option.description }) && this.compile(true);
         });
     }
 

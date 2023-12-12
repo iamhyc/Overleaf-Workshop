@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
 import { EventEmitter } from 'events';
-import { BaseAPI, Identity, ProjectMessageResponseSchema } from './base';
+import { BaseAPI, Identity, ProjectMessageResponseSchema, ProjectSettingsSchema } from './base';
 import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity, VirtualFileSystem } from '../core/remoteFileSystemProvider';
 import { OnlineUserSchema, UpdateSchema, UpdateUserSchema } from './socketio';
+
+const MessageRefreshInterval = 3*1000;//ms
+const SettingsRefreshInterval = 12*1000;//ms
 
 type EmitCallbackType = (err: Error|undefined, ...data:any[]) => void;
 type EmitEventsSupport = {
@@ -49,6 +52,12 @@ type ListenEventsSupport = {
 export class SocketIOAlt {
     private _eventEmitter = new EventEmitter();
 
+    private msgRefreshTask?: NodeJS.Timeout;
+    private msgCache?: string[];
+
+    private settingsRefreshTask?: NodeJS.Timeout;
+    private settingsCache?: ProjectSettingsSchema;
+
     constructor(
                 private readonly url:string,
                 private readonly api:BaseAPI,
@@ -61,13 +70,60 @@ export class SocketIOAlt {
             this._eventEmitter.emit('connectionAccepted', undefined, '');
             this._eventEmitter.emit('joinProjectResponse', '', await this.record);
         }, 100);
+
+        this.msgRefreshTask = setInterval(this.refreshMessages, MessageRefreshInterval);
+        this.settingsRefreshTask = setInterval(this.refreshProjectSettings, SettingsRefreshInterval);
     }
 
-    get vfs(): Thenable<VirtualFileSystem> {
+    private get vfs(): Thenable<VirtualFileSystem> {
         return vscode.commands.executeCommand('remoteFileSystem.prefetch', vscode.Uri.parse(this.url));
     }
 
+    private async refreshMessages() {
+        if (this.msgCache===undefined) {
+            this.msgCache = (await this.api.getMessages(this.identity, this.projectId)).messages?.map(m => m.id);
+        } else {
+            let fetchNum = 2;
+            let lastOldMessageId:string|undefined;
+            let newMessages:ProjectMessageResponseSchema[]|undefined;
+            // fetch messages until the last old message is found
+            do {
+                newMessages = (await this.api.getMessages(this.identity, this.projectId, fetchNum)).messages;
+                const newMessageIds = newMessages?.map(m => m.id);
+                lastOldMessageId = newMessageIds?.find(id => this.msgCache?.includes(id));
+                if (lastOldMessageId===undefined) {
+                    fetchNum += 2;
+                    continue;
+                } else {
+                    this.msgCache = newMessageIds;
+                    break;
+                }
+            } while(true);
+            // notify new messages
+            const lastOldMessageIndex = newMessages?.findIndex(m => m.id===lastOldMessageId);
+            if (lastOldMessageIndex!==undefined && lastOldMessageIndex!==-1) {
+                const notifyMessages = newMessages?.slice(lastOldMessageIndex+1, newMessages.length);
+                notifyMessages?.reverse().forEach(m => this._eventEmitter.emit('new-chat-message', m));
+            }
+        }
+    }
+
+    private async refreshProjectSettings() {
+        const settings = (await this.api.getProjectSettings(this.identity, this.projectId)).settings;
+        if (settings) {
+            if (settings.compilers!==this.settingsCache?.compilers) {
+                this._eventEmitter.emit('compilerUpdated', settings.compilers);
+            }
+            if (settings.languages!==this.settingsCache?.languages) {
+                this._eventEmitter.emit('spellCheckLanguageUpdated', settings.languages);
+            }
+            this.settingsCache = settings;
+        }
+    }
+
     disconnect() {
+        this.msgRefreshTask && clearInterval(this.msgRefreshTask);
+        this.settingsRefreshTask && clearInterval(this.settingsRefreshTask);
         this._eventEmitter.emit('disconnect');
     }
 
