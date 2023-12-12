@@ -228,6 +228,11 @@ export class VirtualFileSystem extends vscode.Disposable {
         });
     }
 
+    toggleInvisibleMode() {
+        this.socket.toggleAlternativeConnectionScheme(this.root);
+        this.socket.disconnect(); // jump to `onDisconnected` handler
+    }
+
     async _resolveUri(uri: vscode.Uri) {
         // resolve path
         const [parentFolder, fileName] = await (async () => {
