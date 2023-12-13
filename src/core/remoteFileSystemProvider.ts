@@ -253,17 +253,17 @@ export class VirtualFileSystem extends vscode.Disposable {
             return [currentFolder, fileName];
         })();
         // resolve file
-        const [fileEntity, fileType] = (() => {
+        const [fileEntity, fileType, fileId] = (() => {
             for (const _type of Object.keys(FolderKeys)) {
                 let entity = parentFolder[ FolderKeys[_type] ]?.find((entity) => entity.name === fileName);
                 if (!fileName && _type==='folder') { entity = parentFolder; }
                 if (entity) {
-                    return [entity, _type as FileType];
+                    return [entity, _type as FileType, entity._id];
                 }
             }
             return [];
         })();
-        return {parentFolder, fileName, fileEntity, fileType};
+        return {parentFolder, fileName, fileEntity, fileType, fileId};
     }
 
     _resolveById(entityId: string, root?: FolderEntity, path?:string):{
@@ -899,7 +899,8 @@ export class VirtualFileSystem extends vscode.Disposable {
         // firstly try: a) no update `+1`, b) one update `+2`
         const res = await this.getFileTreeDiff(base+1, base+1);
         if (res!==undefined) {
-            return this.currentVersion;
+            this.currentVersion = base;
+            return base;
         }
         const res2 = await this.getFileTreeDiff(base+2, base+2);
         if (res2!==undefined) {
