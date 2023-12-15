@@ -166,7 +166,6 @@ export class VirtualFileSystem extends vscode.Disposable {
         }
 
         if (!this.initializing) {
-            this.remoteWatch();
             this.initializing = this.initializingPromise;
         }
         return this.initializing;
@@ -180,6 +179,9 @@ export class VirtualFileSystem extends vscode.Disposable {
                     vscode.commands.executeCommand("workbench.action.reloadWindow");
                 };
             });
+            // reset retry connection
+            this.retryConnection = 0;
+            this.initializing = undefined;
             throw new Error('Connection lost');
         }
         // if evert connection failed, reset socketio
@@ -187,6 +189,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             this.socket.init();
         }
 
+        this.remoteWatch();
         this.root = undefined;
         return this.socket.joinProject(this.projectId).then(async (project) => {
             // fetch project settings
@@ -198,6 +201,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             if (activeCondition) {
                 if (this.clientManagerItem?.triggers) {
                     this.clientManagerItem.triggers.forEach((trigger) => trigger.dispose());
+                    delete this.clientManagerItem;
                 }
                 const clientManager = new ClientManager(this, this.context, this.publicId||'', this.socket);
                 this.clientManagerItem = {
@@ -209,6 +213,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             if (activeCondition) {
                 if (this.scmCollectionItem?.triggers) {
                     this.scmCollectionItem.triggers.forEach((trigger) => trigger.dispose());
+                    delete this.scmCollectionItem;
                 }
                 const scmCollection = new SCMCollectionProvider(this, this.context);
                 this.scmCollectionItem = {
