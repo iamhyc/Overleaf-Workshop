@@ -74,6 +74,12 @@
         }
     }
 
+    function focus() {
+        setTimeout(() => {
+            container.value?.focus();
+        }, 10);
+    }
+
     function scrollIntoView() {
         // scroll container into viewport
         container.value?.scrollIntoView({behavior: 'instant', block: 'nearest'});
@@ -84,12 +90,12 @@
     }
 
     defineExpose({
-        scrollIntoView,
+        scrollIntoView, focus, isFocused,
     });
 </script>
 
 <template>
-    <div class="message-item" ref="container" tabindex="0"
+    <div role="listitem" class="message-item" ref="container" tabindex="0"
         :aria-label="`${username} said ${formatTimestamp}: ${props.message.content}`"
         :aria-selected="isFocused" @focus="isFocused=true" @focusout="isFocused=false"
     >
