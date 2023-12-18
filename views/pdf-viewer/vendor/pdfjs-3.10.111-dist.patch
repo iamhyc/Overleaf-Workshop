@@ -1,19 +1,31 @@
-unchanged:
---- b/build/pdf.js
+diff --git a/build/pdf.js b/build/pdf.js
+index 8ec1e8f..b435c79 100644
+--- a/build/pdf.js
 +++ b/build/pdf.js
-@@ -362,6 +362,11 @@
+@@ -362,6 +362,13 @@ const PasswordResponses = {
    INCORRECT_PASSWORD: 2
  };
  exports.PasswordResponses = PasswordResponses;
 +const ViewerFontColor = '#000000';
++const LastViewerFontColor = '#000000';
 +exports.ViewerFontColor = ViewerFontColor;
++exports.LastViewerFontColor = LastViewerFontColor;
 +const ViewerBgColor = '#ffffff';
 +exports.ViewerBgColor = ViewerBgColor;
 +
  let verbosity = VerbosityLevel.WARNINGS;
  function setVerbosityLevel(level) {
    if (Number.isInteger(level)) {
-@@ -6797,7 +6802,7 @@
+@@ -6781,6 +6788,8 @@ class CanvasGraphics {
+     this._cachedScaleForStroking = [-1, 0];
+     this._cachedGetSinglePixelWidth = null;
+     this._cachedBitmapsMap = new Map();
++    this.opStack = [];
++    this.opTrace = [];
+   }
+   getObject(data, fallback = null) {
+     if (typeof data === "string") {
+@@ -6797,7 +6806,7 @@ class CanvasGraphics {
      const width = this.ctx.canvas.width;
      const height = this.ctx.canvas.height;
      const savedFillStyle = this.ctx.fillStyle;
@@ -22,12 +34,58 @@ unchanged:
      this.ctx.fillRect(0, 0, width, height);
      this.ctx.fillStyle = savedFillStyle;
      if (transparency) {
-@@ -7605,7 +7610,12 @@
+@@ -6839,6 +6848,36 @@ class CanvasGraphics {
+         return i;
+       }
+       fnId = fnArray[i];
++
++      // const opName = Object.entries(_util.OPS).find(([key, value]) => value === fnId)[0];
++      // if (fnId===44) {
++      //   this.opTrace.push([ opName, argsArray[i][0].map(x => x.unicode).join('') ]);
++      // } else {
++      //   this.opTrace.push(opName);
++      // }
++      switch(fnId) {
++        case 74: //'paintFormXObjectBegin'
++          this.opStack.push(fnId);
++          break;
++        case 75: //'paintFormXObjectEnd'
++          this.opStack.pop();
++          break;
++      }
++      const isInPainting = !(this.opStack.length===0);
++      if (fnId===44) { //'showText'
++        argsArray[i] = [ ...argsArray[i], isInPainting ];
++      }
++      if (fnId===58) { //'setStrokeRGBColor'
++        const hexColor = _util.Util.makeHexColor(argsArray[i][0], argsArray[i][1], argsArray[i][2]).toUpperCase();
++        const colorCondition = hexColor==='#000000' || hexColor===_util.LastViewerFontColor;
++        const enableCondition = colorCondition && !isInPainting && fnArray.length>10;
++        if (enableCondition) {
++          const viewerFontColor = _util.ViewerFontColor==='black' ? '#000000' : _util.ViewerFontColor;
++          const parsedRGBColor = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(viewerFontColor).slice(1).map(n => parseInt(n, 16));
++          argsArray[i] = parsedRGBColor;
++        }
++      }
++
+       if (fnId !== _util.OPS.dependency) {
+         this[fnId].apply(this, argsArray[i]);
+       } else {
+@@ -7500,7 +7539,7 @@ class CanvasGraphics {
+     }
+     return (0, _util.shadow)(this, "isFontSubpixelAAEnabled", enabled);
+   }
+-  showText(glyphs) {
++  showText(glyphs, isInPainting=false) {
+     const current = this.current;
+     const font = current.font;
+     if (font.isType3Font) {
+@@ -7605,7 +7644,12 @@ class CanvasGraphics {
        }
        if (this.contentVisible && (glyph.isInFont || font.missingFile)) {
          if (simpleFillText && !accent) {
 +          const _style = ctx.fillStyle;
-+          if (ctx.fillStyle==='#000000') {
++          if (ctx.fillStyle==='#000000' && !isInPainting) {
 +            ctx.fillStyle = _util.ViewerFontColor;
 +          }
            ctx.fillText(character, scaledX, scaledY);
@@ -35,7 +93,7 @@ unchanged:
          } else {
            this.paintChar(character, scaledX, scaledY, patternTransform);
            if (accent) {
-@@ -8888,6 +8898,7 @@
+@@ -8888,6 +8932,7 @@ GlobalWorkerOptions.workerPort = null;
  GlobalWorkerOptions.workerSrc = "";
  
  /***/ }),
@@ -43,7 +101,16 @@ unchanged:
  /* 15 */
  /***/ ((__unused_webpack_module, exports, __w_pdfjs_require__) => {
  
-@@ -17651,6 +17662,24 @@
+@@ -11426,7 +11471,7 @@ class SVGGraphics {
+           this.setFont(args);
+           break;
+         case _util.OPS.showText:
+-          this.showText(args[0]);
++          this.showText(args[0], args[1]);
+           break;
+         case _util.OPS.showSpacedText:
+           this.showText(args[0]);
+@@ -17651,6 +17696,34 @@ Object.defineProperty(exports, "GlobalWorkerOptions", ({
      return _worker_options.GlobalWorkerOptions;
    }
  }));
@@ -53,7 +120,17 @@ unchanged:
 +    return _util.ViewerFontColor;
 +  },
 +  set: function (color) {
++    _util.LastViewerFontColor = _util.ViewerFontColor;
 +    _util.ViewerFontColor = color;
++  }
++}));
++Object.defineProperty(exports, "LastViewerFontColor", ({
++  enumerable: true,
++  get: function () {
++    return _util.LastViewerFontColor;
++  },
++  set: function (color) {
++    _util.LastViewerFontColor = color;
 +  }
 +}));
 +Object.defineProperty(exports, "ViewerBgColor", ({
@@ -68,104 +145,3 @@ unchanged:
  Object.defineProperty(exports, "ImageKind", ({
    enumerable: true,
    get: function () {
-unchanged:
---- b/build/pdf.js
-+++ b/build/pdf.js
-@@ -6786,6 +6786,7 @@
-     this._cachedScaleForStroking = [-1, 0];
-     this._cachedGetSinglePixelWidth = null;
-     this._cachedBitmapsMap = new Map();
-+    this.opStack = [];
-   }
-   getObject(data, fallback = null) {
-     if (typeof data === "string") {
-@@ -6844,6 +6845,24 @@
-         return i;
-       }
-       fnId = fnArray[i];
-+
-+      // const opName = Object.entries(_util.OPS).find(([key, value]) => value === fnId)[0];
-+      switch(fnId) {
-+        case 74: //'paintFormXObjectBegin'
-+          this.opStack.push(fnId);
-+          break;
-+        case 75: //'paintFormXObjectEnd'
-+          this.opStack.pop();
-+          break;
-+      }
-+      if (fnId===58) { //'setStrokeRGBColor'
-+        const enableCondition = this.opStack.length===0 && fnArray.length>10;
-+        if (enableCondition && argsArray[i][0]===0 && argsArray[i][1]===0 && argsArray[i][2]===0) {
-+          const parsedRGBColor = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(_util.ViewerFontColor).slice(1).map(n => parseInt(n, 16));
-+          argsArray[i] = parsedRGBColor;
-+        }
-+      }
-+
-       if (fnId !== _util.OPS.dependency) {
-         this[fnId].apply(this, argsArray[i]);
-       } else {
-only in patch2:
-unchanged:
---- a/build/pdf.js
-+++ b/build/pdf.js
-@@ -6787,6 +6787,7 @@ class CanvasGraphics {
-     this._cachedGetSinglePixelWidth = null;
-     this._cachedBitmapsMap = new Map();
-     this.opStack = [];
-+    this.opTrace = [];
-   }
-   getObject(data, fallback = null) {
-     if (typeof data === "string") {
-@@ -6847,6 +6848,11 @@ class CanvasGraphics {
-       fnId = fnArray[i];
-
-       // const opName = Object.entries(_util.OPS).find(([key, value]) => value === fnId)[0];
-+      // if (fnId===44) {
-+      //   this.opTrace.push([ opName, argsArray[i][0].map(x => x.unicode).join('') ]);
-+      // } else {
-+      //   this.opTrace.push(opName);
-+      // }
-       switch(fnId) {
-         case 74: //'paintFormXObjectBegin'
-           this.opStack.push(fnId);
-@@ -6855,8 +6861,12 @@ class CanvasGraphics {
-           this.opStack.pop();
-           break;
-       }
-+      const isInPainting = !(this.opStack.length===0);
-+      if (fnId===44) { //'showText'
-+        argsArray[i] = [ ...argsArray[i], isInPainting ];
-+      }
-       if (fnId===58) { //'setStrokeRGBColor'
--        const enableCondition = this.opStack.length===0 && fnArray.length>10;
-+        const enableCondition = !isInPainting && fnArray.length>10;
-         if (enableCondition && argsArray[i][0]===0 && argsArray[i][1]===0 && argsArray[i][2]===0) {
-           const parsedRGBColor = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(_util.ViewerFontColor).slice(1).map(n => parseInt(n, 16));
-           argsArray[i] = parsedRGBColor;
-@@ -7524,7 +7534,7 @@ class CanvasGraphics {
-     }
-     return (0, _util.shadow)(this, "isFontSubpixelAAEnabled", enabled);
-   }
--  showText(glyphs) {
-+  showText(glyphs, isInPainting=false) {
-     const current = this.current;
-     const font = current.font;
-     if (font.isType3Font) {
-@@ -7630,7 +7640,7 @@ class CanvasGraphics {
-       if (this.contentVisible && (glyph.isInFont || font.missingFile)) {
-         if (simpleFillText && !accent) {
-           const _style = ctx.fillStyle;
--          if (ctx.fillStyle==='#000000') {
-+          if (ctx.fillStyle==='#000000' && !isInPainting) {
-             ctx.fillStyle = _util.ViewerFontColor;
-           }
-           ctx.fillText(character, scaledX, scaledY);
-@@ -11456,7 +11466,7 @@ class SVGGraphics {
-           this.setFont(args);
-           break;
-         case _util.OPS.showText:
--          this.showText(args[0]);
-+          this.showText(args[0], args[1]);
-           break;
-         case _util.OPS.showSpacedText:
-           this.showText(args[0]);
