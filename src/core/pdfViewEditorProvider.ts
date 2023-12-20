@@ -50,13 +50,13 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
         return Promise.resolve({id: '', delete: () => {}});
     }
 
-    async openCustomDocument(uri: vscode.Uri): Promise<PdfDocument> {
+    public async openCustomDocument(uri: vscode.Uri): Promise<PdfDocument> {
         const doc = new PdfDocument(uri);
         await doc.refresh();
         return doc;
     }
 
-    async resolveCustomEditor(doc: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
+    public async resolveCustomEditor(doc: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
         EventBus.fire('pdfWillOpenEvent', {uri: doc.uri, doc, webviewPanel});
         doc.onDidChange(() => {
             webviewPanel.webview.postMessage({type:'update', content:doc.cache.buffer});
@@ -88,6 +88,17 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
                     break;
             }
         });
+    }
+
+    public get triggers(): vscode.Disposable[] {
+        return [
+            vscode.window.registerCustomEditorProvider(`${ROOT_NAME}.pdfViewer`, this, {
+                webviewOptions: {
+                    retainContextWhenHidden: true,
+                },
+                supportsMultipleEditorsPerDocument: false,
+            }),
+        ];
     }
 
     private patchViewerHtml(webview: vscode.Webview, html: string): string {

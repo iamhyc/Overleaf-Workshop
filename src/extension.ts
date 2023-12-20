@@ -19,18 +19,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register: [core] PdfViewEditorProvider
     const pdfViewEditorProvider = new PdfViewEditorProvider(context);
-    context.subscriptions.push(
-        vscode.window.registerCustomEditorProvider(`${ROOT_NAME}.pdfViewer`, pdfViewEditorProvider, {
-            webviewOptions: {
-                retainContextWhenHidden: true,
-            },
-            supportsMultipleEditorsPerDocument: false,
-        })
-    );
+    context.subscriptions.push( ...pdfViewEditorProvider.triggers );
 
     // Register: [compile] CompileManager on Statusbar
     const compileManager = new CompileManager(remoteFileSystemProvider);
-    context.subscriptions.push( compileManager.status );
     context.subscriptions.push( ...compileManager.triggers );
 
     // Register: [intellisense] LangIntellisenseProvider

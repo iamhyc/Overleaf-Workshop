@@ -309,6 +309,8 @@ export class CompileManager {
 
     get triggers() {
         return [
+            // register status bar
+            this.status,
             // register compile commands
             vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.compile`, () => this.compile(true)),
             vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.viewPdf`, () =>  this.openPdf()),
