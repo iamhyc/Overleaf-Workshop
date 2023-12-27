@@ -144,7 +144,8 @@ export interface ProjectFileDiffResponseSchema {
 export interface ProjectFileTreeDiffResponseSchema {
     diff: {
         pathname: string,
-        operation?: 'edited' | 'added'
+        newPathname?: string,
+        operation?: 'edited' | 'added' | 'removed' | 'renamed'
     }[]
 }
 
@@ -778,9 +779,9 @@ export class BaseAPI {
         return this.request('DELETE', `project/${projectId}/labels/${labelId}`);
     }
 
-    async getMessages(identity:Identity, projectId:string) {
+    async getMessages(identity:Identity, projectId:string, limit:number=50) {
         this.setIdentity(identity);
-        return this.request('GET', `project/${projectId}/messages?limit=50`, undefined, (res) => {
+        return this.request('GET', `project/${projectId}/messages?limit=${limit}`, undefined, (res) => {
             const messages = JSON.parse(res!) as ProjectMessageResponseSchema[];
             return {messages};
         }, {'X-Csrf-Token': identity.csrfToken});

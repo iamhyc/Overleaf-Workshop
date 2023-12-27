@@ -2,6 +2,7 @@
 import { Identity, BaseAPI, ProjectMessageResponseSchema } from './base';
 import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity } from '../core/remoteFileSystemProvider';
 import { EventBus } from '../utils/eventBus';
+import { SocketIOAlt } from './socketioAlt';
 
 export interface UpdateUserSchema {
     id: string,
@@ -66,7 +67,7 @@ export interface EventsHandler {
     onCompilerUpdated?: (compiler:string) => void,
 }
 
-type ConnectionScheme = 'v1' | 'v2';
+type ConnectionScheme = 'Alt' | 'v1' | 'v2';
 
 export class SocketIOAPI {
     private scheme: ConnectionScheme = 'v1';
@@ -76,7 +77,7 @@ export class SocketIOAPI {
     private socket?: any;
     private emit: any;
 
-    constructor(private readonly url:string,
+    constructor(private url:string,
                 private readonly api:BaseAPI,
                 private readonly identity:Identity,
                 private readonly projectId:string)
@@ -87,7 +88,11 @@ export class SocketIOAPI {
     init() {
         // connect
         switch(this.scheme) {
+            case 'Alt':
+                this.socket = new SocketIOAlt(this.url, this.api, this.identity, this.projectId, this.record!);
+                break;
             case 'v1':
+                this.record = undefined;
                 this.socket = this.api._initSocketV0(this.identity);
                 break;
             case 'v2':
@@ -155,6 +160,18 @@ export class SocketIOAPI {
 
     get handlers() {
         return this._handlers;
+    }
+
+    get isUsingAlternativeConnectionScheme() {
+        return this.scheme==='Alt';
+    }
+
+    toggleAlternativeConnectionScheme(url: string, updatedRecord?: ProjectEntity) {
+        this.scheme = this.scheme==='Alt' ? 'v1' : 'Alt';
+        if (updatedRecord) {
+            this.url = url;
+            this.record = Promise.resolve(updatedRecord);
+        }
     }
 
     resumeEventHandlers(handlers: Array<EventsHandler>) {
@@ -243,6 +260,19 @@ export class SocketIOAPI {
         });
     }
 
+    get unSyncFileChanges(): number {
+        if (this.socket instanceof SocketIOAlt) {
+            return this.socket.unSyncedChanges;
+        }
+        return 0;
+    }
+
+    async syncFileChanges() {
+        if (this.socket instanceof SocketIOAlt) {
+            return await this.socket.uploadToVFS();
+        }
+    }
+
     /**
      * Reference: services/web/frontend/js/ide/connection/ConnectionManager.js#L427
      * @param {string} projectId - The project id.
@@ -256,10 +286,12 @@ export class SocketIOAPI {
         });
 
         switch(this.scheme) {
+            case 'Alt':
             case 'v1':
                 const joinPromise = this.emit('joinProject', {project_id})
                 .then((returns:[ProjectEntity, string, number]) => {
                     const [project, permissionsLevel, protocolVersion] = returns;
+                    this.record = Promise.resolve(project);
                     return project;
                 });
                 const rejectPromise = new Promise((_, reject) => {
