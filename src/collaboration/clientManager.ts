@@ -145,6 +145,8 @@ export class ClientManager {
         });
     }
 
+    private async tetherToUser(id?: string) {}
+
     private refreshDecorations(visibleTextEditors: readonly vscode.TextEditor[]) {
         Object.values(this.onlineUsers).forEach(async user => {
             const docPath = this.vfs._resolveById(user.doc_id)?.path;
@@ -250,19 +252,30 @@ export class ClientManager {
                 });
                 break;
             case true:
-                const prefixText = this.chatViewer.hasUnread? `$(bell-dot) ${this.chatViewer.hasUnread} ` : '';
-                this.status.command = `${ROOT_NAME}.collaboration.revealChatView`;
+                let prefixText = '';
+                // notify unread messages
+                if (this.chatViewer.hasUnread) {
+                    prefixText = prefixText.concat(`$(bell-dot) ${this.chatViewer.hasUnread} `);
+                }
+                this.status.command = this.chatViewer.hasUnread? `${ROOT_NAME}.collaboration.revealChatView` : `${ROOT_NAME}.collaboration.settings`;
                 this.status.backgroundColor = this.chatViewer.hasUnread? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
+                // notify unSynced changes
+                const unSynced = this.socket.unSyncFileChanges;
+                if (unSynced) {
+                    prefixText = prefixText.concat(`$(arrow-up) ${unSynced} `);
+                }
 
+                const isInvisible = this.socket.isUsingAlternativeConnectionScheme;
+                const onlineIcon = isInvisible ? '$(person)' : '$(organization)';
                 switch (count) {
                     case 0:
                         this.status.color = undefined;
-                        this.status.text = prefixText + '$(organization) 0';
+                        this.status.text = prefixText + `${onlineIcon} 0`;
                         this.status.tooltip = `${ELEGANT_NAME}: Online`;
                         break;
                     default:
                         this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
-                        this.status.text = prefixText + `$(organization) ${count}`;
+                        this.status.text = prefixText + `${onlineIcon} ${count}`;
                         const tooltip = new vscode.MarkdownString();
                         tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
 
@@ -301,7 +314,48 @@ export class ClientManager {
     }
 
     collaborationSettings() {
-        //TODO: toggle invisible mode
+        const isInvisible = this.socket.isUsingAlternativeConnectionScheme;
+        const useAction = isInvisible ? 'Exit' : 'Enter';
+        const quickPickItems = [
+            {id:'jump', label:'Jump to Collaborator ...',detail:''},
+            {id:'tether', label:'Tether to Collaborator ...',detail:''},
+            {label:'',kind:vscode.QuickPickItemKind.Separator},
+        ];
+        if (isInvisible && this.socket.unSyncFileChanges) {
+            quickPickItems.push({id:'sync',label:`Upload Unsaved ${this.socket.unSyncFileChanges} Change(s)`,detail:''});
+        } else {
+            const detail = !isInvisible ? 'Invisible Mode removes your presence from others\' view.' : 'Back to normal mode.';
+            quickPickItems.push({id:'toggle',label:`${useAction} Invisible Mode`,detail});
+        }
+        // show quick pick
+        vscode.window.showQuickPick(quickPickItems, {
+            canPickMany: false,
+        }).then(async item => {
+            if (item === undefined) { return; }
+            switch (item.id) {
+                case 'jump':
+                    this.jumpToUser();
+                    break;
+                case 'tether':
+                    this.tetherToUser();
+                    break;
+                case 'toggle':
+                    if (useAction==='Enter') {
+                        vscode.window.showWarningMessage("(Experimental Feature) By entering Invisible Mode, the current connection to the server will be lost. Continue?", "Yes", "No").then(async selection => {
+                            if (selection === 'Yes') {
+                                this.vfs.toggleInvisibleMode();
+                            }
+                        });
+                    } else {
+                        this.vfs.toggleInvisibleMode();
+                    }
+                    break;
+                case 'sync':
+                    await this.socket.syncFileChanges();
+                    vscode.commands.executeCommand(`${ROOT_NAME}.compileManager.compile`);
+                    break;
+            }
+        });
     }
 
     get triggers() {

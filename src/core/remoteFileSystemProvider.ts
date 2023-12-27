@@ -228,8 +228,12 @@ export class VirtualFileSystem extends vscode.Disposable {
         });
     }
 
+    get isInvisibleMode() {
+        return this.socket.isUsingAlternativeConnectionScheme;
+    }
+
     toggleInvisibleMode() {
-        this.socket.toggleAlternativeConnectionScheme(this.root);
+        this.socket.toggleAlternativeConnectionScheme(this.origin.toString(), this.root);
         this.socket.disconnect(); // jump to `onDisconnected` handler
     }
 
@@ -898,12 +902,12 @@ export class VirtualFileSystem extends vscode.Disposable {
         let rb = base+2**4;
         // firstly try: a) no update `+1`, b) one update `+2`
         const res = await this.getFileTreeDiff(base+1, base+1);
-        if (res!==undefined) {
+        if (res===undefined) {
             this.currentVersion = base;
             return base;
         }
         const res2 = await this.getFileTreeDiff(base+2, base+2);
-        if (res2!==undefined) {
+        if (res2===undefined) {
             this.currentVersion = base+1;
             return this.currentVersion;
         }

@@ -3,12 +3,11 @@ import * as vscode from 'vscode';
 import * as DiffMatchPatch from 'diff-match-patch';
 import { EventEmitter } from 'events';
 import { BaseAPI, Identity, ProjectMessageResponseSchema, ProjectSettingsSchema } from './base';
-import { FileEntity, DocumentEntity, FileRefEntity, FileType, FolderEntity, ProjectEntity, VirtualFileSystem } from '../core/remoteFileSystemProvider';
-import { OnlineUserSchema, UpdateSchema, UpdateUserSchema } from './socketio';
+import { DocumentEntity, FileEntity, ProjectEntity, VirtualFileSystem } from '../core/remoteFileSystemProvider';
+import { UpdateSchema, UpdateUserSchema } from './socketio';
 
-const VFSRefreshInterval = 10*1000;//ms
+const VFSRefreshInterval = 3*1000;//ms
 const MessageRefreshInterval = 3*1000;//ms
-const SettingsRefreshInterval = 12*1000;//ms
 const DisconnectionTimeout = 3*60*1000;//ms
 
 type EmitCallbackType = (err: Error|undefined, ...data:any[]) => void;
@@ -32,39 +31,36 @@ type ListenEventsSupport = {
     'forceDisconnect': {message:string, delay:number},
     'connectionRejected': {err:{message:string}},
     'error': {err:{message:string}},
+    'spellCheckLanguageUpdated': {language:string},
+    'compilerUpdated': {compiler:string},
 
     // (periodically) via FileTree diff
-    //'reciveNewDoc': {parentFolderId:string, doc:DocumentEntity},
+    'reciveNewDoc': {parentFolderId:string, doc:DocumentEntity},
     'reciveNewFile': {parentFolderId:string, file:FileEntity},
     //'reciveNewFolder': {parentFolderId:string, folder:FolderEntity},
     'reciveEntityRename': {entityId:string, newName:string},
     'reciveEntityMove': {entityId:string, folderId:string},
     'removeEntity': {entityId:string},
-    //'otUpdateApplied': {update:UpdateSchema},
+    'otUpdateApplied': {update:UpdateSchema},
     // (periodically) via FileTree diff
     'clientTracking.clientUpdated': {user:UpdateUserSchema},
     'clientTracking.clientDisconnected': {publicId:string},
     // (periodically) via `getMessages`
-    'new-chat-message': {message:ProjectMessageResponseSchema},
-    // (periodically) via `getProjectSettings`
-    'spellCheckLanguageUpdated': {language:string},
-    'compilerUpdated': {compiler:string},
+    'new-chat-message': {message:ProjectMessageResponseSchema},    
 };
 
 
 export class SocketIOAlt {
+    private _vfs?: VirtualFileSystem;
     private _eventEmitter = new EventEmitter();
 
     private vfsRefreshTask?: NodeJS.Timeout;
     private vfsLocalVersion?: number;
-    private localChangesPath: {parentFolderId:string,filename:string,path:string}[] = [];
+    private localChangesPath: { [path:string] : {parentFolderId:string,filename:string} } = {};
     private connectedUsers: UpdateUserSchema[] = [];
 
     private msgRefreshTask?: NodeJS.Timeout;
     private msgCache?: string[];
-
-    private settingsRefreshTask?: NodeJS.Timeout;
-    private settingsCache?: ProjectSettingsSchema;
 
     constructor(
                 private readonly url:string,
@@ -79,9 +75,11 @@ export class SocketIOAlt {
             this._eventEmitter.emit('joinProjectResponse', '', await this.record);
         }, 100);
 
-        this.vfsRefreshTask = setInterval(this.refreshVFS, VFSRefreshInterval);
-        this.msgRefreshTask = setInterval(this.refreshMessages, MessageRefreshInterval);
-        this.settingsRefreshTask = setInterval(this.refreshProjectSettings, SettingsRefreshInterval);
+        this.refreshVFS();
+        this.vfsRefreshTask = setInterval(this.refreshVFS.bind(this), VFSRefreshInterval);
+
+        this.refreshMessages();
+        this.msgRefreshTask = setInterval(this.refreshMessages.bind(this), MessageRefreshInterval);
     }
 
     private get randomEntityId(): string {
@@ -89,7 +87,15 @@ export class SocketIOAlt {
     }
 
     private get vfs(): Thenable<VirtualFileSystem> {
-        return vscode.commands.executeCommand('remoteFileSystem.prefetch', vscode.Uri.parse(this.url));
+        if (this._vfs) {
+            return Promise.resolve(this._vfs);
+        } else {
+            return vscode.commands.executeCommand('remoteFileSystem.prefetch', vscode.Uri.parse(this.url))
+                .then(async (vfsPromise) => {
+                    this._vfs = await (vfsPromise as Promise<VirtualFileSystem>);
+                    return this._vfs;
+                });
+        }
     }
 
     private async refreshVFS() {
@@ -101,27 +107,33 @@ export class SocketIOAlt {
         const activeUsers = [];
         const diffs = (await vfs.getFileTreeDiff(this.vfsLocalVersion, latestVersion))?.diff;
         for (const diff of diffs || []) {
-            let entityId:string|undefined;
+            if (diff.operation===undefined) { continue; }
+
+            // resolve entityId
+            let entityId:string|undefined, entity:any;
             try {
                 const vfsUri = vfs.pathToUri(diff.pathname);
-                const {fileType, fileId} = await vfs._resolveUri(vfsUri);
-                entityId = fileId;
+                const {fileType, fileEntity, fileId} = await vfs._resolveUri(vfsUri);
+                [entityId, entity] = [fileId, fileEntity];
             } catch (error) {
                 console.error(error);
             }
+
             // handle vfs update
             switch (diff.operation) {
                 case 'added':
                     if (entityId!==undefined) { break; }
                     const pathParts = diff.pathname.split('/');
-                    const [parentFolderId, name] = [
+                    const [parentFolder, name] = [
                         pathParts.slice(0, pathParts.length-1).join('/'),
                         pathParts[pathParts.length-1] ];
-                    this._eventEmitter.emit('reciveNewFile', parentFolderId, {
-                        id: this.randomEntityId,
+                    const parentFolderId = (await vfs._resolveUri(vfs.pathToUri(parentFolder))).fileId;
+                    this._eventEmitter.emit('reciveNewDoc', parentFolderId, {
+                        _id: this.randomEntityId,
                         name,
-                        type: 'file',
-                    });
+                        type: 'doc',
+                        version: latestVersion,
+                    } as DocumentEntity);
                     break;
                 case 'removed':
                     if (entityId===undefined) { break; }
@@ -157,26 +169,33 @@ export class SocketIOAlt {
                     const localContent = new TextDecoder().decode( await vfs.openFile(_uri) );
                     const baseRemoteContent = (await vfs.getFileDiff(pathname, this.vfsLocalVersion, this.vfsLocalVersion))?.diff[0].u;
                     const latestRemoteContent = (await vfs.getFileDiff(pathname, latestVersion, latestVersion))?.diff[0].u;
-                    if (baseRemoteContent && latestRemoteContent) {
+                    if (baseRemoteContent!==undefined && latestRemoteContent!==undefined) {
                         const patch = dmp.patch_make(baseRemoteContent, latestRemoteContent);
                         const [localContentPatched, _] = dmp.patch_apply(patch, localContent);
-                        await vfs.writeFile(_uri, Buffer.from(localContentPatched), false, true);
+                        this._eventEmitter.emit('otUpdateApplied', {
+                            doc: entityId,
+                            v: (entity as DocumentEntity).version, //bypass update check
+                            op: [
+                                {p:0, d:localContent},
+                                {p:0, i:localContentPatched},
+                            ],
+                        });
                     }
                     // fetch active users
                     const remoteDiffs = (await vfs.getFileDiff(pathname, this.vfsLocalVersion, latestVersion))?.diff;
                     for (const diff of remoteDiffs || []) {
                         const end_ts = diff.meta?.end_ts || Date.now();
                         for (const user of diff.meta?.users || []) {
-                            const index = this.connectedUsers.findIndex(u => u.id===user.id);
+                            const index = this.connectedUsers.findIndex(u => u.user_id===user.id);
                             if (index===-1) {
                                 const userUpdate = {
-                                    id:this.randomEntityId, user_id:user.id,email:user.email,
+                                    id:user.id, user_id:user.id, email:user.email,
                                     name:`${user.first_name} ${user.last_name||''}`,
-                                    doc_id:'', row:-1, column:-1,
+                                    doc_id:entityId, row:-1, column:-1,
                                     last_updated_at: end_ts,
                                 };
-                                this.connectedUsers.push(userUpdate);
-                                activeUsers.push( userUpdate);
+                                this.connectedUsers.push( userUpdate );
+                                activeUsers.push( userUpdate );
                             } else {
                                 this.connectedUsers[index].last_updated_at = end_ts;
                                 activeUsers.push( this.connectedUsers[index] );
@@ -226,23 +245,14 @@ export class SocketIOAlt {
             // notify new messages
             const lastOldMessageIndex = newMessages?.findIndex(m => m.id===lastOldMessageId);
             if (lastOldMessageIndex!==undefined && lastOldMessageIndex!==-1) {
-                const notifyMessages = newMessages?.slice(lastOldMessageIndex+1, newMessages.length);
+                const notifyMessages = newMessages?.slice(0, lastOldMessageIndex);
                 notifyMessages?.reverse().forEach(m => this._eventEmitter.emit('new-chat-message', m));
             }
         }
     }
 
-    private async refreshProjectSettings() {
-        const settings = (await this.api.getProjectSettings(this.identity, this.projectId)).settings;
-        if (settings) {
-            if (settings.compilers!==this.settingsCache?.compilers) {
-                this._eventEmitter.emit('compilerUpdated', settings.compilers);
-            }
-            if (settings.languages!==this.settingsCache?.languages) {
-                this._eventEmitter.emit('spellCheckLanguageUpdated', settings.languages);
-            }
-            this.settingsCache = settings;
-        }
+    get unSyncedChanges(): number {
+        return Object.keys(this.localChangesPath).length;
     }
 
     async uploadToVFS() {
@@ -250,27 +260,42 @@ export class SocketIOAlt {
         // sync remote changes
         await this.refreshVFS();
         // upload local changes
-        for (const {parentFolderId,filename,path} of this.localChangesPath) {
-            try {
-                const fileContent = await vfs.openFile( vfs.pathToUri(path) );
-                const fileEntity = (await this.api.uploadFile(this.identity, this.projectId, parentFolderId, filename, fileContent)).entity!;
-                // update local entityId
-                if (fileEntity._type==='doc') {
-                    this._eventEmitter.emit('reciveNewDoc', parentFolderId, fileEntity);
-                } else if (fileEntity._type==='file') {
-                    this._eventEmitter.emit('reciveNewFile', parentFolderId, fileEntity);
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Uploading Changes',
+            cancellable: true,
+        }, async (progress, token) => {
+            token.onCancellationRequested(() => {});
+            // do the upload
+            const totalChanges = Object.keys(this.localChangesPath).length;
+            let increment = 0;
+            for (const [path,{parentFolderId,filename}] of Object.entries(this.localChangesPath)) {
+                try {
+                    const fileContent = Buffer.from(await vfs.openFile( vfs.pathToUri(path) ));
+                    progress.report({increment, message:`${path}`});
+                    const fileEntity = (await this.api.uploadFile(this.identity, this.projectId, parentFolderId, filename, fileContent)).entity!;
+                    // update local entityId
+                    if (fileEntity._type==='doc') {
+                        this._eventEmitter.emit('reciveNewDoc', parentFolderId, fileEntity);
+                    } else if (fileEntity._type==='file') {
+                        this._eventEmitter.emit('reciveNewFile', parentFolderId, fileEntity);
+                    }
+                } catch (error) {
+                    console.error(error);
+                } finally {
+                    increment += 100 * (1 / totalChanges);
                 }
-            } catch (error) {}
-        }
-        this.localChangesPath = [];
-        // update local version
-        this.vfsLocalVersion = await vfs.getCurrentVersion();
+            }
+            // update local version
+            this.localChangesPath = {};
+            this.vfsLocalVersion = await vfs.getCurrentVersion();
+            return Promise.resolve();
+        });
     }
 
     disconnect() {
         this.vfsRefreshTask && clearInterval(this.vfsRefreshTask);
         this.msgRefreshTask && clearInterval(this.msgRefreshTask);
-        this.settingsRefreshTask && clearInterval(this.settingsRefreshTask);
         this._eventEmitter.emit('disconnect');
     }
 
@@ -285,17 +310,15 @@ export class SocketIOAlt {
                 });
                 break;
             case 'joinDoc':
-                const rDocId = args[0];
-                this.api.getFile(this.identity, this.projectId, rDocId).then(res => {
-                    if (res.type==='success') {
-                        const docLines = new TextDecoder().decode(res.content).split('\n');
-                        //FIXME: version, updates, ranges
-                        const version = 0;
-                        const updates:any[]=[], ranges:any[]=[];
-                        callback(undefined, docLines, version, updates, ranges);
-                    } else {
-                        callback(new Error('File not found'));
-                    }
+                const rDocId = args[0] as string;
+                this.vfs.then(async (vfs) => {
+                    await vfs.init();
+                    const {path} = await vfs._resolveById(rDocId)!;
+                    const version = this.vfsLocalVersion!;
+                    const content = (await vfs.getFileDiff(path.slice(1), version, version))?.diff[0].u;
+                    const docLines = content?.split('\n') || [];
+                    const updates:any[]=[], ranges:any[]=[];
+                    callback(undefined, docLines, version, updates, ranges);
                 });
                 break;
             case 'applyOtUpdate':
@@ -303,10 +326,11 @@ export class SocketIOAlt {
                 const update = args[1] as UpdateSchema;
                 if (update.op?.length) {
                     this.vfs.then(async (vfs) => {
-                        const {parentFolder, path} = (await vfs)._resolveById(uDocId)!;
+                        await vfs.init();
+                        const {parentFolder, path} = await vfs._resolveById(uDocId)!;
                         const parentFolderId = parentFolder._id;
                         const filename = path.slice(path.lastIndexOf('/')+1);
-                        this.localChangesPath.push({parentFolderId, filename, path});
+                        this.localChangesPath[ path.slice(1) ] = {parentFolderId, filename};
                         callback(undefined, undefined);
                     });
                 } else {

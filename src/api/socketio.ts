@@ -77,7 +77,7 @@ export class SocketIOAPI {
     private socket?: any;
     private emit: any;
 
-    constructor(private readonly url:string,
+    constructor(private url:string,
                 private readonly api:BaseAPI,
                 private readonly identity:Identity,
                 private readonly projectId:string)
@@ -162,9 +162,14 @@ export class SocketIOAPI {
         return this._handlers;
     }
 
-    toggleAlternativeConnectionScheme(updatedRecord?: ProjectEntity) {
+    get isUsingAlternativeConnectionScheme() {
+        return this.scheme==='Alt';
+    }
+
+    toggleAlternativeConnectionScheme(url: string, updatedRecord?: ProjectEntity) {
         this.scheme = this.scheme==='Alt' ? 'v1' : 'Alt';
         if (updatedRecord) {
+            this.url = url;
             this.record = Promise.resolve(updatedRecord);
         }
     }
@@ -253,6 +258,19 @@ export class SocketIOAPI {
                     break;
             }
         });
+    }
+
+    get unSyncFileChanges(): number {
+        if (this.socket instanceof SocketIOAlt) {
+            return this.socket.unSyncedChanges;
+        }
+        return 0;
+    }
+
+    async syncFileChanges() {
+        if (this.socket instanceof SocketIOAlt) {
+            return await this.socket.uploadToVFS();
+        }
     }
 
     /**

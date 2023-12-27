@@ -316,8 +316,13 @@ export class CompileManager {
             vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.syncPdf`, (r) => this.syncPdf(r)),
             vscode.commands.registerCommand(`${ROOT_NAME}.compilerManager.settings`, ()=> this.compileSettings()),
             // register compile conditions
-            vscode.workspace.onDidSaveTextDocument((e) => {
-                CompileManager.check.bind(this)(e.uri) && e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i) && this.compile();
+            vscode.workspace.onDidSaveTextDocument(async (e) => {
+                const uri = CompileManager.check.bind(this)(e.uri);
+                const vfs = uri && await this.vfsm.prefetch(uri);
+                const postfixCondition = e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i);
+                if (postfixCondition && vfs?.isInvisibleMode===false) {
+                    this.compile();
+                }
             }),
             EventBus.on('compilerUpdateEvent', () => {
                 this.compile(true);
