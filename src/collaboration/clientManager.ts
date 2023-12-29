@@ -318,7 +318,7 @@ export class ClientManager {
         const useAction = isInvisible ? 'Exit' : 'Enter';
         const quickPickItems = [
             {id:'jump', label:'Jump to Collaborator ...',detail:''},
-            {id:'tether', label:'Tether to Collaborator ...',detail:''},
+            // {id:'tether', label:'Tether to Collaborator ...',detail:''},
             {label:'',kind:vscode.QuickPickItemKind.Separator},
         ];
         if (isInvisible && this.socket.unSyncFileChanges) {
