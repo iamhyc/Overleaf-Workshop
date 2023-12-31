@@ -594,7 +594,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@unified-latex/unified-latex-prettier": "^2.4.2",
@@ -609,6 +610,8 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
     "@types/diff-match-patch": "^1.0.34",
     "@types/mocha": "^10.0.1",
     "@types/node": "20.2.5",
@@ -621,6 +624,7 @@
     "@vscode/test-electron": "^2.3.2",
     "download-cli": "^1.1.1",
     "eslint": "^8.41.0",
+    "husky": "^8.0.3",
     "mocha": "^10.2.0",
     "patch-package": "^7.0.2",
     "typescript": "^5.1.3"
