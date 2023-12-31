@@ -69,6 +69,9 @@ The following Overleaf (ShareLatex) Community Edition docker images provided on 
 
 - [ ] [sharelatex/sharelatex:3.0](https://hub.docker.com/layers/sharelatex/sharelatex/3.0/images/sha256-a36e54c66ef62fdee736ce2229289aa261b44f083a9fd553cf8264500612db27?context=explore)
 
+### Development
+
+Please refer to the development guidance in [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ### References
 
