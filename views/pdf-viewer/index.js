@@ -69,6 +69,18 @@
         // set global css
         const style = document.createElement('style');
         for (const theme in ColorThemes) {
+            // sanitize theme name
+            if (theme.match(/^[a-zA-Z0-9-_]+$/) === null) {
+                continue;
+            }
+            // sanitize color value
+            if (ColorThemes[theme].fontColor.match(/^#[0-9a-fA-F]{6}$/) === null) {
+                continue;
+            }
+            if (ColorThemes[theme].bgColor.match(/^#[0-9a-fA-F]{6}$/) === null) {
+                continue;
+            }
+            // update css
             style.innerHTML += `
                 #theme-${theme}::before {
                     background-color: ${ColorThemes[theme].bgColor};
