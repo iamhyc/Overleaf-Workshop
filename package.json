@@ -364,6 +364,77 @@
         "when": "editorTextFocus && resourceScheme == overleaf-workshop"
       }
     ],
+    "configuration":{
+      "title": "%extension.displayName%",
+      "properties": {
+        "overleaf-workshop.compileOnSave.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine",
+          "markdownDescription": "%configuration.compileOnSave.enabled.markdownDescription%"
+        },
+        "overleaf-workshop.compileOutputFolderName": {
+          "type": "string",
+          "default": ".output",
+          "scope": "machine",
+          "pattern": "^[^\\\\/:*?\"<>|]+$",
+          "markdownDescription": "%configuration.compileOutputFolderName.markdownDescription%"
+        },
+        "overleaf-workshop.pdfViewer.themes": {
+          "type": "object",
+          "default": {
+            "default": {"fontColor":"#000000", "bgColor":"#FFFFFF"},
+            "light":   {"fontColor":"#000000", "bgColor":"#F5F5DC"},
+            "dark":    {"fontColor":"#FBF0D9", "bgColor":"#4B4B4B"}
+          },
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]+$": {
+              "type": "object",
+              "description": "%configuration.pdfViewer.themes.theme.description%",
+              "properties": {
+                "fontColor": {
+                  "type": "string",
+                  "format": "color",
+                  "description": "%configuration.pdfViewer.themes.fontColor.description%"
+                },
+                "bgColor": {
+                  "type": "string",
+                  "format": "color",
+                  "description": "%configuration.pdfViewer.themes.backgroundColor.description%"
+                }
+              }
+            }
+          },
+          "additionalProperties": false,
+          "scope": "machine",
+          "markdownDescription": "%configuration.pdfViewer.themes.markdownDescription%"
+        },
+        "overleaf-workshop.invisibleMode.historyRefreshInterval": {
+          "type": "number",
+          "default": 3,
+          "scope": "machine",
+          "minimum": 1.0,
+          "maximum": 60,
+          "markdownDescription": "%configuration.invisibleMode.historyRefreshInterval.markdownDescription%"
+        },
+        "overleaf-workshop.invisibleMode.chatMessageRefreshInterval": {
+          "type": "number",
+          "default": 3,
+          "scope": "machine",
+          "minimum": 1.0,
+          "maximum": 60,
+          "markdownDescription": "%configuration.invisibleMode.chatMessageRefreshInterval.markdownDescription%"
+        },
+        "overleaf-workshop.invisibleMode.inactiveTimeout": {
+          "type": "number",
+          "default": 180,
+          "scope": "machine",
+          "minimum": 10,
+          "maximum": 3600,
+          "markdownDescription": "%configuration.invisibleMode.inactiveTimeout.markdownDescription%"
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

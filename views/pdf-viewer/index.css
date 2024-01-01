@@ -23,7 +23,3 @@ html, body {
 #secondaryDownload {
     display: none;
 }
-
-#theme-Default::before { background-color: #FFFFFF; }
-#theme-Light::before   { background-color: #F5F5DC; }
-#theme-Dark::before    { background-color: #4B4B4B; }

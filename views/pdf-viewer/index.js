@@ -7,16 +7,16 @@
     const SpreadMode = { UNKNOWN:-1, NONE:0, ODD:1, EVEN:2 };
     const ScrollMode = { UNKNOWN:-1, VERTICAL:0, HORIZONTAL:1, WRAPPED:2, PAGE:3 };
     const SidebarView = { UNKNOWN:-1, NONE:0, THUMBS:1, OUTLINE:2, ATTACHMENTS:3, LAYERS:4 };
-    const ColorTheme = {
-        'Default': {fontColor:'black', bgColor:'white'},
-        'Light': {fontColor:'black', bgColor:'#F5F5DC'},
-        'Dark': {fontColor:'#FBF0D9', bgColor:'#4B4B4B'}
+    let ColorThemes = {
+        'default': {fontColor:'black', bgColor:'white'},
+        'light': {fontColor:'black', bgColor:'#F5F5DC'},
+        'dark': {fontColor:'#FBF0D9', bgColor:'#4B4B4B'}
     };
 
     // @ts-ignore
     const vscode = acquireVsCodeApi();
     let globalPdfViewerState = {
-        colorTheme: 'Default',
+        colorTheme: 'default',
         containerScrollLeft: 0,
         containerScrollTop:  0,
         currentScaleValue: 'auto',
@@ -29,8 +29,13 @@
 
     function updatePdfViewerState() {
         const pdfViewerState = vscode.getState() || globalPdfViewerState;
-        pdfjsLib.ViewerFontColor = ColorTheme[pdfViewerState.colorTheme].fontColor;
-        pdfjsLib.ViewerBgColor = ColorTheme[pdfViewerState.colorTheme].bgColor;
+
+        if (ColorThemes[pdfViewerState.colorTheme] === undefined) {
+            pdfViewerState.colorTheme = Object.keys(ColorThemes)[0];
+        }
+        pdfjsLib.ViewerFontColor = ColorThemes[pdfViewerState.colorTheme].fontColor;
+        pdfjsLib.ViewerBgColor = ColorThemes[pdfViewerState.colorTheme].bgColor;
+
         PDFViewerApplication.pdfViewer.currentScaleValue = pdfViewerState.currentScaleValue;
         PDFViewerApplication.pdfCursorTools.switchTool( pdfViewerState.pdfCursorTools );
         PDFViewerApplication.pdfViewer.scrollMode = pdfViewerState.pdfViewerScrollMode;
@@ -59,6 +64,20 @@
         });
     }
 
+    function updateColorThemes(themes) {
+        ColorThemes = themes;
+        // set global css
+        const style = document.createElement('style');
+        for (const theme in ColorThemes) {
+            style.innerHTML += `
+                #theme-${theme}::before {
+                    background-color: ${ColorThemes[theme].bgColor};
+                }
+            `;
+        }
+        document.head.appendChild(style);
+    }
+
     function enableThemeToggleButton(initIndex = 0){
         // create toggle theme button
         const button = document.createElement('button');
@@ -67,7 +86,7 @@
         button.setAttribute('tabindex', '30');
         // set button theme attribute
         const setAttribute = (index) => {
-            const theme = Object.keys(ColorTheme)[index];
+            const theme = Object.keys(ColorThemes)[index];
             globalPdfViewerState.colorTheme = theme;
             button.innerHTML = `<span>${theme}</span>`;
             button.setAttribute('title', `Theme: ${theme}`);
@@ -75,7 +94,7 @@
         };
         button.addEventListener('click', () => {
             const index = Number(button.getAttribute('theme-index'));
-            const next = (index + 1) % Object.keys(ColorTheme).length;
+            const next = (index + 1) % Object.keys(ColorThemes).length;
             button.setAttribute('theme-index', next);
             setAttribute(next);
             backupPdfViewerState();
@@ -180,8 +199,11 @@
                     if (message.content!==undefined) {
                         Object.assign(globalPdfViewerState, message.content);
                     }
+                    if (message.colorThemes!==undefined) {
+                        updateColorThemes(message.colorThemes);
+                    }
                     updatePdfViewerState();
-                    enableThemeToggleButton( Object.keys(ColorTheme).indexOf(globalPdfViewerState.colorTheme) );
+                    enableThemeToggleButton( Object.keys(ColorThemes).indexOf(globalPdfViewerState.colorTheme) );
                     break;
                 default:
                     break;

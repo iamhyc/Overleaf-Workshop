@@ -43,6 +43,16 @@
     "commands.collaboration.revealChatView.title": "Focus on Overleaf Chat View",
     "commands.collaboration.jumpToUser.title": "Jump to Collaborator ...",
 
+    "configuration.compileOnSave.enabled.markdownDescription": "Always update the compiled PDF when a file is saved.",
+    "configuration.compileOutputFolderName.markdownDescription": "The name of the folder where the compiled output files (e.g., `output.pdf`) is located. (Take effect after restarting VSCode)",
+    "configuration.pdfViewer.themes.markdownDescription": "Configure the color themes used by the PDF viewer. (Take effect after restarting VSCode)",
+    "configuration.pdfViewer.themes.theme.description": "The name of the theme.",
+    "configuration.pdfViewer.themes.fontColor.description": "The font color of the theme.",
+    "configuration.pdfViewer.themes.backgroundColor.description": "The background color of the theme.",
+    "configuration.invisibleMode.historyRefreshInterval.markdownDescription": "The interval (in seconds) to refresh the project history in invisible mode, which is used to update the file changes, collaborator status, etc.",
+    "configuration.invisibleMode.chatMessageRefreshInterval.markdownDescription": "The interval (in seconds) to refresh the chat messages in invisible mode.",
+    "configuration.invisibleMode.inactiveTimeout.markdownDescription": "The timeout (in seconds) to mark a online Collaborator as inactivate in invisible mode.",
+
     "views.overleaf-workshop.projectManager.name": "Hosts",
     "views.explorer.overleaf-workshop.projectHistory": "History",
     "views.explorer.overleaf-workshop.contextualTitle": "Overleaf Project History",

@@ -5,10 +5,11 @@ import { EventEmitter } from 'events';
 import { BaseAPI, Identity, ProjectMessageResponseSchema, ProjectSettingsSchema } from './base';
 import { DocumentEntity, FileEntity, ProjectEntity, VirtualFileSystem } from '../core/remoteFileSystemProvider';
 import { UpdateSchema, UpdateUserSchema } from './socketio';
+import { ROOT_NAME } from '../consts';
 
-const VFSRefreshInterval = 3*1000;//ms
-const MessageRefreshInterval = 3*1000;//ms
-const DisconnectionTimeout = 3*60*1000;//ms
+const keyHistoryRefreshInterval = `${ROOT_NAME}.invisibleMode.historyRefreshInterval`;
+const keyChatMessageRefreshInterval = `${ROOT_NAME}.invisibleMode.chatMessageRefreshInterval`;
+const keyInactiveTimeout = `${ROOT_NAME}.invisibleMode.inactiveTimeout`;
 
 type EmitCallbackType = (err: Error|undefined, ...data:any[]) => void;
 type EmitEventsSupport = {
@@ -53,6 +54,7 @@ type ListenEventsSupport = {
 export class SocketIOAlt {
     private _vfs?: VirtualFileSystem;
     private _eventEmitter = new EventEmitter();
+    private watchConfigurationsDisposable;
 
     private vfsRefreshTask?: NodeJS.Timeout;
     private vfsLocalVersion?: number;
@@ -75,11 +77,15 @@ export class SocketIOAlt {
             this._eventEmitter.emit('joinProjectResponse', '', await this.record);
         }, 100);
 
+        const historyRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyHistoryRefreshInterval, 3) * 1000;//ms
         this.refreshVFS();
-        this.vfsRefreshTask = setInterval(this.refreshVFS.bind(this), VFSRefreshInterval);
+        this.vfsRefreshTask = setInterval(this.refreshVFS.bind(this), historyRefreshInterval);
 
+        const MessageRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyChatMessageRefreshInterval, 3) * 1000;//ms
         this.refreshMessages();
         this.msgRefreshTask = setInterval(this.refreshMessages.bind(this), MessageRefreshInterval);
+
+        this.watchConfigurationsDisposable = this.watchConfigurations();
     }
 
     private get randomEntityId(): string {
@@ -96,6 +102,22 @@ export class SocketIOAlt {
                     return this._vfs;
                 });
         }
+    }
+
+    private watchConfigurations() {
+        return vscode.workspace.onDidChangeConfiguration((e) => {
+                if (e.affectsConfiguration(`${ROOT_NAME}.invisibleMode.historyRefreshInterval`)) {
+                    const historyRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyHistoryRefreshInterval, 3) * 1000;//ms
+                    this.vfsRefreshTask && clearInterval(this.vfsRefreshTask);
+                    this.vfsRefreshTask = setInterval(this.refreshVFS.bind(this), historyRefreshInterval);
+                }
+
+                if (e.affectsConfiguration(`${ROOT_NAME}.invisibleMode.chatMessageRefreshInterval`)) {
+                    const MessageRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyChatMessageRefreshInterval, 3) * 1000;//ms
+                    this.msgRefreshTask && clearInterval(this.msgRefreshTask);
+                    this.msgRefreshTask = setInterval(this.refreshMessages.bind(this), MessageRefreshInterval);
+                }
+            });
     }
 
     private async refreshVFS() {
@@ -212,6 +234,7 @@ export class SocketIOAlt {
             this._eventEmitter.emit('clientTracking.clientUpdated', user);
         });
         this.connectedUsers = this.connectedUsers.filter(user => {
+            const DisconnectionTimeout = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyInactiveTimeout, 180) * 1000;//ms
             const isDisconnected = Date.now() - (user.last_updated_at||Date.now()) > DisconnectionTimeout;
             if (isDisconnected) {
                 this._eventEmitter.emit('clientTracking.clientDisconnected', user.id);
@@ -294,6 +317,7 @@ export class SocketIOAlt {
     }
 
     disconnect() {
+        this.watchConfigurationsDisposable.dispose();
         this.vfsRefreshTask && clearInterval(this.vfsRefreshTask);
         this.msgRefreshTask && clearInterval(this.msgRefreshTask);
         this._eventEmitter.emit('disconnect');

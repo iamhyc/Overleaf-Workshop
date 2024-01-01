@@ -321,8 +321,9 @@ export class CompileManager {
             vscode.workspace.onDidSaveTextDocument(async (e) => {
                 const uri = CompileManager.check.bind(this)(e.uri);
                 const vfs = uri && await this.vfsm.prefetch(uri);
+                const compileCondition = vscode.workspace.getConfiguration(`${ROOT_NAME}.compileOnSave`).get('enabled', true);
                 const postfixCondition = e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i);
-                if (postfixCondition && vfs?.isInvisibleMode===false) {
+                if (compileCondition && postfixCondition && vfs?.isInvisibleMode===false) {
                     this.compile();
                 }
             }),
