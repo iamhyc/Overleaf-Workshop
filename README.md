@@ -8,6 +8,10 @@
 
 Open Overleaf (ShareLatex) projects in VSCode, with full collaboration support.
 
+### User Guide
+
+The full user guide is available at [GitHub Wiki](https://github.com/iamhyc/Overleaf-Workshop/wiki).
+
 ### Features
 
 > [!NOTE]
