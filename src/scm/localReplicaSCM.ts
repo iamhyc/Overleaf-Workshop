@@ -11,7 +11,7 @@ const IGNORE_SETTING_KEY = 'ignore-patterns';
  * It keeps no history versions.
  */
 export class LocalReplicaSCMProvider extends BaseSCM {
-    public static readonly label = 'Local Replica';
+    public static readonly label = vscode.l10n.t('Local Replica');
 
     public readonly iconPath: vscode.ThemeIcon = new vscode.ThemeIcon('folder-library');
 
@@ -59,7 +59,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
             await vscode.workspace.fs.stat(baseUri);
             return baseUri;
         } catch (error) {
-            vscode.window.showErrorMessage('Invalid Path. Please make sure the absolute path to a folder with read/write permissions is used.');
+            vscode.window.showErrorMessage( vscode.l10n.t('Invalid Path. Please make sure the absolute path to a folder with read/write permissions is used.') );
             return Promise.reject(error);
         }
     }
@@ -292,7 +292,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
 
     public static get baseUriInputBox(): vscode.QuickPick<vscode.QuickPickItem> {
         const inputBox = vscode.window.createQuickPick();
-        inputBox.placeholder = 'e.g., /home/user/empty/local/folder';
+        inputBox.placeholder = vscode.l10n.t('e.g., /home/user/empty/local/folder');
         inputBox.value = '/';
         // enable auto-complete
         inputBox.onDidChangeValue(async value => {
@@ -331,12 +331,12 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         return [
             // configure ignore patterns
             {
-                label: 'Configure sync ignore patterns ...',
+                label: vscode.l10n.t('Configure sync ignore patterns ...'),
                 callback: async () => {
                     const ignorePatterns = this.getSetting<string[]>(IGNORE_SETTING_KEY) || this.ignorePatterns;
                     const quickPick = vscode.window.createQuickPick();
                     quickPick.ignoreFocusOut = true;
-                    quickPick.title = 'Press Enter to add a new pattern, or click the trash icon to remove a pattern.';
+                    quickPick.title = vscode.l10n.t('Press Enter to add a new pattern, or click the trash icon to remove a pattern.');
                     quickPick.items = ignorePatterns.map(pattern => ({
                         label: pattern,
                         buttons: [{iconPath: new vscode.ThemeIcon('trash')}],

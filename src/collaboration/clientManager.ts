@@ -109,7 +109,7 @@ export class ClientManager {
         if (id === undefined) {
             const onlineUsers = Object.values(this.onlineUsers);
             if (onlineUsers.length === 0) {
-                vscode.window.showErrorMessage('No online Collaborators.');
+                vscode.window.showErrorMessage( vscode.l10n.t('No online Collaborators.') );
                 return;
             }
             // select a user
@@ -117,7 +117,7 @@ export class ClientManager {
                 Object.keys(this.onlineUsers).map(clientId => {
                     const user = this.onlineUsers[clientId];
                     const docPath = user.doc_id ? this.vfs._resolveById(user.doc_id)?.path.slice(1) : undefined;
-                    const cursorInfo = user.row ? `At ${docPath}, Line ${user.row+1}` : undefined;
+                    const cursorInfo = user.row ? vscode.l10n.t('At {docPath}, Line {row}', {docPath, row:user.row+1}) : undefined;
 
                     return {
                         label: user.name,
@@ -127,7 +127,7 @@ export class ClientManager {
                     };
                 }).filter(x => x).sort((a,b) => a.lastActive-b.lastActive),
             {
-                placeHolder: 'Select a collaborator below to jump to.',
+                placeHolder: vscode.l10n.t('Select a collaborator below to jump to.'),
             });
             if (selectedUser === undefined) { return; }
             id = selectedUser.clientId;
@@ -245,7 +245,7 @@ export class ClientManager {
             case false:
                 this.status.color = 'red';
                 this.status.text = '$(sync-ignored)';
-                this.status.tooltip = `${ELEGANT_NAME}: Not connected`;
+                this.status.tooltip = `${ELEGANT_NAME}: ${vscode.l10n.t('Not connected')}`;
                 // Kick out all users indication since the connection is lost
                 Object.keys(this.onlineUsers).forEach(clientId => {
                     this.removePosition(clientId);
@@ -271,13 +271,13 @@ export class ClientManager {
                     case 0:
                         this.status.color = undefined;
                         this.status.text = prefixText + `${onlineIcon} 0`;
-                        this.status.tooltip = `${ELEGANT_NAME}: Online`;
+                        this.status.tooltip = `${ELEGANT_NAME}: ${vscode.l10n.t('Online')}`;
                         break;
                     default:
                         this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
                         this.status.text = prefixText + `${onlineIcon} ${count}`;
                         const tooltip = new vscode.MarkdownString();
-                        tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists?"Active":"Idle"}\n\n`);
+                        tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists? vscode.l10n.t('Active'): vscode.l10n.t('Idle') }\n\n`);
 
                         Object.values(this.onlineUsers).forEach(user => {
                             const userArgs = JSON.stringify([`@[[${user.name}#${user.user_id}]] `]);
@@ -290,7 +290,7 @@ export class ClientManager {
                             const cursorInfo = user.row ? ` at <a href="${jumpCommandUri}">${docPath}#L${user.row+1}</a>` : '';
                 
                             const since_last_update = user.last_updated_at ? formatTime(Date.now() - user.last_updated_at) : '';
-                            const timeInfo = since_last_update==='' ? 'Just now' : `${since_last_update} ago`;
+                            const timeInfo = since_last_update==='' ? vscode.l10n.t('Just now') : vscode.l10n.t('{since_last_update} ago', {since_last_update});
                             tooltip.appendMarkdown(`${userInfo} ${cursorInfo} ${timeInfo}\n\n`);
                         });
                         tooltip.isTrusted = true;
@@ -317,14 +317,14 @@ export class ClientManager {
         const isInvisible = this.socket.isUsingAlternativeConnectionScheme;
         const useAction = isInvisible ? 'Exit' : 'Enter';
         const quickPickItems = [
-            {id:'jump', label:'Jump to Collaborator ...',detail:''},
+            {id:'jump', label:vscode.l10n.t('Jump to Collaborator ...'), detail:''},
             // {id:'tether', label:'Tether to Collaborator ...',detail:''},
             {label:'',kind:vscode.QuickPickItemKind.Separator},
         ];
         if (isInvisible && this.socket.unSyncFileChanges) {
-            quickPickItems.push({id:'sync',label:`Upload Unsaved ${this.socket.unSyncFileChanges} Change(s)`,detail:''});
+            quickPickItems.push({id:'sync',label:vscode.l10n.t('Upload Unsaved {number} Change(s)', {number:this.socket.unSyncFileChanges}),detail:''});
         } else {
-            const detail = !isInvisible ? 'Invisible Mode removes your presence from others\' view.' : 'Back to normal mode.';
+            const detail = !isInvisible ? vscode.l10n.t('Invisible Mode removes your presence from others\' view.') : vscode.l10n.t('Back to normal mode.');
             quickPickItems.push({id:'toggle',label:`${useAction} Invisible Mode`,detail});
         }
         // show quick pick
@@ -341,7 +341,7 @@ export class ClientManager {
                     break;
                 case 'toggle':
                     if (useAction==='Enter') {
-                        vscode.window.showWarningMessage("(Experimental Feature) By entering Invisible Mode, the current connection to the server will be lost. Continue?", "Yes", "No").then(async selection => {
+                        vscode.window.showWarningMessage( vscode.l10n.t('(Experimental Feature) By entering Invisible Mode, the current connection to the server will be lost. Continue?'), 'Yes', 'No').then(async selection => {
                             if (selection === 'Yes') {
                                 this.vfs.toggleInvisibleMode();
                             }

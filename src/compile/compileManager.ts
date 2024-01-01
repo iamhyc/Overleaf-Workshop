@@ -84,7 +84,7 @@ class CompileDiagnosticProvider {
                 diagnosticsRecorder[path] = [];
             }
             const diagnostic = new vscode.Diagnostic(range, log.message, severityMap[log.level]);
-            diagnostic.source = "Compile Checker";
+            diagnostic.source = vscode.l10n.t('Compile Checker');
             diagnosticsRecorder[path].push(diagnostic);
 
             if (log.level === 'error') {
@@ -146,26 +146,26 @@ export class CompileManager {
                 switch (status) {
                     case 'success':
                         this.status.text = `${compilerName}`;
-                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **Compile Success**`);
+                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **${vscode.l10n.t('Compile Success')}**`);
                         this.status.backgroundColor = undefined;
                         break;
                     case 'compiling':
                         this.status.text = `${compilerName} $(sync~spin)`;
-                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **Compiling**`);
+                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **${vscode.l10n.t('Compiling')}**`);
                         this.status.backgroundColor = undefined;
                         break;
                     case 'failed':
                         this.status.text = `${compilerName} $(x)`;
-                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **Compile Failed**`);
+                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **${vscode.l10n.t('Compile Failed')}**`);
                         this.status.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
                         break;
                     case 'alert':
                         this.status.text = `$(alert)`;
-                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **Not Connected**`);
+                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **${vscode.l10n.t('Not Connected')}**`);
                         this.status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
                         break;
                 }
-                this.status.tooltip.appendMarkdown('\n\n*Click to switch compiler.*');
+                this.status.tooltip.appendMarkdown(`\n\n*${vscode.l10n.t('Click to switch compiler.')}*`);
                 this.status.show();
             });
         } else {
@@ -301,7 +301,7 @@ export class CompileManager {
             };
         }), {
             canPickMany: false,
-            placeHolder: 'Select Compiler',
+            placeHolder: vscode.l10n.t('Select Compiler'),
         }).then(async (option) => {
             option && await vfs?.updateSettings({ compiler: option.description }) && this.compile(true);
         });

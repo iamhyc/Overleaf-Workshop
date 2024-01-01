@@ -168,27 +168,27 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     addServer() {
-        vscode.window.showInputBox({'placeHolder': 'Overleaf server address, e.g. "https://www.overleaf.com"'})
+        vscode.window.showInputBox({'placeHolder': vscode.l10n.t('Overleaf server address, e.g. "https://www.overleaf.com"')})
         .then((url) => {
             if (url) {
                 try {
                     // check if url is valid
                     const _url = new URL(url);
                     if (!(_url.protocol==='http:' || _url.protocol==='https:')) {
-                        throw new Error('Invalid protocol.');
+                        throw new Error( vscode.l10n.t('Invalid protocol.') );
                     }
                     if (GlobalStateManager.addServer(this.context, _url.host, _url.href)) {
                         this.refresh();
                     }
                 } catch (e) {
-                    vscode.window.showErrorMessage('Invalid server address.');
+                    vscode.window.showErrorMessage( vscode.l10n.t('Invalid server address.') );
                 }
             }
         });
     }
 
     removeServer(name:string) {
-        vscode.window.showInformationMessage(`Remove server "${name}" ?`, "Yes", "No")
+        vscode.window.showInformationMessage(vscode.l10n.t('Remove server "{name}" ?', {name}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 if (GlobalStateManager.removeServer(this.context, name)) {
@@ -202,10 +202,10 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         const loginMethods:Record<string, ()=>void> = {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             'Login with Password': () => {
-                vscode.window.showInputBox({'placeHolder': 'Email'})
+                vscode.window.showInputBox({'placeHolder': vscode.l10n.t('Email')})
                 .then(email => email ? Promise.resolve(email) : Promise.reject())
                 .then(email =>
-                    vscode.window.showInputBox({'placeHolder': 'Password', 'password': true})
+                    vscode.window.showInputBox({'placeHolder': vscode.l10n.t('Password'), 'password': true})
                     .then(password => {
                         return password ? Promise.resolve([email,password]) : Promise.reject();
                     })
@@ -217,15 +217,15 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                     if (success) {
                         this.refresh();
                     } else {
-                        vscode.window.showErrorMessage('Login failed.');
+                        vscode.window.showErrorMessage( vscode.l10n.t('Login failed.') );
                     }
                 });
             },
             // eslint-disable-next-line @typescript-eslint/naming-convention
             'Login with Cookies': () => {
                 vscode.window.showInputBox({
-                    'placeHolder': 'Cookies, e.g., "sharelatex.sid=..." or "overleaf_session2=..."',
-                    'prompt': 'README: [How to Login with Cookies](https://github.com/iamhyc/overleaf-workshop#how-to-login-with-cookies)',
+                    'placeHolder': vscode.l10n.t('Cookies, e.g., "sharelatex.sid=..." or "overleaf_session2=..."'),
+                    'prompt': vscode.l10n.t('README: [How to Login with Cookies](https://github.com/iamhyc/overleaf-workshop#how-to-login-with-cookies)'),
                 })
                 .then(cookies => cookies ? Promise.resolve(cookies) : Promise.reject())
                 .then(cookies =>
@@ -235,7 +235,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                     if (success) {
                         this.refresh();
                     } else {
-                        vscode.window.showErrorMessage('Login failed.');
+                        vscode.window.showErrorMessage( vscode.l10n.t('Login failed.') );
                     }
                 });
             },
@@ -247,7 +247,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         }
 
         vscode.window.showQuickPick(Object.keys(loginMethods), {
-            canPickMany:false, placeHolder:'Select the login method below.'})
+            canPickMany:false, placeHolder:vscode.l10n.t('Select the login method below.')})
         .then(selection => {
             if (selection===undefined) { return Promise.reject(); }
             return Promise.resolve( (loginMethods as any)[selection] );
@@ -256,7 +256,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     logoutServer(server: ServerItem) {
-        vscode.window.showInformationMessage(`Logout server "${server.name}" ?`, "Yes", "No")
+        vscode.window.showInformationMessage(vscode.l10n.t('Logout server "{name}" ?', {name:server.name}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.logoutServer(this.context, server.api, server.name)
@@ -275,13 +275,13 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
 
     newProject(server: ServerItem) {
         // 'Blank Project', 'Example Project', 'Upload Project'
-        vscode.window.showQuickPick(['Blank Project', 'Example Project', 'Upload Project'])
+        vscode.window.showQuickPick([vscode.l10n.t('Blank Project'), vscode.l10n.t('Example Project'), vscode.l10n.t('Upload Project')])
         .then((answer) => {
             switch (answer) {
-                case 'Blank Project':
-                case 'Example Project':
-                    const template = answer==='Example Project' ? 'example' : 'none';
-                    vscode.window.showInputBox({'placeHolder': 'Project name'})
+                case vscode.l10n.t('Blank Project'):
+                case vscode.l10n.t('Example Project'):
+                    const template = answer===vscode.l10n.t('Example Project') ? 'example' : 'none';
+                    vscode.window.showInputBox({'placeHolder': vscode.l10n.t('Project name')})
                     .then(name => {
                         if (name) {
                             GlobalStateManager.authenticate(this.context, server.name)
@@ -296,7 +296,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                         }
                     });
                     break;
-                case 'Upload Project':
+                case vscode.l10n.t('Upload Project'):
                     vscode.window.showOpenDialog({
                         canSelectFiles: true,
                         canSelectFolders: false,
@@ -305,7 +305,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                             // eslint-disable-next-line @typescript-eslint/naming-convention
                             'Archive File': ['zip'],
                         },
-                        title: 'Upload Zipped Project',
+                        title: vscode.l10n.t('Upload Zipped Project'),
                     }).then((uri) => {
                         if (!uri) { return; }
                         vscode.workspace.fs.readFile(uri[0])
@@ -331,7 +331,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
 
     renameProject(project: ProjectItem) {
         vscode.window.showInputBox({
-            'placeHolder': 'New project name',
+            'placeHolder': vscode.l10n.t('New project name'),
             'value': project.label,
         })
         .then(newName => {
@@ -350,7 +350,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     deleteProject(project: ProjectItem) {
-        vscode.window.showInformationMessage(`Permanently delete project "${project.label}" ?`, "Yes", "No")
+        vscode.window.showInformationMessage(vscode.l10n.t('Permanently delete project "{label}" ?', {label:project.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -367,7 +367,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     archiveProject(project: ProjectItem) {
-        vscode.window.showInformationMessage(`Archive project "${project.label}" ?`, "Yes", "No")
+        vscode.window.showInformationMessage(vscode.l10n.t('Archive project "{label}" ?', {label:project.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -396,7 +396,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     trashProject(project: ProjectItem) {
-        vscode.window.showInformationMessage(`Move project "${project.label}" to trash ?`, "Yes", "No")
+        vscode.window.showInformationMessage(vscode.l10n.t('Move project "{label}" to trash ?', {label:project.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -425,7 +425,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     createTag(server: ServerItem) {
-        vscode.window.showInputBox({'placeHolder': 'Tag name'})
+        vscode.window.showInputBox({'placeHolder': vscode.l10n.t('Tag name')})
         .then(name => {
             if (name) {
                 GlobalStateManager.authenticate(this.context, server.name)
@@ -443,7 +443,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
 
     renameTag(tag: TagItem) {
         vscode.window.showInputBox({
-            'placeHolder': 'New tag name',
+            'placeHolder': vscode.l10n.t('New tag name'),
             'value': tag.label,
         })
         .then(newName => {
@@ -462,7 +462,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     deleteTag(tag: TagItem) {
-        vscode.window.showInformationMessage(`Delete tag "${tag.label}" ?`, "Yes", "No")
+        vscode.window.showInformationMessage(vscode.l10n.t('Delete tag "{label}" ?', {label:tag.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, tag.serverName)
@@ -481,7 +481,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     addProjectToTag(project: ProjectItem) {
         const tagNames = project.parent.tags?.map(tag => tag.name) || [];
         vscode.window.showQuickPick(tagNames, {
-            canPickMany:false, placeHolder:'Select the tag below.'})
+            canPickMany:false, placeHolder:vscode.l10n.t('Select the tag below.')})
         .then(selection => {
             if (selection===undefined) { return Promise.reject(); }
             return Promise.resolve(selection);
@@ -501,7 +501,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     removeProjectFromTag(project: ProjectItem) {
-        vscode.window.showInformationMessage(`Remove project "${project.label}" from tag "${project.tag?.name}" ?`, "Yes", "No")
+        vscode.window.showInformationMessage(vscode.l10n.t('Remove project "{label}" from tag "{name}" ?', {label:project.label,name:project.tag?.name}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -540,7 +540,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         // should close other open vfs firstly
         const vfsFolder = vscode.workspace.workspaceFolders?.find(folder => folder.uri.scheme===ROOT_NAME);
         if (vfsFolder) {
-            vscode.window.showWarningMessage('Please close the open remote overleaf folder firstly.');
+            vscode.window.showWarningMessage( vscode.l10n.t('Please close the open remote overleaf folder firstly.') );
             return;
         }
 
@@ -553,7 +553,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         if (replicas.length===0) {
             const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
             await vfs.init();
-            const answer = await vscode.window.showInformationMessage(`No local replica found, create one for project "${project.label}" ?`, "Yes", "No");
+            const answer = await vscode.window.showInformationMessage( vscode.l10n.t('No local replica found, create one for project "{label}" ?', {label:project.label}), "Yes", "No");
             if (answer === "Yes") {
                 await (await vscode.commands.executeCommand(`${ROOT_NAME}.projectSCM.newSCM`, LocalReplicaSCMProvider));
                 // fetch local replica scm again
@@ -571,7 +571,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         if (replicasPath.length===0) { return; }
         const path = await vscode.window.showQuickPick(replicasPath, {
             canPickMany:false,
-            placeHolder:'Select the local replica below.'
+            placeHolder:vscode.l10n.t('Select the local replica below.')
         });
         if (path) {
             const uri = vscode.Uri.file(path);

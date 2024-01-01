@@ -71,13 +71,13 @@ export class SCMCollectionProvider {
         if (!this.statusBarItem) { return; }
 
         let numPush = 0, numPull = 0;
-        let tooltip = new vscode.MarkdownString(`**Project Source Control**\n\n`);
+        let tooltip = new vscode.MarkdownString(`**${vscode.l10n.t('Project Source Control')}**\n\n`);
         tooltip.supportHtml = true;
         tooltip.supportThemeIcons = true;
 
         // update status bar item tooltip
         if (this.scms.length===0) {
-            tooltip.appendMarkdown(`*Click to configure.*\n\n`);
+            tooltip.appendMarkdown(`*${vscode.l10n.t('Click to configure.')}*\n\n`);
         } else {
             for (const {scm,enabled} of this.scms) {
                 const icon = scm.iconPath.id;
@@ -87,9 +87,9 @@ export class SCMCollectionProvider {
                 tooltip.appendMarkdown(`----\n\n$(${icon}) **${label}**: [${slideUri}](${uri})\n\n`);
                 //
                 if (!enabled) {
-                    tooltip.appendMarkdown('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*Disabled.*\n\n');
+                    tooltip.appendMarkdown(`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*${vscode.l10n.t('Disabled')}.*\n\n`);
                 } else if (scm.status.status==='idle') {
-                    tooltip.appendMarkdown('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*Synced.*\n\n');
+                    tooltip.appendMarkdown(`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*${vscode.l10n.t('Synced')}.*\n\n`);
                 } else {
                     // show status message
                     tooltip.appendMarkdown(`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;***${scm.status.message}***\n\n`);
@@ -167,7 +167,7 @@ export class SCMCollectionProvider {
         return new Promise(resolve => {
             const inputBox = scmProto.baseUriInputBox;
             inputBox.ignoreFocusOut = true;
-            inputBox.title = `Create Source Control: ${scmProto.label}`;
+            inputBox.title = vscode.l10n.t('Create Source Control: {scm}', {scm:scmProto.label});
             inputBox.buttons = [{iconPath: new vscode.ThemeIcon('check')}];
             inputBox.show();
             //
@@ -187,9 +187,9 @@ export class SCMCollectionProvider {
             if (baseUri) {
                 const scm = await this.createSCM(scmProto, baseUri, true);
                 if (scm) {
-                    vscode.window.showInformationMessage(`"${scmProto.label}" created: ${scm.baseUri.toString()}.`);
+                    vscode.window.showInformationMessage( vscode.l10n.t('"{scm}" created: {uri}.', {scm:scmProto.label, uri:scm.baseUri.toString()}) );
                 } else {
-                    vscode.window.showErrorMessage(`"${scmProto.label}" creation failed.`);
+                    vscode.window.showErrorMessage( vscode.l10n.t('"{scm}" creation failed.', {scm:scmProto.label}) );
                 }
             }
         });
@@ -208,7 +208,7 @@ export class SCMCollectionProvider {
 
         return vscode.window.showQuickPick(quickPickItems, {
             ignoreFocusOut: true,
-            title: 'Project Source Control Management',
+            title: vscode.l10n.t('Project Source Control Management'),
         }).then(async (select) => {
             if (select===undefined) { return; }
             switch (select.label) {
@@ -230,7 +230,7 @@ export class SCMCollectionProvider {
                     vscode.window.showInformationMessage(`"${(scmItem.scm.constructor as any).label}" ${persist.enabled?'enabled':'disabled'}: ${baseUri}.`);
                     break;
                 case 'Remove':
-                    vscode.window.showInformationMessage(`Remove ${baseUri}?`, 'Yes', 'No')
+                    vscode.window.showInformationMessage(`${vscode.l10n.t('Remove')} ${baseUri}?`, 'Yes', 'No')
                     .then((select) => {
                         if (select==='Yes') {
                             this.removeSCM(scmItem);
@@ -262,7 +262,7 @@ export class SCMCollectionProvider {
         // group 2: create new scm
         const createItems: vscode.QuickPickItem[] = supportedSCMs.map((scmProto) => {
             return {
-                label: `Create Source Control: ${scmProto.label}`,
+                label: vscode.l10n.t('Create Source Control: {scm}', {scm:scmProto.label}),
                 scmProto,
             };
         });
@@ -270,7 +270,7 @@ export class SCMCollectionProvider {
         // show quick pick
         vscode.window.showQuickPick([...scmItems, ...createItems], {
             ignoreFocusOut: true,
-            title: 'Project Source Control Management',
+            title: vscode.l10n.t('Project Source Control Management'),
         }).then((select) => {
             if (select) {
                 const _select = select as any;

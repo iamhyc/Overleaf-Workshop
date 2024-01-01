@@ -104,9 +104,9 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
                         new vscode.Position(i, wordEnds[j] - word.length),
                         new vscode.Position(i, wordEnds[j])
                     );
-                    const message = `${word}: Unknown word.`;
+                    const message = vscode.l10n.t('{word}: Unknown word.', {word});
                     const diagnostic = new vscode.Diagnostic(range, message, vscode.DiagnosticSeverity.Information);
-                    diagnostic.source = 'Spell Checker';
+                    diagnostic.source = vscode.l10n.t('Spell Checker');
                     diagnostic.code = word;
                     newDiagnostics.push(diagnostic);
                 }
@@ -137,10 +137,10 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
                             return action;
                         });
         //
-        const learnAction = new vscode.CodeAction('Add to Dictionary', vscode.CodeActionKind.QuickFix);
+        const learnAction = new vscode.CodeAction(vscode.l10n.t('Add to Dictionary'), vscode.CodeActionKind.QuickFix);
         learnAction.diagnostics = [diagnostic];
         learnAction.command = {
-            title: 'Add to Dictionary',
+            title: vscode.l10n.t('Add to Dictionary'),
             command: 'langIntellisense.learnSpelling',
             arguments: [document.uri, diagnostic.code as string],
         };
@@ -159,7 +159,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
     async dictionarySettings(vfs:VirtualFileSystem, dictionary?:string[]) {
         vscode.window.showQuickPick(dictionary||[], {
             canPickMany: false,
-            placeHolder: 'Select a word to unlearn',
+            placeHolder: vscode.l10n.t('Select a word to unlearn'),
         }).then(async (word) => {
             if (word) {
                 vfs.spellUnlearn(word);
@@ -185,7 +185,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
         const items = [];
         items.push({
             id: "dictionary",
-            label: 'Manage Dictionary',
+            label: vscode.l10n.t('Manage Dictionary'),
             iconPath: new vscode.ThemeIcon('book'),
         });
         items.push({label:'',kind:vscode.QuickPickItemKind.Separator});
@@ -198,7 +198,7 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
         }
 
         vscode.window.showQuickPick(items, {
-            placeHolder: 'Select spell check language',
+            placeHolder: vscode.l10n.t('Select spell check language'),
             canPickMany: false,
             ignoreFocusOut: true,
             matchOnDescription: true,
@@ -709,8 +709,8 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
         if (languageItem) {
             const {name, code} = languageItem;
             this.status.text = code===''? '$(eye-closed)' : '$(eye) ' + code.toLocaleUpperCase();
-            this.status.tooltip = new vscode.MarkdownString(`Spell Check: **${name}**`);
-            this.status.tooltip.appendMarkdown('\n\n*Click to manage spell check.*');
+            this.status.tooltip = new vscode.MarkdownString(`${vscode.l10n.t('Spell Check')}: **${name}**`);
+            this.status.tooltip.appendMarkdown(`\n\n*${vscode.l10n.t('Click to manage spell check.')}*`);
         } else {
             this.status.text = '';
             this.status.tooltip = '';

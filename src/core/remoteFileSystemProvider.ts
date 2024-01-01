@@ -152,7 +152,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             this.api = res.api;
             this.socket = res.socket;
         } else {
-            throw new Error(`Cannot init SocketIOAPI for ${this.serverName}`);
+            throw new Error( vscode.l10n.t('Cannot init SocketIOAPI for {serverName}', {serverName}) );
         }
     }
 
@@ -175,7 +175,7 @@ export class VirtualFileSystem extends vscode.Disposable {
         // if retry connection failed 3 times, throw error
         if (this.retryConnection >= 3) {
             this.retryConnection = 0;
-            vscode.window.showErrorMessage(`Connection lost: ${this.serverName}`, 'Reload').then((choice) => {
+            vscode.window.showErrorMessage( vscode.l10n.t('Connection lost: {serverName}', {serverName:this.serverName}), vscode.l10n.t('Reload')).then((choice) => {
                 if (choice==='Reload') {
                     vscode.commands.executeCommand("workbench.action.reloadWindow");
                 };
@@ -183,7 +183,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             // reset retry connection
             this.retryConnection = 0;
             this.initializing = undefined;
-            throw new Error('Connection lost');
+            throw new Error( vscode.l10n.t('Connection lost') );
         }
         // if evert connection failed, reset socketio
         if (this.retryConnection > 0) {
@@ -1045,7 +1045,7 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
 
     rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean; }) {
         if (oldUri.authority !== newUri.authority) {
-            vscode.window.showErrorMessage('Cannot rename across servers');
+            vscode.window.showErrorMessage( vscode.l10n.t('Cannot rename across servers') );
             return;
         } else {
             return this.getVFS(oldUri).then( vfs => vfs.rename(oldUri, newUri, options.overwrite) );

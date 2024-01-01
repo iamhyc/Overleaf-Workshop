@@ -131,18 +131,18 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
             item.tooltip.supportThemeIcons = true;
             item.command = {
                 command: `projectHistory.comparePrevious`,
-                title: 'Compare with Previous',
+                title: vscode.l10n.t('Compare with Previous Version'),
                 arguments: [item],
             };
             return item;
         }) || [];
 
         if (this._history.before) {
-            const item = new HistoryItem('Load More ...', NaN,NaN);
+            const item = new HistoryItem(vscode.l10n.t('Load More ...'), NaN,NaN);
             item.iconPath = undefined;
             item.command = {
                 command: `${ROOT_NAME}.projectHistory.loadMore`,
-                title: 'Load More ...',
+                title: vscode.l10n.t('Load More ...'),
                 arguments: [this],
             };
             historyItems.push(item);
@@ -175,8 +175,8 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.createLabel`, async (item: HistoryItem) => {
                 const label = await vscode.window.showInputBox({
-                    prompt: 'Create a new label',
-                    placeHolder: 'Enter a label name',
+                    prompt: vscode.l10n.t('Create a new label'),
+                    placeHolder: vscode.l10n.t('Enter a label name'),
                 });
                 if (!label) { return; }
 
@@ -192,7 +192,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.deleteLabel`, async (item: HistoryItem) => {
                 const label = await vscode.window.showQuickPick(
                     item.tags?.map(t=>t.comment) || [],
-                    { placeHolder: 'Select a label to delete' }
+                    { placeHolder: vscode.l10n.t('Select a label to delete') }
                 );
                 if (!label) { return; }
 
@@ -237,7 +237,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
                         version: v,
                     };
                 }), {
-                    placeHolder: 'Select a version to compare',
+                    placeHolder: vscode.l10n.t('Select a version to compare'),
                 }).then(async (select) => {
                     if (!select) { return; }
                     vscode.commands.executeCommand('vscode.diff',
@@ -260,7 +260,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
                 });
                 if (!savePath) { return; }
                 await vscode.workspace.fs.writeFile(savePath, content);
-                vscode.window.showInformationMessage(`Project v${version} saved to ${savePath.fsPath}`);
+                vscode.window.showInformationMessage( vscode.l10n.t('Project v{version} saved to {path}',  {version, path:savePath.fsPath}) );
             }),
         ];
     }
