@@ -56,23 +56,23 @@ The **Dependency Graph** of the following modules is illustrated as follows:
 ```mermaid
 graph TD;
 
-A[extension.ts]
+A[[extension.ts]]
 
 B1[compile]
 B2[intellisense]
-B3[core/pdfViewEditorProvider]
-B4[collaboration]
-B5[scm]
+B3[collaboration]
+B4[scm]
 
 C1[core/remoteFileSystemProvider]
-C2[core/ProjectManagerProvider]
+C2[core/projectManagerProvider]
+C3[core/pdfViewEditorProvider]
 
 D1[api]
 
-A-->B1; A-->B2; A-->B3; A-->C2
-B1-->C1; B2-->C1; B3-->C1; B4-->C1; B5-->C1;
-C1-->D1
-C2-->D1
+A-->B1; A-->B2; A-->C2; A-->C3
+B1-->C1; B2-->C1; B3-->C1; B4-->C1;
+C1-->D1;
+C2-->D1;
 ```
 
 ### `src/api`
