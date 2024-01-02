@@ -62,12 +62,20 @@ B1[compile]
 B2[intellisense]
 B3[collaboration]
 B4[scm]
+click B1 "#srccompile"
+click B2 "#srcintellisense"
+click B3 "#srccollaboration"
+click B4 "#srcscm"
 
 C1[core/remoteFileSystemProvider]
 C2[core/projectManagerProvider]
 C3[core/pdfViewEditorProvider]
+click C1 "#srccoreremotefilesystemproviderts"
+click C2 "#srccoreprojectmanagerproviderts"
+click C3 "#srccorepdfvieweditorproviderts"
 
 D1[api]
+click D1 "#srcapi"
 
 A-->B1; A-->B2; A-->C2; A-->C3
 B1-->C1; B2-->C1; B3-->C1; B4-->C1;
@@ -95,9 +103,9 @@ The `class BaseAPI` is the the only export class in this file, whose function ca
 - **login-related API**: `(private async) getCsrfToken`, `(private async) getUserId`, `(async) passportLogin`, `(async) cookiesLogin`, `(async) updateCookies`, `(async) logout`
 - **project management API**: `(async) userProjectsJson / getProjectsJson`, `(async) newProject`, `(async) renameProject`, `(async) deleteProject`, `(async) archiveProject`, `(async) unarchiveProject`, `(async) trashProject`, `(async) untrashProject`, `(async) getAllTags`, `(async) createTag`, `(async) renameTag`, `(async) deleteTag`, `(async) addProjectToTag`, `(async) removeProjectFromTag`
 - **project editing API**: `(async) getFile`, `(async) addDoc`, `(async) uploadFile`, `(async) uploadProject`, `(async) addFolder`, `(async) deleteEntity`, `(async) deleteAuxFiles`, `(async) renameEntity`, `(async) moveEntity`, `(async) getFileFromClsi`, 
-- compile-related API: `(async) compile`, `(async) indexAll`, `(async) proxySyncPdf`, `(async) proxySyncCode`
+- **compile-related API**: `(async) compile`, `(async) indexAll`, `(async) proxySyncPdf`, `(async) proxySyncCode`
 - **project history API**: `(async) proxyToHistoryApiAndGetUpdates`, `(async) proxyToHistoryApiAndGetFileDiff`, `(async) proxyToHistoryApiAndGetFileTreeDiff`, `(async) downloadZipOfVersion`, `(async) getLabels`, `(async) createLabel`, `(async) deleteLabel`
-- intellisense API: `(async) getMetadata`, `(async) proxyRequestToSpellingApi`, `(async) spellingControllerLearn`, `(async) spellingControllerUnlearn`
+- **intellisense API**: `(async) getMetadata`, `(async) proxyRequestToSpellingApi`, `(async) spellingControllerLearn`, `(async) spellingControllerUnlearn`
 - **chat message API**: `(async) getMessages`, `(async) sendMessage`
 - **project settings API**: `(async) getProjectSettings`, `(async) updateProjectSettings`
 
