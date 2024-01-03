@@ -11,6 +11,7 @@
   - [Intellisense](wiki.md#intellisense)
   - [Collaboration](wiki.md#collaboration)
 - [Advanced Usage](wiki.md#advanced-usage)
+  - [Advance Chat Message](wiki.md#advance-chat-message)
   - [Local Replica (Source Control)](wiki.md#local-replica-source-control)
   - [Invisible Mode](wiki.md#invisible-mode)
   - [Commands and Shortcuts](wiki.md#commands-and-shortcuts)
