@@ -160,56 +160,235 @@ Please follow the steps below to setup a local replica and open the project loca
 
 ## Basic Usage
 
+In this section, we assume you have opened a project in a default way (i.e., in a virtual workspace), cause [some features are not available in a local folder](#open-project-locally).
+
 ### Files Management
 
-### Compile Project
-The default output folder is `.output` in the project root directory. It is a ***virtual folder***, which does not actually exist in the project directory. You can change the name of the output folder in the project settings.
+In the file explorer, you can create, rename, delete, and move files and folders as usual. For example, you can drag and drop a file from outside to the file explorer to upload it to the server.
+
+All the operations will be synced to the Overleaf server in real time (unless you are in [invisible mode](#invisible-mode)), and any external changes from your collaborators will be synced to the file explorer as well.
+
+### Compile the Project
+
+Different from the Overleaf web editor with an eye-catching `Recompile` button, the compile in Overleaf Workshop extension is triggered via shortcut <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd>.
+
+The compile status is displayed in the status bar, which is located at the bottom of the VS Code window.
+
+![screenshot-compile-status](assets/screenshot-compile-status.png)
+
+The default output folder is `.output` in the project root directory, which holds the compiled PDF `output.pdf` and other intermediate files. All the files in this folder are read-only, and you should not make any changes to them manually. You can change the name of the output folder in the [vscode settings](#configurations).
+
+![screenshot-compile-output](assets/screenshot-compile-output.png)
+
+The compiled PDF `output.pdf` is also located in the output folder. You can double click the PDF file to open it, or use the shortcut <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> to open the compiled PDF directly on the right side of the editor.
 
 #### Compiler Diagnostics
 
+When the compile fails or succeeds with warnings, the compiler diagnostics will be displayed in the editor with colored squiggles. You can hover on the squiggles to see the detailed information.
+
+![demo05-intellisense](assets/demo05-intellisense.png)
+
+The full compiler diagnostics are displayed in the "Problems" panel, which is located at the bottom of the VS Code window.
+
 #### Change the Compiler
 
+The default compiler is `pdflatex`, which can be changed via clicking the compiler name in the status bar.
+
+![screenshot-change-compiler](assets/screenshot-change-compiler.png)
+
 ### Preview Document
-`pdf.js`
+
+The compiled PDF `output.pdf` is also located in the output folder. You can double click the PDF file to open it, or use the shortcut <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> to open the compiled PDF directly on the right side of the editor.
 
 #### SyncTeX and Reverse SyncTeX
 
-#### Themes
+The SyncTeX and Reverse SyncTeX are supported in the Overleaf PDF viewer.
+
+- **SyncTeX, Jump to PDF**: put your cursor in the expected position in the document editor, then press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd> to jump to the corresponding position in the PDF.
+- **Reverse SyncTeX, Jump to Code**: double click on the text on PDF to jump to the corresponding position in the editor.N
+
+![demo03-syntex.gif](assets/demo03-synctex.gif)
+
+#### Change the Themes
+
+There are three themes supported in the Overleaf PDF viewer: `default`, `light`, and `dark`. You can change the theme via clicking the theme button on the title bar in the Overleaf PDF viewer. You can also add or change the supported themes in the [vscode settings](#configurations).
+
+P.S. If you cannot see the theme button, please make sure the PDF viewer is wide enough :)
 
 ### Intellisense
 
+The intellisense feature is proposed to provide a seamless editing experience for LaTeX documents like in the Overleaf web editor and the LaTeX Workshop extension.
+
 #### Document Outline
+
+When you open a `.tex` file, the document outline will be displayed in the "Outline" panel.
+
+![screenshots-document-outline](assets/screenshot-document-outline.png)
 
 #### Auto Completion
 
 #### Spell Check
 
-#### Code Prettify
+The spell check feature is provided via the Overleaf server. The spell check is performed in the background, and the unknown words are underlined with a blue squiggle. You can use the shortcut <kbd>Ctrl</kbd>+<kbd>.</kbd> to view the suggestions, or directly add the word to the dictionary.
+
+![screenshots-spell-check-suggestions](assets/screenshot-spell-check-suggestions.png)
+
+The spell check can be configured via clicking the spell check button on the title bar. You can turn off or change the language of the spell check. The learned words are also managed here.
+
+![screenshots-spell-check](assets/screenshot-spell-check.png)
+
+#### Document Prettify (Format)
+
+You can use the shortcut <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> to prettify the document manually.
 
 ### Collaboration
 
-#### Collaborators Information
+#### Online Collaborators
+
+When there are other collaborators (or your other login sessions) online, the colored cursors of the collaborators will be displayed in the document editor.
+
+![screenshot-online-collaborators](assets/screenshot-online-collaborators.png)
+
+The online collaborators information is displayed on the status bar. The item icon shows the number of online collaborators, and the color represents the latest active collaborator.
+You can hover on the item like below to see the detailed information of the online collaborators, and click the text like `@xxx` to cite the collaborator [in the chat view](#chat-with-collaborators), or click the text like `main.tex#L1` to jump to the exact position of the collaborator. 
 
 #### Chat with Collaborators
 
-#### History of Changes
+The chat view is located at the primary sidebar of the VS Code window by default. You can type in the input box at the bottom of the chat view and press <kbd>Enter</kbd> to send the message.
 
+![screenshot-chat-view](assets/screenshot-chat-view.png)
+
+You can also click the "dialog"-like button to reply to a message. The detailed usage is elaborated in [Advance Chat Message](#advance-chat-message).
+
+#### Project History View
+
+The project history view is located at the primary sidebar of the VS Code window by default. You can view the history of changes of specific file when you open it in the editor. You can also click the "Clear Selection" button on the history view title bar to view the history of the whole project.
+
+![screenshot-project-history](assets/screenshot-project-history.png)
+
+There are multiple functions provided in the history view:
+
+- **Label Management**: Right click on a version item to add/remove a label.
+- **Changes Compare**: Right click on a version item to compare with the previous version, current version, or a selected version.
+- **Download Project**: Right click on a version item to download the project at that version.
+
+![screenshot-project-history-diff](assets/screenshot-project-history-diff.png)
 
 ## Advanced Usage
 
-### Local Replica
+### Advance Chat Message
+> [!NOTE]
+> This feature is not supported by Overleaf, and the format of the chat message is *ugly* on the Overleaf web editor.
+
+To enhance the experience of collaboration via chat, we propose the following advanced features based on custom chat message format.
+
+- **Line Reference**: You can select a block of text in the document editor, then right click on the selection and select `Copy Line Reference` or `Insert Line Reference` in the context menu to copy/insert a line reference to the chat input box. The line reference is in the format like `[[main.tex#L39C0-L43C12]]`
+
+![screenshot-line-reference](assets/screenshot-line-reference.png)
+
+- **Reply Thread**: You can cite a message in the chat view by clicking the "dialog"-like button under each message, or click the user name to cite the user. The cite format would be like `@[[xxx#<user-id-length-24>]]`, where the user id is automatically completed when cite.
+
+![screenshot-advance-chat](assets/screenshot-advance-chat.png)
+
+### Local Replica (Source Control)
+> [!WARNING]
+> This feature is not considered robust yet, and may not work as expected, especially under unstable network environment.
+> Please use it with caution.
+
+The Local Replica feature is a implementation of [Source Control Manager](anatomy.md#srcscm), which enables the possibility of "Open Project Locally".
+
+The entrance is available on the status bar when you open the project locally. Or you can configure it via the "Configure Source Control" command in the command palette.
+
+![screenshot-local-replica-status](assets/screenshot-local-replica-status.png)
+
+In the Local Replica configuration, you can choose to enable/disable the Local Replica temporarily, and configure the ignore patterns for the Local Replica.
+
+![screenshot-config-local-replica](assets/screenshot-config-local-replica.png)
 
 ### Invisible Mode
+> [!WARNING]
+> This feature is not considered robust yet, and may not work as expected, especially under unstable network environment.
+> Please use it with caution.
+
+The Invisible Mode is a feature to disconnect the websocket connection to the server, and use the REST API to communicate with the server instead. This makes you fully invisible to other collaborators, unless you upload the local changes to the server.
+
+You can enter/exist the invisible mode via clicking the collaborator icon on the status bar.
+The chat messages and history of changes are refreshed periodically in the invisible mode. You can configure the refresh interval in the [vscode settings](#configurations). So when collaborators send you messages or make changes to the project, you can see the changes reflected in the chat view, history view, and file explorer.
+
+![screenshot-enter-invisible-mode](assets/screenshot-enter-invisible-mode.png)
+
+In invisible mode, after you make changes locally, you have to upload the changes manually to the server by clicking the upload button on the status bar, otherwise the changes will not be synced to the server.
+The remote changes will be first fetched from the server, merged with the local changes, and then uploaded to the server.
+
+![screenshots-invisible-mode-status](assets/screenshot-invisible-mode-status.png)
+
+However, Invisible Mode is not a perfect solution for offline editing. You should be aware of the following limitations:
+- You cannot see other collaborators' cursors;
+- You cannot rename/delete files or folders created by other collaborators until you reload the project
+  > or you can edit the file once to refresh the file metadata.
+- Your local update is always force-upload and cause online collaborators out-of-sync;
+  > while collaborators using this extension will not be affected.
+- The remote update of "compiler or spell language settings" will not be updated locally;
 
 ### Commands and Shortcuts
 
+The available commands and default shortcuts can be found in the command palette (press <kbd>F1</kbd> or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
+
+![screenshot-commands-and-shortcuts](assets/screenshot-commands-and-shortcuts.png)
+
+- **"Add New Server"**: This command is used to add a new server.
+- **"Compile Project"**, **"View Compiled PDF"**: These commands are used to compile the project and view the compiled PDF, which use the same default shortcuts <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd> and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>, respectively, as the LaTeX Workshop extension.
+- **"Configure Source Control"**: This command is used to configure the source control provider for the project.
+- **Jump to PDF**: Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd> with the cursor in the document editor to jump to the corresponding position in the PDF.
+- **"Focus on Overleaf Chat"**, **"Focus on Overleaf History"**, **"Focus on Hosts View"**: These commands are used to focus on the corresponding views via keyboards without using mouse.
+- "Jump to Collaborator": This command is used to move the cursor to the exact position of one of the collaborators.
+
+Let us know if you have any suggestions for the commands and shortcuts in the [GitHub Discussions](https://github.com/iamhyc/Overleaf-Workshop/discussions).
+
 ### Configurations
 
+The project-irrelevant configurations of the extension can be found in the VS Code settings (after `v0.8.0`). The configurations are only allowed to be changed in the user profile but not the workspace profile, in order to avoid accidentally uploading `.vscode` folder to the Overleaf server.
+
+![screenshot-vscode-configurations](assets/screenshot-vscode-configurations.png)
+
+- **"Compile On Save"**: This configuration is used to enable/disable the compile on save feature. The default value is `true`.
+- **Compile Output Folder Name**: This configuration is used to change the name of the output folder. The default value is `.output`. It takes effect after restarting VS Code.
+- **Invisible Mode: Chat Message Refresh Interval**: This configuration is used to change the refresh interval of the chat messages in the invisible mode. The default value is `3` (3 seconds).
+- **Invisible Mode: History Refresh Interval**: This configuration is used to change the refresh interval of the history of changes in the invisible mode. The default value is `3` (3 seconds).
+- **Invisible Mode: Inactive Timeout**: This configuration is used to mark a online collaborator as inactive for a certain period of time. The default value is `180` (180 seconds).
+- **PDF Viewer: Themes**: This configuration is used to change the supported sthemes of the PDF viewer. The default value is as follows:
+    ```json
+    "default": {
+        "default": {"fontColor":"#000000", "bgColor":"#FFFFFF"},
+        "light":   {"fontColor":"#000000", "bgColor":"#F5F5DC"},
+        "dark":    {"fontColor":"#FBF0D9", "bgColor":"#4B4B4B"}
+    }
+    ```
 
 ## FAQ
 
-#### Q: How to compile and show the compiled PDF?
+#### Q1: How to compile and show the compiled PDF?
 
-#### Q: Why the plugin (e.g., `texlint`) does not work?
+**A1**: Different from the Overleaf web editor with an eye-catching `Recompile` button, the compile in Overleaf Workshop extension is triggered via shortcut <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd>.
 
-#### Q: Why the connection to overleaf server re-connects frequently?
+The compiled PDF `output.pdf` is located in the output folder, which is `.output` by default. You can also use the shortcut <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> to open the compiled PDF directly.
+
+P.S. The compile is also automatically triggered when you save a `.tex` file. This feature is enabled by default, and can be disabled in the vscode settings.
+
+
+#### Q2: Why my VS Code plugin (e.g., `vscode-texlint`, `latex-utilities`) does not work?
+
+**A2**: Due to the [limitation of the virtual workspace](https://github.com/microsoft/vscode/wiki/Virtual-Workspaces#signal-whether-your-extension-can-handle-virtual-workspaces), most of the existing VS Code extensions does not work in the virtual workspace. In this case, you can choose to [open the project locally](#open-project-locally) as a workaround.
+
+Please notice that not all Overleaf features enabled in a local folder. More specifically, the [compile](#compile-project), [PDF preview](#preview-document), [intellisense](#intellisense) and [project history](#history-of-changes) features are disabled by default. You need to refer to [LaTeX Workshop Extension](https://github.com/James-Yu/LaTeX-Workshop) as a complement.
+
+
+#### Q3: Why the extension loses connection to the server frequently or loading indefinitely?
+
+**A3**: It depends on your network environment. If you are suffering from the frequent disconnection or indefinite loading, please try the following solutions:
+- Ping the Overleaf server domain (e.g., `www.overleaf.com`) to see if the DNS is resolved correctly and the server is reachable.
+- Remove the `Http: proxy` in the VS Code settings.
+- Enable/Disable the network proxy for VS Code (or the Overleaf server domain) globally.
+- Try [Invisible Mode](#invisible-mode), which does not use WebSocket to communicate with the server.
+
+If the above solutions do not work, please consider to create a bug report in the [GitHub Issues](https://github.com/iamhyc/Overleaf-Workshop/issues/new/choose).
