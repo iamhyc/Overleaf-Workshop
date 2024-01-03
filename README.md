@@ -23,12 +23,13 @@ The full user guide is available at [GitHub Wiki](https://github.com/iamhyc/Over
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo01-login.gif" height=400px/>
 
 - On-the-fly Compiling and Previewing
+  > <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd> to compile, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> preview.
 
     <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo03-synctex.gif" height=400px/>
 
-- Spell Check, Auto Completion and Compile Diagnostics
-
-    <img src="https://raw.githubusercontent.com/iamhyc/Overleaf-Workshop/master/docs/assets/demo05-intellisense.png" height=400px/>
+- SyncTeX and Reverse SyncTeX
+  > <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd> to jump to PDF.
+  > Double click on PDF to jump to source code
 
 - Chat with Collaborators
 
