@@ -1,0 +1,44 @@
+name: Package Extension
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: | 
+          npm install
+          cd views/chat-view
+          npm install
+
+    - name: Install vsce
+      run: npm install -g vsce
+
+    - name: Bump version and package
+      id: bump
+      run: |
+        npm version patch -no-git-tag-version
+        COMMIT_SHA=$(git rev-parse --short HEAD)
+        NEW_VERSION=$(jq -r '.version' package.json)
+        NEW_VERSION_WITH_SHA="${NEW_VERSION}-${COMMIT_SHA}"
+        jq --arg version "$NEW_VERSION_WITH_SHA" '.version = $version' package.json > temp.json && mv temp.json package.json
+        echo "NEW_VERSION=$NEW_VERSION_WITH_SHA" >> $GITHUB_ENV
+        vsce package
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: overleaf-workshop-${{ env.NEW_VERSION }}.vsix
+        path: ./*.vsix
