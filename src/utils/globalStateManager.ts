@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Identity, BaseAPI, ProjectPersist } from '../api/base';
 import { SocketIOAPI } from '../api/socketio';
+import { ExtendedBaseAPI } from '../api/extendedBase';
 
 const keyServerPersists: string = 'overleaf-servers';
 const keyPdfViewPersists: string = 'overleaf-pdf-viewers';
@@ -161,7 +162,7 @@ export class GlobalStateManager {
         const server   = persists[name];
 
         if (server.login!==undefined) {
-            const api = new BaseAPI(server.url);
+            const api = new ExtendedBaseAPI(server.url);
             const socket = new SocketIOAPI(server.url, api, server.login.identity, projectId);
             return {api, socket};
         }

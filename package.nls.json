@@ -2,6 +2,8 @@
     "extension.displayName": "Overleaf Workshop",
     "extension.description": "Open Overleaf/ShareLaTex projects in VSCode, with full collaboration support.",
 
+    "commands.remoteFileSystem.refreshLinkedFile.title": "Overleaf: Refresh File",
+
     "commands.projectManager.addServer.title": "Add New Server",
     "commands.projectManager.removeServer.title": "Remove Server",
     "commands.projectManager.loginServer.title": "Login to Server",

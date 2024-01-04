@@ -335,7 +335,7 @@ export class BaseAPI {
         return this;
     }
 
-    private async request(type:'GET'|'POST'|'PUT'|'DELETE', route:string, body?:FormData|object, callback?: (res?:string)=>object|undefined, extraHeaders?:object ): Promise<ResponseSchema> {
+    protected async request(type:'GET'|'POST'|'PUT'|'DELETE', route:string, body?:FormData|object, callback?: (res?:string)=>object|undefined, extraHeaders?:object ): Promise<ResponseSchema> {
         if (this.identity===undefined) { return Promise.reject(); }
 
         let res = undefined;
@@ -399,7 +399,7 @@ export class BaseAPI {
         }
     }
 
-    private async download(route:string) {
+    protected async download(route:string) {
         if (this.identity===undefined) { return Promise.reject(); }
 
         let content: Buffer[] = [];
