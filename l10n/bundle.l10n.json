@@ -32,6 +32,8 @@
   "Connection lost: {serverName}": "Connection lost: {serverName}",
   "Reload": "Reload",
   "Connection lost": "Connection lost",
+  "Refreshing": "Refreshing",
+  "Done": "Done",
   "Cannot rename across servers": "Cannot rename across servers",
   "Overleaf server address, e.g. \"https://www.overleaf.com\"": "Overleaf server address, e.g. \"https://www.overleaf.com\"",
   "Invalid protocol.": "Invalid protocol.",

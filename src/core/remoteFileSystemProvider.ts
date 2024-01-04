@@ -8,6 +8,7 @@ import { GlobalStateManager } from '../utils/globalStateManager';
 import { ClientManager } from '../collaboration/clientManager';
 import { EventBus } from '../utils/eventBus';
 import { SCMCollectionProvider } from '../scm/scmCollectionProvider';
+import { ExtendedBaseAPI, ProjectLinkedFileProvider, UrlLinkedFileProvider } from '../api/extendedBase';
 
 const __OUTPUTS_ID = `${ROOT_NAME}-outputs`;
 
@@ -36,8 +37,8 @@ export interface DocumentEntity extends FileEntity {
 }
 
 export interface FileRefEntity extends FileEntity {
-    linkedFileData: any,
-    created: string,
+    linkedFileData: ProjectLinkedFileProvider | UrlLinkedFileProvider | null,
+    created: string, //ISO date string
 }
 
 export interface OutputFileEntity extends FileEntity {
@@ -446,6 +447,12 @@ export class VirtualFileSystem extends vscode.Disposable {
                 throw vscode.FileSystemError.FileNotFound(uri);
             case 'folder':
                 return new File(fileName, vscode.FileType.Directory, undefined, readonly);
+            case 'file':
+                if ((fileEntity as FileRefEntity).linkedFileData!==null) {
+                    return new File(fileName, vscode.FileType.File | vscode.FileType.SymbolicLink, Date.parse((fileEntity as FileRefEntity).created), readonly);
+                } else {
+                    return new File(fileName, vscode.FileType.File, Date.parse((fileEntity as FileRefEntity).created), readonly);
+                }
             default:
                 return new File(fileName, vscode.FileType.File, undefined, readonly);
         }
@@ -543,6 +550,37 @@ export class VirtualFileSystem extends vscode.Disposable {
             this.notify([
                 {type: vscode.FileChangeType.Created, uri: uri},
             ]);
+        }
+    }
+
+    async refreshLinkedFile(uri: vscode.Uri) {
+        const {fileType, fileEntity} = await this._resolveUri(uri);
+        if (fileType==='file' && fileEntity) {
+            if ((fileEntity as FileRefEntity).linkedFileData===null) { return; }
+
+            vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `${vscode.l10n.t('Refreshing')} ${fileEntity.name}`,
+                cancellable: true,
+            }, async (progress, token) => {
+                token.onCancellationRequested(() => {});
+                
+                const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+                const res = await (this.api as ExtendedBaseAPI).refreshLinkedFile(identity, this.projectId, fileEntity._id);
+
+                if (res.type==='success' && res.message!==undefined) {
+                    // refresh the entity id
+                    fileEntity._id = res.message;
+                    this.notify([
+                        {type: vscode.FileChangeType.Changed, uri: uri},
+                    ]);
+                    progress.report({message: vscode.l10n.t('Done')});
+                } else {
+                    if (res.message!==undefined) {
+                        throw new Error(res.message);
+                    }
+                }
+            });
         }
     }
 
@@ -1057,6 +1095,9 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
             // register file system provider
             vscode.workspace.registerFileSystemProvider(ROOT_NAME, this, { isCaseSensitive: true }),
             // register commands
+            vscode.commands.registerCommand(`${ROOT_NAME}.remoteFileSystem.refreshLinkedFile`, (uri: vscode.Uri) => {
+                return this.prefetch(uri).then((vfs) => vfs.refreshLinkedFile(uri));
+            }),
             vscode.commands.registerCommand('remoteFileSystem.prefetch', (uri: vscode.Uri) => {
                 return this.prefetch(uri);
             }),
