@@ -172,6 +172,7 @@ export interface ResponseSchema {
     identity?: Identity;
     projects?: ProjectPersist[];
     entity?: FileEntity;
+    entities?: {path:string, type:string}[];
     compile?: CompileResponseSchema;
     content?: Uint8Array;
     syncPdf?: SyncPdfResponseSchema;
@@ -447,6 +448,14 @@ export class BaseAPI {
         return this.request('POST', 'api/project', {}, (res) => {
             const projects = (JSON.parse(res!) as any).projects;
             return {projects};
+        });
+    }
+
+    async projectEntitiesJson(identity:Identity, projectId:string): Promise<ResponseSchema> {
+        this.setIdentity(identity);
+        return this.request('GET', `project/${projectId}/entities`, undefined, (res) => {
+            const entities = JSON.parse(res!).entities;
+            return {entities};
         });
     }
 

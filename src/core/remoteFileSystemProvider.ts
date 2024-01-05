@@ -584,6 +584,86 @@ export class VirtualFileSystem extends vscode.Disposable {
         }
     }
 
+    async createLinkedFile(uri: vscode.Uri) {
+        const res = await this._resolveUri(uri);
+        const parentFolder = res.fileType==='folder' ? res.fileEntity as FolderEntity : res.parentFolder;
+
+        const supportedProviders = [
+            vscode.l10n.t('From Another Project'),
+            vscode.l10n.t('From External URL'),
+        ];
+        const selection = await vscode.window.showQuickPick(supportedProviders, {
+            placeHolder: vscode.l10n.t('Import file from...'),
+        });
+
+        let provider = undefined, entityId = undefined, fileName = undefined, data = undefined;
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        if (selection === vscode.l10n.t('From Another Project')) {
+            provider = 'project_file';
+            const projectId = await vscode.window.showQuickPick(
+                (await this.api.userProjectsJson(identity)).projects!
+                .filter(project => project.id!==this.projectId)
+                .map(project => {
+                    return {label: project.name, id: project.id};
+                }),
+                {
+                    title: vscode.l10n.t('Select a Project'),
+                    ignoreFocusOut: true,
+                }
+            );
+            const filePath = projectId && await vscode.window.showQuickPick(
+                (await this.api.projectEntitiesJson(identity, projectId!.id)).entities!.map(entity => entity.path),
+                {
+                    title: vscode.l10n.t('Select a File'),
+                    ignoreFocusOut: true,
+                }
+            );
+            fileName = filePath && await vscode.window.showInputBox({
+                title: vscode.l10n.t('File Name In This Project'),
+                value: filePath?.split('/').pop(),
+                ignoreFocusOut: true,
+            });
+            //
+            data = {source_entity_path: filePath!, source_project_id: projectId!.id};
+            const res = await (this.api as ExtendedBaseAPI).createLinkedFile(identity, this.projectId, parentFolder._id, fileName!, provider, data);
+            if (res.type==='success' && res.message!==undefined) {
+                entityId = res.message;
+            }
+        } else if (selection === vscode.l10n.t('From External URL')) {
+            provider = 'url';
+            const url = await vscode.window.showInputBox({
+                title: vscode.l10n.t('URL to fetch the file from'),
+                placeHolder: 'https://example.com/my-file.png',
+                ignoreFocusOut: true,
+            });
+            fileName = url && await vscode.window.showInputBox({
+                title: vscode.l10n.t('File Name In This Project'),
+                value: url?.split('/').pop(),
+                ignoreFocusOut: true,
+            });
+            //
+            data = {url:url!};
+            const res = await (this.api as ExtendedBaseAPI).createLinkedFile(identity, this.projectId, parentFolder._id, fileName!, provider, data);
+            if (res.type==='success' && res.message!==undefined) {
+                entityId = res.message;
+            }
+        } else {
+            return;
+        }
+
+        // insert entity
+        const entity = {
+            _id: entityId!, name: fileName!, _type: 'file', readonly: false,
+            linkedFileData: { provider, ...data! },
+            created: new Date().toISOString(),
+        } as FileRefEntity;
+        this.insertEntity(parentFolder, 'file', entity);
+        const {path} = this._resolveById(entityId!)!;
+        this.notify([
+            {type: vscode.FileChangeType.Created, uri: uri.with({path:`/${this.projectName}${path}`})},
+        ]);
+    }
+
     async writeFile(uri: vscode.Uri, content:Uint8Array, create:boolean, overwrite:boolean) {
         const {fileType, fileEntity} = await this._resolveUri(uri);
 
@@ -1097,6 +1177,12 @@ export class RemoteFileSystemProvider implements vscode.FileSystemProvider {
             // register commands
             vscode.commands.registerCommand(`${ROOT_NAME}.remoteFileSystem.refreshLinkedFile`, (uri: vscode.Uri) => {
                 return this.prefetch(uri).then((vfs) => vfs.refreshLinkedFile(uri));
+            }),
+            vscode.commands.registerCommand(`${ROOT_NAME}.remoteFileSystem.createLinkedFile`, (uri?: vscode.Uri) => {
+                uri = uri || vscode.workspace.workspaceFolders?.[0].uri;
+                if (uri) {
+                    return this.prefetch(uri).then((vfs) => vfs.createLinkedFile(uri!));
+                }                
             }),
             vscode.commands.registerCommand('remoteFileSystem.prefetch', (uri: vscode.Uri) => {
                 return this.prefetch(uri);
