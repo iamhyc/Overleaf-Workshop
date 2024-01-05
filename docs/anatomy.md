@@ -109,6 +109,10 @@ The `class BaseAPI` is the the only export class in this file, whose function ca
 - **chat message API**: `(async) getMessages`, `(async) sendMessage`
 - **project settings API**: `(async) getProjectSettings`, `(async) updateProjectSettings`
 
+#### `src/api/extendedBase.ts`
+
+The exported `class ExtendedBaseAPI` extends the `class BaseAPI` with extra features provided in Overleaf Server Pro edition.
+
 #### `src/api/socketio.ts`
 The implementation of `socket.io-client`-based websocket API used by overleaf server.
 The implementation is carried out by observation of raw websocket messages via browser developer tools, and is loosely coupled with the extension for reuse in other projects.

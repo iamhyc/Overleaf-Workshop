@@ -168,6 +168,18 @@ In the file explorer, you can create, rename, delete, and move files and folders
 
 All the operations will be synced to the Overleaf server in real time (unless you are in [invisible mode](#invisible-mode)), and any external changes from your collaborators will be synced to the file explorer as well.
 
+#### `Pro` Import / Refresh External Linked Files
+
+For the Overleaf Server Pro Edition server, you can [share files across project](https://www.overleaf.com/learn/how-to/Can_I_share_files_(e.g._.bib_and_some_graphics)_across_my_projects%3F) or [upload a file using an external URL](https://www.overleaf.com/learn/how-to/How_to_upload_a_file_using_an_external_URL).
+
+![screenshot-pro-import-external-file](assets/screenshot-pro-import-external-file.png)
+
+In the Overleaf Workshop extension, the linked files are displayed in the file explorer as a symbolic link, and you can right click on the linked file to refresh it via **"Overleaf: Refresh File"**.
+
+![screenshot-pro-refresh-external-file](assets/screenshot-pro-refresh-external-file.png)
+
+You can also right click on a folder to import a linked file via **"Overleaf: Import File ..."**, then it will prompt you to import a file from *another project* or *external URL*.
+
 ### Compile the Project
 
 Different from the Overleaf web editor with an eye-catching `Recompile` button, the compile in Overleaf Workshop extension is triggered via shortcut <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd>.
