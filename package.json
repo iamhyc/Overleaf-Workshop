@@ -99,6 +99,12 @@
         "category": "%extension.displayName%"
       },
       {
+        "command": "overleaf-workshop.remoteFileSystem.createLinkedFile",
+        "title": "%commands.remoteFileSystem.createLinkedFile.title%",
+        "enablement": "resourceScheme == overleaf-workshop || overleaf-workshop.activate",
+        "category": "%extension.displayName%"
+      },
+      {
         "command": "overleaf-workshop.projectManager.addServer",
         "title": "%commands.projectManager.addServer.title%",
         "icon": "$(add)",
@@ -481,6 +487,10 @@
         {
           "command": "overleaf-workshop.remoteFileSystem.refreshLinkedFile",
           "when": "(resourceScheme == overleaf-workshop || overleaf-workshop.activate) && !explorerResourceIsFolder"
+        },
+        {
+          "command": "overleaf-workshop.remoteFileSystem.createLinkedFile",
+          "when": "(resourceScheme == overleaf-workshop || overleaf-workshop.activate) && explorerResourceIsFolder"
         }
       ],
       "editor/context": [
