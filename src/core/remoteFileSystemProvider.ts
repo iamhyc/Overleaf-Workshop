@@ -600,11 +600,18 @@ export class VirtualFileSystem extends vscode.Disposable {
         const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
         if (selection === vscode.l10n.t('From Another Project')) {
             provider = 'project_file';
+            const allTags = (await this.api.getAllTags(identity)).tags || [];
             const projectId = await vscode.window.showQuickPick(
                 (await this.api.userProjectsJson(identity)).projects!
                 .filter(project => project.id!==this.projectId)
                 .map(project => {
-                    return {label: project.name, id: project.id};
+                    let detail = '';
+                    for (const tag of allTags) {
+                        if (tag.project_ids.includes(project.id)) {
+                            detail += `$(tag) ${tag.name} `;
+                        }
+                    }
+                    return {label: project.name, id: project.id, detail};
                 }),
                 {
                     title: vscode.l10n.t('Select a Project'),
