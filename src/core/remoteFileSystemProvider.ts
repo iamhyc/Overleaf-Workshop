@@ -622,6 +622,13 @@ export class VirtualFileSystem extends vscode.Disposable {
                 title: vscode.l10n.t('File Name In This Project'),
                 value: filePath?.split('/').pop(),
                 ignoreFocusOut: true,
+                validateInput: (value) => {
+                    if (value==='' || value===undefined || value.match(/^[^\/?%*:|"<>]+$/g)===null) {
+                        return vscode.l10n.t('File name is empty or contains invalid characters');
+                    } else if (parentFolder.fileRefs.find((fileRef) => fileRef.name===value) !== undefined) {
+                        return vscode.l10n.t('A file or folder with this name already exists');
+                    }
+                }
             });
             //
             data = {source_entity_path: filePath!, source_project_id: projectId!.id};
@@ -640,6 +647,13 @@ export class VirtualFileSystem extends vscode.Disposable {
                 title: vscode.l10n.t('File Name In This Project'),
                 value: url?.split('/').pop(),
                 ignoreFocusOut: true,
+                validateInput: (value) => {
+                    if (value==='' || value===undefined || value.match(/^[^\/?%*:|"<>]+$/g)===null) {
+                        return vscode.l10n.t('File name is empty or contains invalid characters');
+                    } else if (parentFolder.fileRefs.find((fileRef) => fileRef.name===value) !== undefined) {
+                        return vscode.l10n.t('A file or folder with this name already exists');
+                    }
+                }
             });
             //
             data = {url:url!};
