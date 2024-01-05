@@ -4,6 +4,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2024-01-05
+### Added
+- chore: update issue templates
+  - Commit: fd4c48e60712a3c01da86fe7c50287afe5569dc0
+- Create CODE_OF_CONDUCT.md
+  - Commit: 3c17acc2e4c6b97df57ec65295fea2434a70cc95
+- doc: add changelog
+  - Commit: 02c2ea6e84f5e6a3ce828a2155a74f22ebea4b2f
+- doc: add contribution guidance
+  - Commit: 1c6b5191f25bd2abab2b3e0490dc32152e79c0cc
+- chore: add commitlint with husky
+  - Commit: 6d533a3c1ca9c094c8a68a0a9d6116e10a2131e1
+- feat: integrate vscode l10n
+  - Commit: 643456b2c67c4bdfcb67ecf6c2d37206a54142de
+- feat(config): support machine-wide vscode configuration
+  - Commit: 8e3580b34a575ec4a09336d04ae020f980b2b250
+- build(workflows): add github action lock-threads
+  - Commit: 000d3ba39ae8efa17b8da94db889f6ad367ef3da
+- docs: add extension anatomy for developers
+  - Commit: 20f2d1d428d02afa25e3d235791baf6d7a5402f5
+- docs(anatomy): fix dependency graph inprecision
+  - Commit: 773e935fb1c64ac36363a2909f1f5152ff1b802a
+- docs(anatomy): add click jump for dependency graph
+  - Commit: f5626d433c3e639d9b449cd3175400ee3d198ca1
+- docs(wiki): update servers&projects management part
+  - Commit: f3dc1553fb800c224a0f645fa44566283302f574
+- docs(wiki): update the remaining part
+  - Commit: 6a0610e7c2efb89f5a22fbadf82b09b84b168650
+- build(workflows): add vsce-package called on PR created
+  - Commit: d49afac851a3d0abaaeea6c93dbb5e5c4f49126f
+- feat: init extended api
+  - Commit: e4b19294c74eb3276b099f775e69b1a0ba78f77e
+- feat(pro): support import file via another project/external url
+  - Commit: 5f503d2be0194af67acb5def2adc3c2214d0e146
+- docs(pro): update docs for pro feature - external file
+  - Commit: 69df7f8ae018e74dcc6c7098b62dd839a4eed74e
+
+### Changed
+- chore: update l10n file and l10n
+  - Commit: e7cfcf3a39a4c09b954aec76e79d829f6fbf2f21
+
+### Fixed
+- fix(views/pdf-viewer): cross-site scripting vulnerability
+  - Commit: 24eee8ee0f7a984e00c0eefcbe7aa22ee05e62f6
+- fix(pro): validate file name when create linked file
+  - Commit: cbe8b380bb16048ff6bc956d9883b1f0aa779050
+- fix(pro): show tags when choose another project
+  - Commit: 83bf00b722bb4b3851553be53a387546a05c84c1
+
 ## [0.7.0] - 2023-12-29
 ### Added
 - feat: integrate invisible mode
