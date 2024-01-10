@@ -35,9 +35,14 @@ export function activate(context: vscode.ExtensionContext) {
         if (setting?.uri) {
             const uri = vscode.Uri.parse(setting.uri);
             if (uri.scheme===ROOT_NAME) {
+                // activate vfs
                 const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
                 await vfs.init();
                 vscode.commands.executeCommand('setContext', `${ROOT_NAME}.activate`, true);
+                // activate compile & preview
+                if (setting?.enableCompileNPreview) {
+                    vscode.commands.executeCommand('setContext', `${ROOT_NAME}.activateCompile`, true);
+                }
             }
         }
     });
@@ -45,4 +50,5 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
     vscode.commands.executeCommand('setContext', `${ROOT_NAME}.activate`, false);
+    vscode.commands.executeCommand('setContext', `${ROOT_NAME}.activateCompile`, false);
 }

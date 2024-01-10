@@ -234,6 +234,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
                 JSON.stringify({
                     'uri': this.vfs.origin.toString(),
                     'serverName': this.vfs.serverName,
+                    'enableCompileNPreview': false,
                     'projectName': this.vfs.projectName,
                 }, null, 4)
             ));

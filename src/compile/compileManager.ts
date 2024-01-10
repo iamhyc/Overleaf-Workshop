@@ -4,6 +4,7 @@ import { ROOT_NAME, ELEGANT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 import { PdfDocument } from '../core/pdfViewEditorProvider';
 import { LatexParser, ErrorSchema } from './compileLogParser';
 import { EventBus } from '../utils/eventBus';
+import { LocalReplicaSCMProvider } from '../scm/localReplicaSCM';
 
 // map string level to severity
 const severityMap: Record<string, vscode.DiagnosticSeverity> = {
@@ -132,14 +133,24 @@ export class CompileManager {
         });
     }
 
-    static check(uri?: vscode.Uri) {
+    static async check(uri?: vscode.Uri) {
+        // check if supported vfs
         uri = uri || vscode.window.activeTextEditor?.document.uri;
         uri = uri || vscode.workspace.workspaceFolders?.[0].uri;
-        return uri?.scheme === ROOT_NAME ? uri : undefined;
+        if (uri?.scheme === ROOT_NAME) {
+            return uri;
+        }
+        // check if supported local replica
+        const localSetting = await LocalReplicaSCMProvider.readSettings();
+        if (localSetting?.uri && localSetting?.enableCompileNPreview===true) {
+            return vscode.Uri.parse(localSetting.uri);
+        }
+        // otherwise return undefined
+        return undefined;
     }
 
-    update(status: 'success'|'compiling'|'failed'|'alert') {
-        const uri = CompileManager.check();
+    async update(status: 'success'|'compiling'|'failed'|'alert') {
+        const uri = await CompileManager.check();
         if (uri) {
             this.vfsm.prefetch(uri).then((vfs) => {
                 const compilerName = vfs.getCompiler()?.name || '';
@@ -174,23 +185,23 @@ export class CompileManager {
         return uri;
     }
 
-    compile(force:boolean=false) {
-        const uri = this.update('compiling');
+    async compile(force:boolean=false) {
+        const uri = await this.update('compiling');
         if (uri) {
             this.vfsm.prefetch(uri)
-                .then((vfs) => vfs.compile(force))
-                .then((res) => {
+                .then(async (vfs) => await vfs.compile(force))
+                .then(async (res) => {
                     switch (res) {
                         case undefined:
-                            this.update('success');
+                            await this.update('success');
                             break;
                         case false:
-                            this.update('failed');
+                            await this.update('failed');
                             break;
                         case true:
                             return true;
                         default:
-                            this.update('alert');
+                            await this.update('alert');
                             break;
                     }
                 })
@@ -199,11 +210,11 @@ export class CompileManager {
                         vscode.commands.executeCommand(`${ROOT_NAME}.compileManager.compileErrorCheck`, uri)
                         : Promise.reject()
                 )
-                .then((hasError) => {
+                .then(async (hasError) => {
                     if (hasError) {
-                        this.update('failed');
+                        await this.update('failed');
                     } else {
-                        this.update('success');
+                        await this.update('success');
                     }
                     // refresh pdf
                     const { identifier } = parseUri(uri);
@@ -215,8 +226,8 @@ export class CompileManager {
         }
     }
 
-    openPdf() {
-        const uri = CompileManager.check();
+    async openPdf() {
+        const uri = await CompileManager.check();
         if (uri) {
             const rootPath = uri.path.split('/', 2)[1];
             const pdfUri = uri.with({
@@ -229,8 +240,8 @@ export class CompileManager {
         }
     }
 
-    syncCode() {
-        const uri = CompileManager.check();
+    async syncCode() {
+        const uri = await CompileManager.check();
         if (uri && vscode.window.activeTextEditor) {
             const { identifier, pathParts } = parseUri(uri);
             const startPoint = vscode.window.activeTextEditor.selection.start;
@@ -253,8 +264,8 @@ export class CompileManager {
         }
     }
 
-    syncPdf(r: { page: number, h: number, v: number, identifier: string }) {
-        const uri = CompileManager.check();
+    async syncPdf(r: { page: number, h: number, v: number, identifier: string }) {
+        const uri = await CompileManager.check();
         if (uri) {
             this.vfsm.prefetch(uri)
                 .then((vfs) => vfs.syncPdf(r.page, r.h, r.v))
@@ -288,7 +299,7 @@ export class CompileManager {
     }
 
     async compileSettings() {
-        const uri = CompileManager.check();
+        const uri = await CompileManager.check();
         const vfs = uri && await this.vfsm.prefetch(uri);
         const compilers = vfs?.getAllCompilers();
         const currentCompiler = vfs?.getCompiler();
@@ -319,7 +330,7 @@ export class CompileManager {
             vscode.commands.registerCommand(`${ROOT_NAME}.compilerManager.settings`, ()=> this.compileSettings()),
             // register compile conditions
             vscode.workspace.onDidSaveTextDocument(async (e) => {
-                const uri = CompileManager.check.bind(this)(e.uri);
+                const uri = await CompileManager.check.bind(this)(e.uri);
                 const vfs = uri && await this.vfsm.prefetch(uri);
                 const compileCondition = vscode.workspace.getConfiguration(`${ROOT_NAME}.compileOnSave`).get('enabled', true);
                 const postfixCondition = e.fileName.match(/\.tex$|\.sty$|\.cls$|\.bib$/i);
