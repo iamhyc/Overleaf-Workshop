@@ -204,9 +204,15 @@ The full compiler diagnostics are displayed in the "Problems" panel, which is lo
 
 #### Change the Compiler
 
-The default compiler is `pdflatex`, which can be changed via clicking the compiler name in the status bar.
+The default compiler is `pdflatex`, which can be changed via clicking the compiler name in the status bar and select "**Setting: Compiler**" to alter the compiler.
 
 ![screenshot-change-compiler](assets/screenshot-change-compiler.png)
+
+#### Change the Main Document
+
+You can change the main document via clicking the compiler name in the status bar and select "**Setting: Main Document**" to alter the main document.
+
+The change of the main document will not affect the setting for other collaborators in current session, unless they reload the project. This is a desired behavior in the Overleaf web editor, and we keep it in the extension as well.
 
 ### Preview Document
 
