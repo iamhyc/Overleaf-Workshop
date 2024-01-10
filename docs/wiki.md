@@ -317,6 +317,17 @@ In the Local Replica configuration, you can choose to enable/disable the Local R
 
 ![screenshot-config-local-replica](assets/screenshot-config-local-replica.png)
 
+The project-related metadata for local replica are located in `.overleaf/settings.json` in the following format:
+```json
+{
+    "uri": "overleaf-workshop://overleaf.com/example-project?user%3D<user_id>%26project%3D<project_id>",
+    "serverName": "overleaf.com",
+    "enableCompileNPreview": false,
+    "projectName": "example-project",
+}
+```
+Most of the items are immutable, except for `enableCompileNPreview`, which is used to enable/disable the compile and preview feature in local folder. The default value is `false`.
+
 ### Invisible Mode
 > [!WARNING]
 > This feature is not considered robust yet, and may not work as expected, especially under unstable network environment.
