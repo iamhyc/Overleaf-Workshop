@@ -65,6 +65,7 @@ export interface EventsHandler {
     //
     onSpellCheckLanguageUpdated?: (language:string) => void,
     onCompilerUpdated?: (compiler:string) => void,
+    onRootDocUpdated?: (rootDocId:string) => void,
 }
 
 type ConnectionScheme = 'Alt' | 'v1' | 'v2';
@@ -252,6 +253,11 @@ export class SocketIOAPI {
                 case handlers.onCompilerUpdated:
                     this.socket.on('compilerUpdated', (compiler:string) => {
                         handler(compiler);
+                    });
+                    break;
+                case handlers.onRootDocUpdated:
+                    this.socket.on('rootDocUpdated', (rootDocId:string) => {
+                        handler(rootDocId);
                     });
                     break;
                 default:

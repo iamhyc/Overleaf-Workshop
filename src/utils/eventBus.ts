@@ -8,6 +8,7 @@ export type Events = {
     'pdfWillOpenEvent': {uri: vscode.Uri, doc:PdfDocument, webviewPanel:vscode.WebviewPanel},
     'spellCheckLanguageUpdateEvent': {language:string},
     'compilerUpdateEvent': {compiler:string},
+    'rootDocUpdateEvent': {rootDocId:string},
     'scmStatusChangeEvent': {status:StatusInfo},
     'socketioConnectedEvent': {publicId:string},
 };

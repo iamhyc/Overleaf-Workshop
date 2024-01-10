@@ -304,6 +304,30 @@ export class VirtualFileSystem extends vscode.Disposable {
         return undefined;
     }
 
+    walk(filter:(entity:FileEntity)=>boolean): {entity:FileEntity, path:string}[] {
+        const result = [];
+        const folders = this.root ? [{entity:this.root.rootFolder[0], path:'/'}] : [];
+
+        // apply filter to root folder
+        filter(folders[0].entity) && result.push(folders[0]);
+        // walk through all folders
+        for (const folder of folders) {
+            for (const [key,value] of Object.entries(FolderKeys)) {
+                if (value==='folders') {
+                    folder.entity[value]?.forEach((entity) => {
+                        folders.push({entity, path:folder.path+entity.name+'/'});
+                    });
+                }
+                folder.entity[value]?.forEach((entity) => {
+                    entity._type = key as FileType;
+                    filter(entity) && result.push({ entity, path:folder.path+entity.name });
+                });
+            };
+        }
+
+        return result;
+    }
+
     private insertEntity(parentFolder: FolderEntity, fileType:FileType, entity: FileEntity) {
         const key = FolderKeys[fileType];
         parentFolder[key]?.push(entity as any);
@@ -431,6 +455,13 @@ export class VirtualFileSystem extends vscode.Disposable {
                     this.root.compiler = compiler;
                     EventBus.fire('compilerUpdateEvent', {compiler});
                 }
+            },
+            onRootDocUpdated: (rootDocId:string) => {
+                //NOTE: do not sync rootDocId
+                // if (this.root) {
+                //     this.root.rootDoc_id = rootDocId;
+                //     EventBus.fire('rootDocUpdateEvent', {rootDocId});
+                // }
             },
         });
     }
@@ -848,7 +879,7 @@ export class VirtualFileSystem extends vscode.Disposable {
                 await this.api.deleteAuxFiles(identity, this.projectId);
             }
             // compile project
-            const res = await this.api.compile(identity, this.projectId);
+            const res = await this.api.compile(identity, this.projectId, this.root?.rootDoc_id??null);
             if (res.type==='success' && res.compile) {
                 this.updateOutputs(res.compile.outputFiles);
                 return true;
@@ -983,6 +1014,16 @@ export class VirtualFileSystem extends vscode.Disposable {
         return this.root?.settings.learnedWords;
     }
 
+    getRootDocName() {
+        return this._resolveById(this.root?.rootDoc_id!)?.path ?? '';
+    }
+
+    getValidMainDocs() {
+        return this.walk((entity) => {
+            return entity._type==='doc' && entity.name.match(/\.tex$/g)!==null;
+        });
+    }
+
     getProjectSCMPersist(scmKey: string) {
         const scmPersists = GlobalStateManager.getServerProjectSCMPersists(this.context, this.serverName, this.projectId);
         return scmPersists[scmKey];
@@ -995,6 +1036,18 @@ export class VirtualFileSystem extends vscode.Disposable {
     async updateSettings(setting: any) {
         const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
         const res = await this.api.updateProjectSettings(identity, this.projectId, setting);
+        if (res.type==='success') {
+            const keys = Object.keys(setting);
+            if (keys.includes('spellCheckLanguage')) {
+                this.root!.spellCheckLanguage = setting.spellCheckLanguage;
+            }
+            if (keys.includes('compiler')) {
+                this.root!.compiler = setting.compiler;
+            }
+            if (keys.includes('rootDocId')) {
+                this.root!.rootDoc_id = setting.rootDocId;
+            }
+        }
         return res.type==='success'? true : false;
     }
 
