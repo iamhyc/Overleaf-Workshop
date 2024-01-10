@@ -709,7 +709,7 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
     private filePathCompletion: FilePathCompletionProvider;
     private misspellingCheck: MisspellingCheckProvider;
     private referenceCompletion: ReferenceCompletionProvider;
-    private docSymbolProvider: DocSymbolProvider = new DocSymbolProvider();
+    private docSymbolProvider: DocSymbolProvider ;
     private texDocFormatter:TexDocFormatter = new TexDocFormatter();
 
     constructor(context: vscode.ExtensionContext, vfsm: RemoteFileSystemProvider) {
@@ -719,6 +719,7 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
         this.filePathCompletion = new FilePathCompletionProvider(vfsm);
         this.misspellingCheck = new MisspellingCheckProvider(vfsm);
         this.referenceCompletion = new ReferenceCompletionProvider(vfsm);
+        this.docSymbolProvider = new DocSymbolProvider(vfsm);
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -2);
         this.activate();
     }

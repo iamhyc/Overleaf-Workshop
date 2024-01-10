@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import type * as Ast from '@unified-latex/unified-latex-types';
 import * as unifiedLaTeXParse from '@unified-latex/unified-latex-util-parse';
-import { ROOT_NAME } from '../consts';
+import { ROOT_NAME, BIB_ENTRY} from '../consts';
+import { RemoteFileSystemProvider } from '../core/remoteFileSystemProvider';
 
 // Initialize the parser
 let unifiedParser: { parse: (content: string) => Ast.Root } = unifiedLaTeXParse.getParser({ flags: { autodetectExpl3AndAtLetter: true } });
@@ -13,7 +14,7 @@ const defaultStructure = ["book", "part", "chapter", "section", "subsection", "s
 const defaultCMD = ["label"];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-enum TeXElementType { Environment, Command, Section, SectionAst, SubFile, BibItem, BibField };
+enum TeXElementType { Environment, Command, Section, SectionAst, SubFile, BibItem, BibField, BibFile};
 
 type TeXElement = {
     readonly type: TeXElementType,
@@ -97,27 +98,26 @@ function argContentToStr(argContent: Ast.Node[], preserveCurlyBrace: boolean = f
     * @return: the tree-like TeXElement[] structure
 */
 // reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/src/outline/structurelib/latex.ts#L30
-export async function genTexElements(document: vscode.TextDocument): Promise<TeXElement[]> {
-    const filePath = document.fileName;
-    if (filePath === undefined) {
-        return [];
-    }
-    const rootElement = { children: [] };
-    let ast = await unifiedParser.parse(document.getText());
+export async function genTexElements(filePath:string, documentText: string, symbolsCache: Map<string, TeXElement[]>): Promise<TeXElement[]> {
+    const resElement = { children: [] };
+    const fileElements = { subFile: [], bibFiles: [] };
+    let ast = unifiedParser.parse(documentText);
     for (const node of ast.content) {
         if (['string', 'parbreak', 'whitespace'].includes(node.type)) {
             continue;
         }
         try {
-            await parseNode(node, rootElement);
+            await parseNode(node, resElement , fileElements);
         }
         catch (e) {
             console.log(e);
         }
     }
-    let struct = rootElement.children as TeXElement[];
+    let struct = resElement.children as TeXElement[];
     struct = hierarchyStructFormat(struct);
-    return struct;
+    symbolsCache.set(filePath, struct);
+    symbolsCache.set(BIB_ENTRY, fileElements.bibFiles); 
+    return fileElements.subFile as TeXElement[];
 }
 
 /*
@@ -169,7 +169,8 @@ function hierarchyStructFormat(struct: TeXElement[]): TeXElement[] {
 // reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/src/outline/structurelib/latex.ts#L86
 async function parseNode(
     node: Ast.Node,
-    root: { children: TeXElement[] }
+    root: { children: TeXElement[] },
+    fileElements : { subFile: TeXElement[], bibFiles: TeXElement[] },
 ) {
     const attributes = {
         lineFr: (node.position?.start.line ?? 1) - 1,
@@ -186,7 +187,9 @@ async function parseNode(
             } else if (defaultCMD.includes(node.content)) {
                 caseType = 'label';
             } else if (node.content === 'input') {
-                caseType = 'subfile';
+                caseType = 'subFile';
+            } else if (node.content === 'bibliography') {
+                caseType = 'bibFile';
             }
             let argStr = '';
             switch (caseType) {
@@ -213,10 +216,19 @@ async function parseNode(
                         ...attributes
                     };
                     break;
-                case 'subfile':
+                case 'subFile':
                     argStr = argContentToStr(node.args?.[0]?.content || []);
                     element = {
                         type: TeXElementType.SubFile,
+                        name: node.content,
+                        label: argStr ? `${argStr}` : '',
+                        ...attributes
+                    };
+                    break;
+                case 'bibFile':
+                    argStr = argContentToStr(node.args?.[0]?.content || []);
+                    element = {
+                        type: TeXElementType.BibFile,
                         name: node.content,
                         label: argStr ? `${argStr}` : '',
                         ...attributes
@@ -300,8 +312,17 @@ async function parseNode(
     }
 
     if (element !== undefined) {
-        root.children.push(element);
-        root = element;
+        switch (element.type) {
+            case TeXElementType.BibFile:
+                fileElements.bibFiles.push(element);
+                break;
+            case TeXElementType.SubFile:
+                fileElements.subFile.push(element);
+            default:
+                root.children.push(element);
+                root = element;
+                break;
+        }
     }
 
     if ('content' in node && typeof node.content !== 'string') {
@@ -309,15 +330,43 @@ async function parseNode(
             if (['string', 'parbreak', 'whitespace'].includes(sub.type)) {
                 continue;
             }
-            await parseNode(sub, root);
+            await parseNode(sub, root, fileElements);
         }
     }
 }
 
 export class DocSymbolProvider implements vscode.DocumentSymbolProvider {
+    private _projectCache: Map<string, Map<string, TeXElement[]>> = new Map();
+
+    constructor(protected readonly vfsm: RemoteFileSystemProvider) {
+     }
+
+    async init(rootUri: vscode.Uri) {
+        const vfs = await this.vfsm.prefetch(rootUri);
+        const rootDoc = new TextDecoder().decode(await vfs.openFile(rootUri));
+        this._projectCache.set(rootUri.path, new Map());
+        const symbolCache = this._projectCache.get(rootUri.path) as Map<string, TeXElement[]>;
+        const subFiles = await genTexElements(rootUri.path, rootDoc, symbolCache);
+        while (subFiles.length > 0) {
+            const subFile = subFiles.pop() as TeXElement;
+            const subDocText = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(subFile.label)));
+            if (subDocText) {
+                subFiles.push( ... await genTexElements(subFile.label, subDocText, symbolCache));
+            }
+        }
+    }
+
     async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
-        const sections = await genTexElements(document);
-        return this.elementsToSymbols(sections);
+        const vfs = await this.vfsm.prefetch(document.uri);
+        // const rootDoc = vfs.root?.rootDoc_id;
+        const rootDoc = 'main.tex';
+        if (rootDoc !== undefined && this._projectCache.has(vfs.pathToUri(rootDoc).path) === false) {
+            await this.init(vfs.pathToUri(rootDoc));
+        }
+        const symbolCache = this._projectCache.get(vfs.pathToUri(rootDoc).path) as Map<string, TeXElement[]>;
+        const _ = await genTexElements(document.fileName, document.getText(), symbolCache);
+        const symbols = symbolCache.get(document.fileName) as TeXElement[];
+        return this.elementsToSymbols(symbols);
     }
 
     private elementsTypeCast(section: TeXElement): vscode.SymbolKind {
