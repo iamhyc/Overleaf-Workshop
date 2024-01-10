@@ -153,30 +153,32 @@ export class CompileManager {
         const uri = await CompileManager.check();
         if (uri) {
             this.vfsm.prefetch(uri).then((vfs) => {
+                const rootDocName = vfs.getRootDocName().slice(1);
                 const compilerName = vfs.getCompiler()?.name || '';
+                this.status.tooltip = new vscode.MarkdownString();
                 switch (status) {
                     case 'success':
                         this.status.text = `${compilerName}`;
-                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **${vscode.l10n.t('Compile Success')}**`);
+                        this.status.tooltip.appendMarkdown(`\`${rootDocName}\` **${vscode.l10n.t('Compile Success')}**`);
                         this.status.backgroundColor = undefined;
                         break;
                     case 'compiling':
                         this.status.text = `${compilerName} $(sync~spin)`;
-                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **${vscode.l10n.t('Compiling')}**`);
+                        this.status.tooltip.appendMarkdown(`\`${rootDocName}\` **${vscode.l10n.t('Compiling')}**`);
                         this.status.backgroundColor = undefined;
                         break;
                     case 'failed':
                         this.status.text = `${compilerName} $(x)`;
-                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **${vscode.l10n.t('Compile Failed')}**`);
+                        this.status.tooltip.appendMarkdown(`\`${rootDocName}\` **${vscode.l10n.t('Compile Failed')}**`);
                         this.status.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
                         break;
                     case 'alert':
                         this.status.text = `$(alert)`;
-                        this.status.tooltip = new vscode.MarkdownString(`${compilerName}: **${vscode.l10n.t('Not Connected')}**`);
+                        this.status.tooltip.appendMarkdown(`\`${rootDocName}\` **${vscode.l10n.t('Not Connected')}**`);
                         this.status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
                         break;
                 }
-                this.status.tooltip.appendMarkdown(`\n\n*${vscode.l10n.t('Click to switch compiler.')}*`);
+                this.status.tooltip.appendMarkdown(`\n\n*${vscode.l10n.t('Click to manage compile settings.')}*`);
                 this.status.show();
             });
         } else {
@@ -301,21 +303,48 @@ export class CompileManager {
     async compileSettings() {
         const uri = await CompileManager.check();
         const vfs = uri && await this.vfsm.prefetch(uri);
-        const compilers = vfs?.getAllCompilers();
         const currentCompiler = vfs?.getCompiler();
+        const currentRootDoc = vfs?.getRootDocName();
 
-        compilers && vscode.window.showQuickPick(compilers.map((item) => {
-            return {
-                label: item.name,
-                description: item.code,
-                picked: item.code === currentCompiler?.code,
-            };
-        }), {
-            canPickMany: false,
-            placeHolder: vscode.l10n.t('Select Compiler'),
-        }).then(async (option) => {
-            option && await vfs?.updateSettings({ compiler: option.description }) && this.compile(true);
-        });
+        const setting = await vscode.window.showQuickPick([
+            {label: vscode.l10n.t('Setting: Compiler'), description: currentCompiler?.name, },
+            {label: vscode.l10n.t('Setting: Main Document'), description: currentRootDoc, },
+        ]);
+
+        switch (setting?.label) {
+            case vscode.l10n.t('Setting: Compiler'):
+                const compilers = vfs?.getAllCompilers();
+                compilers && vscode.window.showQuickPick(compilers.map((item) => {
+                    return {
+                        label: item.name,
+                        description: item.code,
+                        picked: item.code === currentCompiler?.code,
+                    };
+                }), {
+                    canPickMany: false,
+                    placeHolder: vscode.l10n.t('Select Compiler'),
+                }).then(async (option) => {
+                    option && await vfs?.updateSettings({ compiler: option.description }) && this.compile(true);
+                });
+                break;
+            case vscode.l10n.t('Setting: Main Document'):
+                const rootDocs = vfs?.getValidMainDocs();
+                rootDocs && vscode.window.showQuickPick(rootDocs.map((item) => {
+                    return {
+                        id: item.entity._id,
+                        label: item.path,
+                        picked: item.path === currentRootDoc,
+                    };
+                }), {
+                    canPickMany: false,
+                    placeHolder: vscode.l10n.t('Select Main Document'),
+                }).then(async (option) => {
+                    option && await vfs?.updateSettings({ rootDocId: option.id }) && this.compile(true);
+                });
+                break;
+            default:
+                return;
+        }
     }
 
     get triggers() {
@@ -339,6 +368,9 @@ export class CompileManager {
                 }
             }),
             EventBus.on('compilerUpdateEvent', () => {
+                this.compile(true);
+            }),
+            EventBus.on('rootDocUpdateEvent', () => {
                 this.compile(true);
             }),
             // register diagnostics triggers

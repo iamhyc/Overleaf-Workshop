@@ -579,12 +579,12 @@ export class BaseAPI {
                             {folder_id:newParentFolderId}, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
-    async compile(identity:Identity, projectId:string) {
+    async compile(identity:Identity, projectId:string, rootDoc_id:string|null) {
         const body = {
             check: "silent",
             draft: false,
             incrementalCompilesEnabled: true,
-            rootDoc_id: null,
+            rootDoc_id,
             stopOnFirstError: false
         };
 
