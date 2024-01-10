@@ -311,19 +311,19 @@
       {
         "command": "overleaf-workshop.compileManager.compile",
         "title": "%commands.compileManager.compile.title%",
-        "enablement": "resourceScheme == overleaf-workshop && resourceExtname == .tex",
+        "enablement": "(resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex",
         "category": "%extension.displayName%"
       },
       {
         "command": "overleaf-workshop.compileManager.viewPdf",
         "title": "%commands.compileManager.viewPdf.title%",
-        "enablement": "resourceScheme == overleaf-workshop && resourceExtname == .tex",
+        "enablement": "(resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex",
         "category": "%extension.displayName%"
       },
       {
         "command": "overleaf-workshop.compileManager.syncCode",
         "title": "%commands.compileManager.syncCode.title%",
-        "enablement": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex",
+        "enablement": "editorTextFocus && (resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex",
         "category": "%extension.displayName%"
       },
       {
@@ -356,19 +356,19 @@
         "key": "ctrl+alt+b",
         "mac": "cmd+alt+b",
         "command": "overleaf-workshop.compileManager.compile",
-        "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
+        "when": "editorTextFocus && (resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex"
       },
       {
         "key": "ctrl+alt+v",
         "mac": "cmd+vlt+v",
         "command": "overleaf-workshop.compileManager.viewPdf",
-        "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
+        "when": "editorTextFocus && (resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex"
       },
       {
         "key": "ctrl+alt+j",
         "mac": "cmd+alt+j",
         "command": "overleaf-workshop.compileManager.syncCode",
-        "when": "editorTextFocus && resourceScheme == overleaf-workshop && resourceExtname == .tex"
+        "when": "editorTextFocus && (resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex"
       },
       {
         "key": "ctrl+shift+c",
