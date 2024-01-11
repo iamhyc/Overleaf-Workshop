@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type * as Ast from '@unified-latex/unified-latex-types';
 import * as unifiedLaTeXParse from '@unified-latex/unified-latex-util-parse';
-import { ROOT_NAME, BIB_ENTRY} from '../consts';
+import { ROOT_NAME } from '../consts';
 import { RemoteFileSystemProvider } from '../core/remoteFileSystemProvider';
 
 // Initialize the parser
@@ -98,7 +98,7 @@ function argContentToStr(argContent: Ast.Node[], preserveCurlyBrace: boolean = f
     * @return: the tree-like TeXElement[] structure
 */
 // reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/src/outline/structurelib/latex.ts#L30
-export async function genTexElements(filePath:string, documentText: string, symbolsCache: Map<string, TeXElement[]>): Promise<TeXElement[]> {
+export async function genTexElements(filePath:string, documentText: string, projectCache: SymbolBibCache): Promise<TeXElement[]> {
     const resElement = { children: [] };
     const fileElements = { subFile: [], bibFiles: [] };
     let ast = unifiedParser.parse(documentText);
@@ -115,8 +115,8 @@ export async function genTexElements(filePath:string, documentText: string, symb
     }
     let struct = resElement.children as TeXElement[];
     struct = hierarchyStructFormat(struct);
-    symbolsCache.set(filePath, struct);
-    symbolsCache.set(BIB_ENTRY, fileElements.bibFiles); 
+    projectCache.getSymbolCache()?.set(filePath, struct);
+    projectCache.getBibCache()?.set(filePath, fileElements.bibFiles);
     return fileElements.subFile as TeXElement[];
 }
 
@@ -335,38 +335,79 @@ async function parseNode(
     }
 }
 
+export class SymbolBibCache{
+    private rootFile?: string;
+    private symbolCache: Map<string, Map<string, TeXElement[]>> = new Map();
+    private bibCache : Map<string, Map<string, TeXElement[]>> = new Map();
+
+    public setRootFile(params:string) {
+        this.rootFile = params;
+        if (!this.symbolCache.has(this.rootFile)) {
+            this.symbolCache.set(params, new Map());
+            this.bibCache.set(params, new Map());
+        }
+    }
+
+    public hasRootFile(params:string){
+        return this.symbolCache.has(params);
+    }
+
+    public getSymbolCache() {
+        if (this.rootFile === undefined) {
+            return undefined;
+        }
+        return this.symbolCache.get(this.rootFile);
+    }
+
+    public getBibCache(){
+        if (this.rootFile === undefined) {
+            return undefined;
+        }
+        return this.bibCache.get(this.rootFile);
+    }
+
+    public getBibFiles(): string[] {
+        return Array.from(
+            this.getBibCache()?.values() ?? []
+        ).flatMap(
+            entry => entry.map(element => element.label)
+        );
+    }
+}
+
 export class DocSymbolProvider implements vscode.DocumentSymbolProvider {
-    private _projectCache: Map<string, Map<string, TeXElement[]>> = new Map();
+    private symbolBibCache: SymbolBibCache  = new SymbolBibCache();
 
     constructor(protected readonly vfsm: RemoteFileSystemProvider) {
-     }
-
-    async init(rootUri: vscode.Uri) {
-        const vfs = await this.vfsm.prefetch(rootUri);
-        const rootDoc = new TextDecoder().decode(await vfs.openFile(rootUri));
-        this._projectCache.set(rootUri.path, new Map());
-        const symbolCache = this._projectCache.get(rootUri.path) as Map<string, TeXElement[]>;
-        const subFiles = await genTexElements(rootUri.path, rootDoc, symbolCache);
-        while (subFiles.length > 0) {
-            const subFile = subFiles.pop() as TeXElement;
-            const subDocText = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(subFile.label)));
-            if (subDocText) {
-                subFiles.push( ... await genTexElements(subFile.label, subDocText, symbolCache));
-            }
-        }
     }
 
     async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
         const vfs = await this.vfsm.prefetch(document.uri);
-        // const rootDoc = vfs.root?.rootDoc_id;
-        const rootDoc = 'main.tex';
-        if (rootDoc !== undefined && this._projectCache.has(vfs.pathToUri(rootDoc).path) === false) {
+        const rootDoc = vfs.getRootDocName();
+        if (rootDoc !== undefined && !this.symbolBibCache.hasRootFile(vfs.pathToUri(rootDoc).path)) {
             await this.init(vfs.pathToUri(rootDoc));
         }
-        const symbolCache = this._projectCache.get(vfs.pathToUri(rootDoc).path) as Map<string, TeXElement[]>;
-        const _ = await genTexElements(document.fileName, document.getText(), symbolCache);
-        const symbols = symbolCache.get(document.fileName) as TeXElement[];
+        const _ = await genTexElements(document.uri.path, document.getText(), this.symbolBibCache);
+        const symbols = this.symbolBibCache.getSymbolCache()?.get(document.uri.path) as TeXElement[];
         return this.elementsToSymbols(symbols);
+    }
+
+    async init(rootUri: vscode.Uri) {
+        const vfs = await this.vfsm.prefetch(rootUri);
+        const rootDoc = new TextDecoder().decode(await vfs.openFile(rootUri));
+        this.symbolBibCache.setRootFile(rootUri.path);
+        const subFiles = await genTexElements(rootUri.path, rootDoc, this.symbolBibCache);
+        while (subFiles.length > 0) {
+            const subFile = subFiles.pop() as TeXElement;
+            const subDocText = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(subFile.label)));
+            if (subDocText) {
+                subFiles.push( ... await genTexElements(subFile.label, subDocText, this.symbolBibCache));
+            }
+        }
+    }
+
+    public getBibList(){
+        return this.symbolBibCache.getBibFiles();
     }
 
     private elementsTypeCast(section: TeXElement): vscode.SymbolKind {

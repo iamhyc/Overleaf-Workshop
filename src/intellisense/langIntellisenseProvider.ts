@@ -628,6 +628,10 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
         ['cite'],
     ];
 
+    constructor(vfsm:RemoteFileSystemProvider, private readonly symbolProvider:DocSymbolProvider){
+        super(vfsm);
+    }
+
     private parseMatch(match: RegExpMatchArray) {
         const keywords = match.slice(1, -1);
         const index = keywords.findIndex(x => x!==undefined);
@@ -647,40 +651,39 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
                 }).flat();
             case 1:
                 const items = new Array<vscode.CompletionItem>();
-                items.push(... await this.getBibCompletionItems(vfs, '/'));
-                if ('output.bbl' in await vfs.list(vfs.pathToUri(OUTPUT_FOLDER_NAME))) {
-                    const bibUri = vfs.pathToUri(`${OUTPUT_FOLDER_NAME}/output.bbl`);
-                    const content = new TextDecoder().decode( await vfs.openFile(bibUri) );
-                    const regex = /\\bibitem\{([^\}]*)\}/g;
-                    let match: RegExpExecArray | null;
-                    while (match = regex.exec(content)) {
-                        const item = new vscode.CompletionItem(match[1], vscode.CompletionItemKind.Reference);
-                        items.push(item);
-                    }
+                items.push(... await this.getBibCompletionItems(vfs, this.symbolProvider?.getBibList() ?? []));
+
+                const bibUri = vfs.pathToUri(`${OUTPUT_FOLDER_NAME}/output.bbl`);
+                const content = new TextDecoder().decode( await vfs.openFile(bibUri) );
+                const regex = /\\bibitem\{([^\}]*)\}/g;
+                let match: RegExpExecArray | null;
+                while (match = regex.exec(content)) {
+                    const item = new vscode.CompletionItem(match[1], vscode.CompletionItemKind.Reference);
+                    items.push(item);
                 }
+
                 return items;
             default:
                 return [];
         }
     }
 
-    private async getBibCompletionItems(vfs: VirtualFileSystem, path: string): Promise<vscode.CompletionItem[]> {
-        const fileNames = await vfs.list(vfs.pathToUri(path));
-        const bibRegex = /@[^{]+\{\s*([^},]+)/gm;
+    private async getBibCompletionItems(vfs: VirtualFileSystem, paths: string[]): Promise<vscode.CompletionItem[]> {
+        const bibRegex = /@(?:(?!STRING\b)[^{])+\{\s*([^},]+)/gm;
         const items = new Array<vscode.CompletionItem>();
-        for (const [file, _type] of fileNames) {
-            if (_type === vscode.FileType.Directory) {
-                items.push(... await this.getBibCompletionItems(vfs, `${path}/${file}`));
+        const bibPaths = paths.flatMap(
+            path => (path?.split(',') ?? [])
+        ).map(
+            path => (path?.endsWith('.bib') ? path : `${path}.bib`)
+        );
+        for (let path of bibPaths) {
+            const content = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(`${path}`)));
+            let match: RegExpExecArray | null;
+            while (match = bibRegex.exec(content)) {
+              const item = new vscode.CompletionItem(match[1], vscode.CompletionItemKind.Reference);
+              items.push(item);
             }
-            else if (file.endsWith('.bib')) {
-                const content = new TextDecoder().decode( await vfs.openFile(vfs.pathToUri(`${path}/${file}`)) );
-                let match: RegExpExecArray | null;
-                while (match = bibRegex.exec(content)) {
-                    const item = new vscode.CompletionItem(match[1], vscode.CompletionItemKind.Reference);
-                    items.push(item);
-                }
-            }
-        }
+        };
         return items;
     }
 
@@ -718,8 +721,8 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
         this.constantCompletion = new ConstantCompletionProvider(vfsm, context.extensionUri);
         this.filePathCompletion = new FilePathCompletionProvider(vfsm);
         this.misspellingCheck = new MisspellingCheckProvider(vfsm);
-        this.referenceCompletion = new ReferenceCompletionProvider(vfsm);
         this.docSymbolProvider = new DocSymbolProvider(vfsm);
+        this.referenceCompletion = new ReferenceCompletionProvider(vfsm, this.docSymbolProvider);
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -2);
         this.activate();
     }
