@@ -140,7 +140,7 @@ export class SocketIOAPI {
             console.log('SocketIOAPI: connectionRejected.', err.message);
         });
         this.socket.on('error', (err:any) => {
-            throw new Error(err);
+            console.log('SocketIOAPI: connectionRejected.', err);
         });
 
         if (this.scheme==='v2') {
@@ -301,6 +301,10 @@ export class SocketIOAPI {
                     return project;
                 });
                 const rejectPromise = new Promise((_, reject) => {
+                    this.socket.on('error', (err:any) => {
+                        this.scheme = 'v2';
+                        reject('SocketIOAPI: error');
+                    });
                     this.socket.on('connectionRejected', (err:any) => {
                         this.scheme = 'v2';
                         reject(err.message);
