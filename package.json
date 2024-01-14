@@ -360,7 +360,7 @@
       },
       {
         "key": "ctrl+alt+v",
-        "mac": "cmd+vlt+v",
+        "mac": "cmd+alt+v",
         "command": "overleaf-workshop.compileManager.viewPdf",
         "when": "editorTextFocus && (resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex"
       },
