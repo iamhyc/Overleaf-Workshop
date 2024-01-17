@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2024-01-17
+### Added
+- ci: auto publish on tag update
+  - Commit: 0622fd11c416b1f01757c8af0d00a0978aa128d6
+
+### Changed
+- fix: typo in keybindings for mac
+  - Commit: c733cddff9b84f6201f2b8af475dc0c094b09158
+- fix: use error/warning popup for user input
+  - Commit: d7f6602abb1676a46eb03de3ffa63a4c678ba7e9
+
 ## [0.8.0] - 2024-01-12
 ### Added
 - chore: Create config.yaml
