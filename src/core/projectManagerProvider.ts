@@ -188,7 +188,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     removeServer(name:string) {
-        vscode.window.showInformationMessage(vscode.l10n.t('Remove server "{name}" ?', {name}), "Yes", "No")
+        vscode.window.showErrorMessage(vscode.l10n.t('Remove server "{name}" ?', {name}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 if (GlobalStateManager.removeServer(this.context, name)) {
@@ -256,7 +256,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     logoutServer(server: ServerItem) {
-        vscode.window.showInformationMessage(vscode.l10n.t('Logout server "{name}" ?', {name:server.name}), "Yes", "No")
+        vscode.window.showErrorMessage(vscode.l10n.t('Logout server "{name}" ?', {name:server.name}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.logoutServer(this.context, server.api, server.name)
@@ -350,7 +350,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     deleteProject(project: ProjectItem) {
-        vscode.window.showInformationMessage(vscode.l10n.t('Permanently delete project "{label}" ?', {label:project.label}), "Yes", "No")
+        vscode.window.showErrorMessage(vscode.l10n.t('Permanently delete project "{label}" ?', {label:project.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -367,7 +367,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     archiveProject(project: ProjectItem) {
-        vscode.window.showInformationMessage(vscode.l10n.t('Archive project "{label}" ?', {label:project.label}), "Yes", "No")
+        vscode.window.showWarningMessage(vscode.l10n.t('Archive project "{label}" ?', {label:project.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -396,7 +396,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     trashProject(project: ProjectItem) {
-        vscode.window.showInformationMessage(vscode.l10n.t('Move project "{label}" to trash ?', {label:project.label}), "Yes", "No")
+        vscode.window.showWarningMessage(vscode.l10n.t('Move project "{label}" to trash ?', {label:project.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -462,7 +462,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     deleteTag(tag: TagItem) {
-        vscode.window.showInformationMessage(vscode.l10n.t('Delete tag "{label}" ?', {label:tag.label}), "Yes", "No")
+        vscode.window.showErrorMessage(vscode.l10n.t('Delete tag "{label}" ?', {label:tag.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, tag.serverName)
@@ -501,7 +501,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     removeProjectFromTag(project: ProjectItem) {
-        vscode.window.showInformationMessage(vscode.l10n.t('Remove project "{label}" from tag "{name}" ?', {label:project.label,name:project.tag?.name}), "Yes", "No")
+        vscode.window.showWarningMessage(vscode.l10n.t('Remove project "{label}" from tag "{name}" ?', {label:project.label,name:project.tag?.name}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -553,7 +553,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         if (replicas.length===0) {
             const vfs = (await (await vscode.commands.executeCommand('remoteFileSystem.prefetch', uri))) as VirtualFileSystem;
             await vfs.init();
-            const answer = await vscode.window.showInformationMessage( vscode.l10n.t('No local replica found, create one for project "{label}" ?', {label:project.label}), "Yes", "No");
+            const answer = await vscode.window.showWarningMessage( vscode.l10n.t('No local replica found, create one for project "{label}" ?', {label:project.label}), "Yes", "No");
             if (answer === "Yes") {
                 await (await vscode.commands.executeCommand(`${ROOT_NAME}.projectSCM.newSCM`, LocalReplicaSCMProvider));
                 // fetch local replica scm again
