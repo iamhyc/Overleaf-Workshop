@@ -2,8 +2,6 @@ name: Publish Extension
 on:
   push:
     branches: [master]
-    tags:
-      - 'v*'
 
 jobs:
   publish:
