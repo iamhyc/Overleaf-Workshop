@@ -185,10 +185,12 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         // apply update
         this.status = {status: status, message: `${type}: ${relPath}`};
         if (type === 'update') {
+            if (status==='pull' && type==='update') { await vscode.workspace.fs.readFile(fromUri); } // update remote cache
             const stat = await vscode.workspace.fs.stat(fromUri);
             if (stat.type===vscode.FileType.File) {
                 const content = await vscode.workspace.fs.readFile(fromUri);
                 await vscode.workspace.fs.writeFile(toUri, content);
+                if (status==='push' && type==='update') { vscode.workspace.fs.readFile(toUri); } // update remote cache
                 this.baseCache[relPath] = content;
             } else if (stat.type===vscode.FileType.Directory) {
                 await vscode.workspace.fs.createDirectory(toUri);
@@ -201,7 +203,8 @@ export class LocalReplicaSCMProvider extends BaseSCM {
 
     private async syncFromVFS(vfsUri: vscode.Uri, type: 'update'|'delete') {
         const {pathParts} = parseUri(vfsUri);
-        const relPath = '/' + pathParts.join('/');
+        pathParts.at(-1)==='' && pathParts.pop(); // remove the last empty string
+        const relPath = ('/' + pathParts.join('/'));
         const localUri = vscode.Uri.joinPath(this.baseUri, relPath);
         this.applySync('pull', relPath, vfsUri, localUri, type);
     }
