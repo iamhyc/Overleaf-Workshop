@@ -392,39 +392,37 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
                     return labels.map(label => new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
                 }).flat();
             case 1: // group 1: citation
-                let items = await this.getBibCompletionItemsFromBib(vfs);
-                items = items ?? (await this.getBibCompletionItemsFromBbl(vfs)); //fallback option
+                let items = await this.getReferenceCompletionItemsFromBib(vfs);
+                items = items.length!==0 ? items : await this.getReferenceCompletionItemsFromBbl(vfs); //fallback option
                 return items;
             default:
                 return [];
         }
     }
 
-    private async getBibCompletionItemsFromBib(vfs: VirtualFileSystem): Promise<vscode.CompletionItem[]> {
+    private async getReferenceCompletionItemsFromBib(vfs: VirtualFileSystem): Promise<vscode.CompletionItem[]> {
         const bibList:string[] = this.symbolProvider.getBibList() ?? [];
         const bibPaths = bibList.flatMap(
             path => (path.split(',') ?? [])
-        ).map(
-            path => (path.endsWith('.bib') ? path : `${path}.bib`)
         );
 
         const bibRegex = /@(?:(?!STRING\b)[^{])+\{\s*([^},]+)/gm;
         const items = new Array<vscode.CompletionItem>();
         for (const path of bibPaths) {
             try{
-                const content = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(`${path}`)));
+                const rawContent = await vfs.openFile( vfs.pathToUri(path) );
+                const content = new TextDecoder().decode(rawContent);
                 let match: RegExpExecArray | null;
                 while (match = bibRegex.exec(content)) {
-                    items.push(
-                        new vscode.CompletionItem(match[1], vscode.CompletionItemKind.Reference)
-                    );
+                    const item = new vscode.CompletionItem(match[1], vscode.CompletionItemKind.Reference);
+                    items.push(item);
                 }
-            } catch(error){}
+            } catch{}
         };
         return items;
     }
 
-    private async getBibCompletionItemsFromBbl(vfs: VirtualFileSystem): Promise<vscode.CompletionItem[]>{
+    private async getReferenceCompletionItemsFromBbl(vfs: VirtualFileSystem): Promise<vscode.CompletionItem[]>{
         const regex = /\\bibitem\{([^\}]*)\}/g;
         const bibUri = vfs.pathToUri(`${OUTPUT_FOLDER_NAME}/output.bbl`);
         try {

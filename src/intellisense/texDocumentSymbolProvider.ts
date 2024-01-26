@@ -396,8 +396,8 @@ export class DocSymbolProvider extends IntellisenseProvider implements vscode.Do
         }
     }
 
-    public getBibList(){
-        return this.projectCaches.get(this.projectPath)?.getBibFilePaths(this.rootPath);
+    getBibList(): string[] {
+        return this.projectCaches.get(this.projectPath)?.getBibFilePaths(this.rootPath) || [];
     }
 
     private elementsTypeCast(section: TeXElement): vscode.SymbolKind {
@@ -481,17 +481,20 @@ export class ProjectCache {
     }
 
     public getBibFilePaths(rootPath:string): string[] {
-        const fileQueue: FileCache[] = this.fileNodeCache.has(rootPath) ? [this.fileNodeCache.get(rootPath) as FileCache] : [];
+        const fileQueue: FileCache[] = this.fileNodeCache.has(rootPath) ? [this.fileNodeCache.get(rootPath)!] : [];
+
         const bibFilePaths: string[] = [];
         // iteratively traverse file node tree
         while (fileQueue.length > 0) {
-            const fileNode = fileQueue.shift() as FileCache;
+            const fileNode = fileQueue.shift();
+            if (fileNode===undefined) { break; }
+
             if (fileNode.bibFilePaths.length > 0) {
                 bibFilePaths.push(...fileNode.bibFilePaths);
             }
             fileNode.childrenPaths.forEach( child => {
                 if (this.fileNodeCache.has(child)){
-                    fileQueue.push(this.fileNodeCache.get(child) as FileCache);
+                    fileQueue.push( this.fileNodeCache.get(child)! );
                 };
             });
         }
