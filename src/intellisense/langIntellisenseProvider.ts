@@ -3,8 +3,8 @@ import { ROOT_NAME, OUTPUT_FOLDER_NAME } from '../consts';
 import { SnippetItemSchema } from '../api/base';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { EventBus } from '../utils/eventBus';
-import { DocSymbolProvider } from './texDocSymbolProvider';
-import { TexDocFormatter } from './texDocFormatter';
+import { DocSymbolProvider } from './texSymbolProvider';
+import { TexDocFormatter } from './texDocumentFormatProvider';
 
 type PathFileType = 'text' | 'image' | 'bib';
 
@@ -656,7 +656,7 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
                 const items = new Array<vscode.CompletionItem>();
                 [... new Set(labels)].forEach(
                     label => {
-                        items.push(new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference))
+                        items.push(new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
                     }
                 );
                 return items;

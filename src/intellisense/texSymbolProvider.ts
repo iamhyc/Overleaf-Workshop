@@ -3,7 +3,7 @@ import type * as Ast from '@unified-latex/unified-latex-types';
 import * as unifiedLaTeXParse from '@unified-latex/unified-latex-util-parse';
 import { ROOT_NAME } from '../consts';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
-import { FileCache, ProjectCache, TeXElementType, TeXElement } from './texDocSymbolCache';
+import { FileCache, ProjectCache, TeXElementType, TeXElement } from './texSymbolTreeProvider';
 
 // Initialize the parser
 let unifiedParser: { parse: (content: string) => Ast.Root } = unifiedLaTeXParse.getParser({ flags: { autodetectExpl3AndAtLetter: true } });
@@ -329,7 +329,7 @@ async function texToCache(filePath:string, fileContent:string): Promise<FileCach
                 bibFilePaths.push(symbol.label);
                 break;
             case TeXElementType.SubFile:
-                const subFilePath = symbol.label?.endsWith('.tex') ? symbol.label : `${symbol.label}.tex`
+                const subFilePath = symbol.label?.endsWith('.tex') ? symbol.label : `${symbol.label}.tex`;
                 childrenPaths.push(subFilePath);
                 break;
         }
