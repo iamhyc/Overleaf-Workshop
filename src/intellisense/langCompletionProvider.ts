@@ -3,7 +3,7 @@ import { SnippetItemSchema } from '../api/base';
 import { IntellisenseProvider } from './langIntellisenseProvider';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
-import { DocSymbolProvider } from './texSymbolProvider';
+import { DocSymbolProvider } from './texDocumentSymbolProvider';
 
 type SnippetItemMap = {[K:string]: SnippetItemSchema};
 type FilePathCompletionType = 'text' | 'image' | 'bib';

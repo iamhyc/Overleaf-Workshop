@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
 import { RemoteFileSystemProvider } from '../core/remoteFileSystemProvider';
-import { DocSymbolProvider } from './texSymbolProvider';
-import { TexDocFormatter } from './texDocumentFormatProvider';
+import { DocSymbolProvider } from './texDocumentSymbolProvider';
+import { TexDocumentFormatProvider } from './texDocumentFormatProvider';
 import { MisspellingCheckProvider } from './langMisspellingCheckProvider';
 import { CommandCompletionProvider, ConstantCompletionProvider, FilePathCompletionProvider, ReferenceCompletionProvider } from './langCompletionProvider';
 
@@ -32,7 +32,7 @@ export class LangIntellisenseProvider {
             // document symbol provider
             docSymbolProvider,
             // document format provider
-            new TexDocFormatter(vfsm),
+            new TexDocumentFormatProvider(vfsm),
             // completion provider
             new CommandCompletionProvider(vfsm, context.extensionUri),
             new ConstantCompletionProvider(vfsm, context.extensionUri),
