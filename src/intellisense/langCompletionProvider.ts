@@ -392,11 +392,9 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
                     return labels.map(label => new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
                 }).flat();
             case 1: // group 1: citation
-                const labels = [
-                    ... await this.getBibCompletionItemsFromBib(vfs, this.symbolProvider?.getBibList() ?? []),
-                    ... await this.getBibCompletionItemsFromBbl(vfs),
-                ];
-                const items = [...new Set(labels)].map(label =>
+                const bibList = this.symbolProvider.getBibList();
+                const labels = await (bibList? this.getBibCompletionItemsFromBib(vfs, bibList) : this.getBibCompletionItemsFromBbl(vfs));
+                const items = labels.map(label =>
                     new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference)
                 );
                 return items;
