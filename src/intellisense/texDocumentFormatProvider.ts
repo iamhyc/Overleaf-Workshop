@@ -2,7 +2,6 @@
 import * as vscode from 'vscode';
 import * as Prettier from "prettier";
 import { prettierPluginLatex } from "@unified-latex/unified-latex-prettier";
-import { ROOT_NAME } from '../consts';
 import { IntellisenseProvider } from './langIntellisenseProvider';
 
 
@@ -54,7 +53,7 @@ export class TexDocFormatter extends IntellisenseProvider implements vscode.Docu
 
     get triggers(){
         const latexSelector = ['latex', 'latex-expl3', 'pweave', 'jlweave', 'rsweave'].map( (id) => {
-            return {scheme: ROOT_NAME, language: id };
+            return {...this.selector, language: id };
          });
         return[
             vscode.languages.registerDocumentFormattingEditProvider(latexSelector, this),

@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
-
-import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
+import { RemoteFileSystemProvider } from '../core/remoteFileSystemProvider';
 import { DocSymbolProvider } from './texSymbolProvider';
 import { TexDocFormatter } from './texDocumentFormatProvider';
 import { MisspellingCheckProvider } from './langMisspellingCheckProvider';
@@ -22,8 +21,6 @@ export abstract class IntellisenseProvider {
         return new RegExp(`(?:${prefix})` + postfix);
     }
 }
-
-
 
 export class LangIntellisenseProvider {
     private status: vscode.StatusBarItem;

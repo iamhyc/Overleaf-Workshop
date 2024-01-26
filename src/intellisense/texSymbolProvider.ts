@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import type * as Ast from '@unified-latex/unified-latex-types';
 import * as unifiedLaTeXParse from '@unified-latex/unified-latex-util-parse';
-import { ROOT_NAME } from '../consts';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { FileCache, ProjectCache, TeXElementType, TeXElement } from './texSymbolTreeProvider';
 import { IntellisenseProvider } from './langIntellisenseProvider';
@@ -440,7 +439,7 @@ export class DocSymbolProvider extends IntellisenseProvider implements vscode.Do
 
     get triggers(){
         const latexSelector = ['latex', 'latex-expl3', 'pweave', 'jlweave', 'rsweave'].map((id) => {
-            return {scheme: ROOT_NAME, language: id };
+            return {...this.selector, language: id };
         });
         return [
             vscode.languages.registerDocumentSymbolProvider(latexSelector, this),
