@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ROOT_NAME } from '../consts';
 import { RemoteFileSystemProvider } from '../core/remoteFileSystemProvider';
-import { DocSymbolProvider } from './texDocumentSymbolProvider';
+import { TexDocumentSymbolProvider } from './texDocumentSymbolProvider';
 import { TexDocumentFormatProvider } from './texDocumentFormatProvider';
 import { MisspellingCheckProvider } from './langMisspellingCheckProvider';
 import { CommandCompletionProvider, ConstantCompletionProvider, FilePathCompletionProvider, ReferenceCompletionProvider } from './langCompletionProvider';
@@ -27,17 +27,17 @@ export class LangIntellisenseProvider {
     private providers: IntellisenseProvider[];
 
     constructor(context: vscode.ExtensionContext, private readonly vfsm: RemoteFileSystemProvider) {
-        const docSymbolProvider = new DocSymbolProvider(vfsm);
+        const texSymbolProvider = new TexDocumentSymbolProvider(vfsm);
         this.providers = [
             // document symbol provider
-            docSymbolProvider,
+            texSymbolProvider,
             // document format provider
             new TexDocumentFormatProvider(vfsm),
             // completion provider
             new CommandCompletionProvider(vfsm, context.extensionUri),
             new ConstantCompletionProvider(vfsm, context.extensionUri),
             new FilePathCompletionProvider(vfsm),
-            new ReferenceCompletionProvider(vfsm, docSymbolProvider),
+            new ReferenceCompletionProvider(vfsm, texSymbolProvider),
             // misspelling check provider
             new MisspellingCheckProvider(vfsm),
         ];

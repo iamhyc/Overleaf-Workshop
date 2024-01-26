@@ -346,7 +346,7 @@ async function texToCache(filePath:string, fileContent:string): Promise<FileCach
     return fileCache;
 }
 
-export class DocSymbolProvider extends IntellisenseProvider implements vscode.DocumentSymbolProvider {
+export class TexDocumentSymbolProvider extends IntellisenseProvider implements vscode.DocumentSymbolProvider {
     protected readonly contextPrefix = [];
     private projectCaches = new Map<string, ProjectCache>();
     private rootPaths = new Set<string>();
@@ -396,8 +396,14 @@ export class DocSymbolProvider extends IntellisenseProvider implements vscode.Do
         }
     }
 
-    getBibList(): string[] {
-        return this.projectCaches.get(this.projectPath)?.getBibFilePaths(this.rootPath) || [];
+    get currentBibPathArray(): string[] {
+        const bibFileNames = this.projectCaches.get(this.projectPath)?.getBibFileNameArray(this.rootPath) || [];
+        const bibFilePathArray = bibFileNames.flatMap(
+            name => (name?.split(',') ?? [])
+        ).map(
+            name => (name?.endsWith('.bib') ? name : `${name}.bib`)
+        );
+        return bibFilePathArray;
     }
 
     private elementsTypeCast(section: TeXElement): vscode.SymbolKind {
@@ -480,7 +486,7 @@ export class ProjectCache {
         this.fileNodeCache.set(childNode.filePath, childNode);
     }
 
-    public getBibFilePaths(rootPath:string): string[] {
+    public getBibFileNameArray(rootPath:string): string[] {
         const fileQueue: FileCache[] = this.fileNodeCache.has(rootPath) ? [this.fileNodeCache.get(rootPath)!] : [];
 
         const bibFilePaths: string[] = [];

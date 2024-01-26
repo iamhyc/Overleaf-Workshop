@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
+import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { SnippetItemSchema } from '../api/base';
 import { IntellisenseProvider } from './langIntellisenseProvider';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
-import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
-import { DocSymbolProvider } from './texDocumentSymbolProvider';
+import { TexDocumentSymbolProvider } from './texDocumentSymbolProvider';
 
 type SnippetItemMap = {[K:string]: SnippetItemSchema};
 type FilePathCompletionType = 'text' | 'image' | 'bib';
@@ -370,7 +370,7 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
         ['cite'],
     ];
 
-    constructor(vfsm:RemoteFileSystemProvider, private readonly symbolProvider:DocSymbolProvider){
+    constructor(vfsm: RemoteFileSystemProvider, private readonly texSymbolProvider: TexDocumentSymbolProvider){
         super(vfsm);
     }
 
@@ -401,14 +401,9 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
     }
 
     private async getReferenceCompletionItemsFromBib(vfs: VirtualFileSystem): Promise<vscode.CompletionItem[]> {
-        const bibList:string[] = this.symbolProvider.getBibList() ?? [];
-        const bibPaths = bibList.flatMap(
-            path => (path.split(',') ?? [])
-        );
-
         const bibRegex = /@(?:(?!STRING\b)[^{])+\{\s*([^},]+)/gm;
         const items = new Array<vscode.CompletionItem>();
-        for (const path of bibPaths) {
+        for (const path of this.texSymbolProvider.currentBibPathArray) {
             try{
                 const rawContent = await vfs.openFile( vfs.pathToUri(path) );
                 const content = new TextDecoder().decode(rawContent);
