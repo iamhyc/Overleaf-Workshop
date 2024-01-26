@@ -628,6 +628,10 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
         ['cite'],
     ];
 
+    constructor(vfsm:RemoteFileSystemProvider, private readonly symbolProvider:DocSymbolProvider){
+        super(vfsm);
+    }
+
     private parseMatch(match: RegExpMatchArray) {
         const keywords = match.slice(1, -1);
         const index = keywords.findIndex(x => x!==undefined);
@@ -646,19 +650,53 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
                     return labels.map(label => new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
                 }).flat();
             case 1:
-                const bibUri = vfs.pathToUri(`${OUTPUT_FOLDER_NAME}/output.bbl`);
-                const content = new TextDecoder().decode( await vfs.openFile(bibUri) );
-                const regex = /\\bibitem\{([^\}]*)\}/g;
+                const labels = new Array<string>;
+                labels.push(... await this.getBibCompletionItemsFromBib(vfs, this.symbolProvider?.getBibList() ?? []));
+                labels.push(... await this.getBibCompletionItemsFromBbl(vfs));
                 const items = new Array<vscode.CompletionItem>();
-                let match: RegExpExecArray | null;
-                while (match = regex.exec(content)) {
-                    const item = new vscode.CompletionItem(match[1], vscode.CompletionItemKind.Reference);
-                    items.push(item);
-                }
+                [... new Set(labels)].forEach(
+                    label => {
+                        items.push(new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference))
+                    }
+                );
                 return items;
             default:
                 return [];
         }
+    }
+
+    private async getBibCompletionItemsFromBib(vfs: VirtualFileSystem, paths: string[]): Promise<string[]> {
+        const bibRegex = /@(?:(?!STRING\b)[^{])+\{\s*([^},]+)/gm;
+        const items = new Array<string>;
+        const bibPaths = paths.flatMap(
+            path => (path?.split(',') ?? [])
+        ).map(
+            path => (path?.endsWith('.bib') ? path : `${path}.bib`)
+        );
+        for (let path of bibPaths) {
+            try{
+                const content = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(`${path}`)));
+                let match: RegExpExecArray | null;
+                while (match = bibRegex.exec(content)) {
+                items.push(match[1]);
+                }
+            } catch(error){} 
+        };
+        return items;
+    }
+
+    private async getBibCompletionItemsFromBbl(vfs: VirtualFileSystem): Promise<string[]>{
+        const items = new Array<string>;
+        const bibUri = vfs.pathToUri(`${OUTPUT_FOLDER_NAME}/output.bbl`);
+        try{
+            const content = new TextDecoder().decode( await vfs.openFile(bibUri) );
+            const regex = /\\bibitem\{([^\}]*)\}/g;
+            let match: RegExpExecArray | null;
+            while (match = regex.exec(content)) {
+                items.push(match[1]);
+            }
+        }catch(error){} 
+        return items;
     }
 
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList<vscode.CompletionItem>> {
@@ -686,7 +724,7 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
     private filePathCompletion: FilePathCompletionProvider;
     private misspellingCheck: MisspellingCheckProvider;
     private referenceCompletion: ReferenceCompletionProvider;
-    private docSymbolProvider: DocSymbolProvider = new DocSymbolProvider();
+    private docSymbolProvider: DocSymbolProvider ;
     private texDocFormatter:TexDocFormatter = new TexDocFormatter();
 
     constructor(context: vscode.ExtensionContext, vfsm: RemoteFileSystemProvider) {
@@ -695,7 +733,8 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
         this.constantCompletion = new ConstantCompletionProvider(vfsm, context.extensionUri);
         this.filePathCompletion = new FilePathCompletionProvider(vfsm);
         this.misspellingCheck = new MisspellingCheckProvider(vfsm);
-        this.referenceCompletion = new ReferenceCompletionProvider(vfsm);
+        this.docSymbolProvider = new DocSymbolProvider(vfsm);
+        this.referenceCompletion = new ReferenceCompletionProvider(vfsm, this.docSymbolProvider);
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -2);
         this.activate();
     }
