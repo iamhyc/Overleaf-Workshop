@@ -16,7 +16,7 @@ function* sRange(start:number, end:number) {
     }
 }
 
-abstract class IntellisenseProvider {
+export abstract class IntellisenseProvider {
     protected selector = {scheme:ROOT_NAME};
     protected abstract readonly contextPrefix: string[][];
 
@@ -221,6 +221,9 @@ class MisspellingCheckProvider extends IntellisenseProvider implements vscode.Co
             // register learn spelling command
             vscode.commands.registerCommand('langIntellisense.learnSpelling', (uri: vscode.Uri, word: string) => {
                 this.learnSpelling(uri, word);
+            }),
+            vscode.commands.registerCommand('langIntellisense.settings', () => {
+                this.spellCheckSettings();
             }),
             // reset diagnostics when spell check languages changed
             EventBus.on('spellCheckLanguageUpdateEvent', async () => {
@@ -716,25 +719,25 @@ class ReferenceCompletionProvider extends IntellisenseProvider implements vscode
     }
 }
 
-export class LangIntellisenseProvider extends IntellisenseProvider {
-    protected readonly contextPrefix = [];
+export class LangIntellisenseProvider {
     private status: vscode.StatusBarItem;
-    private commandCompletion: CommandCompletionProvider;
-    private constantCompletion: ConstantCompletionProvider;
-    private filePathCompletion: FilePathCompletionProvider;
-    private misspellingCheck: MisspellingCheckProvider;
-    private referenceCompletion: ReferenceCompletionProvider;
-    private docSymbolProvider: DocSymbolProvider ;
-    private texDocFormatter:TexDocFormatter = new TexDocFormatter();
+    private providers: IntellisenseProvider[];
 
-    constructor(context: vscode.ExtensionContext, vfsm: RemoteFileSystemProvider) {
-        super(vfsm);
-        this.commandCompletion = new CommandCompletionProvider(vfsm, context.extensionUri);
-        this.constantCompletion = new ConstantCompletionProvider(vfsm, context.extensionUri);
-        this.filePathCompletion = new FilePathCompletionProvider(vfsm);
-        this.misspellingCheck = new MisspellingCheckProvider(vfsm);
+    private docSymbolProvider: DocSymbolProvider ;
+
+    constructor(context: vscode.ExtensionContext, private readonly vfsm: RemoteFileSystemProvider) {
         this.docSymbolProvider = new DocSymbolProvider(vfsm);
-        this.referenceCompletion = new ReferenceCompletionProvider(vfsm, this.docSymbolProvider);
+        this.providers = [
+            // completion provider
+            new CommandCompletionProvider(vfsm, context.extensionUri),
+            new ConstantCompletionProvider(vfsm, context.extensionUri),
+            new FilePathCompletionProvider(vfsm),
+            new ReferenceCompletionProvider(vfsm, this.docSymbolProvider),
+            // misspelling check provider
+            new MisspellingCheckProvider(vfsm),
+            // document format provider
+            new TexDocFormatter(vfsm),
+        ];
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -2);
         this.activate();
     }
@@ -761,19 +764,10 @@ export class LangIntellisenseProvider extends IntellisenseProvider {
 
     get triggers() {
         return [
-            // register commands
-            vscode.commands.registerCommand('langIntellisense.settings', () => {
-                this.misspellingCheck.spellCheckSettings();
-            }),
-            
+            // register provider triggers
+            ...this.providers.map(x => x.triggers).flat(),
             // register other triggers
-            ...this.commandCompletion.triggers,
-            ...this.constantCompletion.triggers,
-            ...this.filePathCompletion.triggers,
-            ...this.misspellingCheck.triggers,
-            ...this.referenceCompletion.triggers,
             ...this.docSymbolProvider.triggers,
-            ...this.texDocFormatter.triggers,
         ];
     }
 }

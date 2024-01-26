@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import * as Prettier from "prettier";
 import { prettierPluginLatex } from "@unified-latex/unified-latex-prettier";
 import { ROOT_NAME } from '../consts';
+import { IntellisenseProvider } from './langIntellisenseProvider';
 
 
 /*
@@ -22,7 +23,8 @@ async function format(source = "", options: vscode.FormattingOptions ) {
     });
 }
 
-export class TexDocFormatter implements vscode.DocumentFormattingEditProvider {
+export class TexDocFormatter extends IntellisenseProvider implements vscode.DocumentFormattingEditProvider {
+    protected readonly contextPrefix = [];
     provideDocumentFormattingEdits(document: vscode.TextDocument, options: vscode.FormattingOptions, token: vscode.CancellationToken): vscode.ProviderResult<vscode.TextEdit[]> {
         // Get the entire document text
         const text = document.getText();
