@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
-import { IntellisenseProvider } from './langIntellisenseProvider';
+import { IntellisenseProvider } from '.';
 import { TexFileStruct, TeXElement, TeXElementType, parseTexFileStruct } from './texDocumentParseUtility';
 
 function elementsTypeCast(section: TeXElement): vscode.SymbolKind {

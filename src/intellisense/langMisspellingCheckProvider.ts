@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { IntellisenseProvider } from './langIntellisenseProvider';
+import { IntellisenseProvider } from '.';
 import { ROOT_NAME } from '../consts';
 import { VirtualFileSystem } from '../core/remoteFileSystemProvider';
 import { EventBus } from '../utils/eventBus';

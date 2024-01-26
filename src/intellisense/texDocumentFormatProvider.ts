@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import * as Prettier from "prettier";
 import { prettierPluginLatex } from "@unified-latex/unified-latex-prettier";
-import { IntellisenseProvider } from './langIntellisenseProvider';
+import { IntellisenseProvider } from '.';
 
 // https://github.com/siefkenj/latex-parser-playground/blob/master/src/async-worker/parsing-worker.ts#L35-L43
 async function prettierFormat(text: string, options: vscode.FormattingOptions ) {
