@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import type * as Ast from '@unified-latex/unified-latex-types';
 import * as unifiedLaTeXParse from '@unified-latex/unified-latex-util-parse';
 import { ROOT_NAME } from '../consts';
+import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
+import { FileCache, ProjectCache, TeXElementType, TeXElement } from './texDocSymbolCache';
 
 // Initialize the parser
 let unifiedParser: { parse: (content: string) => Ast.Root } = unifiedLaTeXParse.getParser({ flags: { autodetectExpl3AndAtLetter: true } });
@@ -11,20 +13,6 @@ const defaultStructure = ["book", "part", "chapter", "section", "subsection", "s
 
 // Match label command
 const defaultCMD = ["label"];
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-enum TeXElementType { Environment, Command, Section, SectionAst, SubFile, BibItem, BibField };
-
-type TeXElement = {
-    readonly type: TeXElementType,
-    readonly name: string,
-    label: string,
-    readonly lineFr: number,
-    lineTo: number,
-    children: TeXElement[],
-    parent?: TeXElement,
-    appendix?: boolean
-};
 
 /* 
     * Convert a macro to string
@@ -97,25 +85,21 @@ function argContentToStr(argContent: Ast.Node[], preserveCurlyBrace: boolean = f
     * @return: the tree-like TeXElement[] structure
 */
 // reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/src/outline/structurelib/latex.ts#L30
-export async function genTexElements(document: vscode.TextDocument): Promise<TeXElement[]> {
-    const filePath = document.fileName;
-    if (filePath === undefined) {
-        return [];
-    }
-    const rootElement = { children: [] };
-    let ast = await unifiedParser.parse(document.getText());
+export async function genTexElements(documentText: string): Promise<TeXElement[]> {
+    const resElement = { children: [] };
+    let ast = unifiedParser.parse(documentText);
     for (const node of ast.content) {
         if (['string', 'parbreak', 'whitespace'].includes(node.type)) {
             continue;
         }
         try {
-            await parseNode(node, rootElement);
+            await parseNode(node, resElement);
         }
         catch (e) {
             console.log(e);
         }
     }
-    let struct = rootElement.children as TeXElement[];
+    let struct = resElement.children as TeXElement[];
     struct = hierarchyStructFormat(struct);
     return struct;
 }
@@ -186,7 +170,9 @@ async function parseNode(
             } else if (defaultCMD.includes(node.content)) {
                 caseType = 'label';
             } else if (node.content === 'input') {
-                caseType = 'subfile';
+                caseType = 'subFile';
+            } else if (node.content === 'bibliography') {
+                caseType = 'bibFile';
             }
             let argStr = '';
             switch (caseType) {
@@ -213,10 +199,19 @@ async function parseNode(
                         ...attributes
                     };
                     break;
-                case 'subfile':
+                case 'subFile':
                     argStr = argContentToStr(node.args?.[0]?.content || []);
                     element = {
                         type: TeXElementType.SubFile,
+                        name: node.content,
+                        label: argStr ? `${argStr}` : '',
+                        ...attributes
+                    };
+                    break;
+                case 'bibFile':
+                    argStr = argContentToStr(node.args?.[0]?.content || []);
+                    element = {
+                        type: TeXElementType.BibFile,
                         name: node.content,
                         label: argStr ? `${argStr}` : '',
                         ...attributes
@@ -284,7 +279,6 @@ async function parseNode(
                     break;
             }
             break;
-
         case 'mathenv':
             switch (node.env) {
                 case 'string':
@@ -314,10 +308,95 @@ async function parseNode(
     }
 }
 
+/*
+    * Convert the file into the cache by:
+    * 1. Construct child, named as Uri.path, from TeXElementType.SubFile
+    * 2. Construct bibFile from TeXElementType.BibFile
+    * 
+    * @param filePath: file path of constructed fileSymbolNode
+    * @param fileContent: file content 
+*/
+async function texToCache(filePath:string, fileContent:string): Promise<FileCache>{ 
+    const childrenPaths = [];
+    const bibFilePaths = [];
+    const texSymbols = await genTexElements(fileContent);
+    // Traverse the texElements and build fileSymbol
+    const queue: TeXElement[] = [...texSymbols];
+    while (queue.length > 0) {
+        const symbol = queue.shift() as TeXElement;
+        switch (symbol.type) {
+            case TeXElementType.BibFile:
+                bibFilePaths.push(symbol.label);
+                break;
+            case TeXElementType.SubFile:
+                const subFilePath = symbol.label?.endsWith('.tex') ? symbol.label : `${symbol.label}.tex`
+                childrenPaths.push(subFilePath);
+                break;
+        }
+        symbol.children.forEach( child => {
+            queue.push(child);
+        });
+    }
+    const fileCache = {
+        filePath : filePath,
+        fileContent: fileContent,
+        texElements: texSymbols,
+        childrenPaths: childrenPaths,
+        bibFilePaths: bibFilePaths,
+    };
+    return fileCache;
+}
+
 export class DocSymbolProvider implements vscode.DocumentSymbolProvider {
+    private projectCaches = new Map<string, ProjectCache>();
+    private rootPaths = new Set<string>();
+    private projectPath = '';
+    private rootPath = '';
+    
+    constructor(protected readonly vfsm: RemoteFileSystemProvider) {
+    }
+
     async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
-        const sections = await genTexElements(document);
-        return this.elementsToSymbols(sections);
+        const vfs = await this.vfsm.prefetch(document.uri);
+        const rootPath = vfs.getRootDocName();
+        const projectName = parseUri(document.uri).projectName;
+        this.projectPath = projectName;
+        this.rootPath = rootPath;
+        if (rootPath !== undefined ) {
+            if (!this.projectCaches.has(projectName)){
+                this.projectCaches.set(projectName, new ProjectCache());
+            }
+            if (!this.rootPaths.has(rootPath)){
+                this.rootPaths.add(rootPath);
+                await this.init(rootPath, vfs);
+            }
+        }
+        const documentText = document.getText();
+        this.projectCaches.get(this.projectPath)?.updateCache(await texToCache(document.fileName, documentText));
+        const symbols = this.projectCaches.get(this.projectPath)?.getFileCache(document.fileName)?.texElements as TeXElement[];
+        return this.elementsToSymbols(symbols);
+    }
+
+    async init(rootPath: string, vfs: VirtualFileSystem): Promise<void> {
+        const rootDoc = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(rootPath)));
+        const projectCache = this.projectCaches.get(this.projectPath) as ProjectCache;
+        projectCache.updateCache(await texToCache(rootPath, rootDoc));
+        const fileQueue: FileCache[] = [projectCache.getFileCache(rootPath) as FileCache];
+        // iteratively traverse file node tree
+        while (fileQueue.length > 0) {
+            const fileNode = fileQueue.shift() as FileCache;
+            const subFiles = fileNode.childrenPaths;
+            for (const subFile of subFiles) {
+                const subFileUri = vfs.pathToUri(subFile);
+                const subFileDoc = new TextDecoder().decode(await vfs.openFile(subFileUri));
+                projectCache.updateCache(await texToCache(subFile, subFileDoc));
+                fileQueue.push(projectCache.getFileCache(subFile) as FileCache);
+            };
+        }
+    }
+
+    public getBibList(){
+        return this.projectCaches.get(this.projectPath)?.getBibFilePaths(this.rootPath);
     }
 
     private elementsTypeCast(section: TeXElement): vscode.SymbolKind {
