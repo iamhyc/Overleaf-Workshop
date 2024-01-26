@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2024-01-26
+
+### Changed
+- fix(ci): remove task trigger on version tag
+  - Commit: 703099f856117ffadec6ce84fa9905a6b84c7828
+- fix(scm): Local Replica Unexpected Behavior (#89)
+  - Commit: eedf8272012fef27381094608244dd0239d4e894
+- chore: only use warning message for input required
+  - Commit: a6f7db128e85cbe1c98873647ec196de8b0f9ecb
+
 ## [0.8.1] - 2024-01-17
 ### Added
 - ci: auto publish on tag update
