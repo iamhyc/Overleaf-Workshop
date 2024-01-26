@@ -370,10 +370,11 @@ export class VirtualFileSystem extends vscode.Disposable {
             onFileCreated: (parentFolderId:string, type:FileType, entity:FileEntity) => {
                 const res = this._resolveById(parentFolderId);
                 if (res) {
-                    const {fileEntity} = res;
+                    const {fileEntity,path} = res;
+                    const entityPath = path + entity.name;
                     this.insertEntity(fileEntity as FolderEntity, type, entity);
                     this.notify([
-                        {type: vscode.FileChangeType.Created, uri: this.pathToUri(res.path)}
+                        {type: vscode.FileChangeType.Created, uri: this.pathToUri(entityPath)}
                     ]);
                 }
             },
@@ -419,7 +420,7 @@ export class VirtualFileSystem extends vscode.Disposable {
                 const doc = res.fileEntity as DocumentEntity;
                 if (update.v===doc.version) {
                     doc.version += 1;
-                    if (update.op && doc.remoteCache) {
+                    if (update.op && doc.remoteCache!==undefined) {
                         let content = doc.remoteCache;
                         update.op.forEach((op) => {
                             if (op.i) {
@@ -512,7 +513,7 @@ export class VirtualFileSystem extends vscode.Disposable {
 
         if (fileType==='doc') {
             const doc = fileEntity as DocumentEntity;
-            if (doc.remoteCache) {
+            if (doc.remoteCache!==undefined) {
                 const content = doc.remoteCache;
                 EventBus.fire('fileWillOpenEvent', {uri});
                 return new TextEncoder().encode(content);
@@ -733,7 +734,7 @@ export class VirtualFileSystem extends vscode.Disposable {
         if (fileType && fileType==='doc' && fileEntity) {
             const doc = fileEntity as DocumentEntity;
             const _content = new TextDecoder().decode(content);
-            if (doc.version===undefined || doc.localCache===undefined || doc.remoteCache === undefined) {
+            if (doc.version===undefined || doc.localCache===undefined || doc.remoteCache===undefined) {
                 return;
             }
             const dmp = new DiffMatchPatch();
