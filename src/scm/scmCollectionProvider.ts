@@ -230,7 +230,7 @@ export class SCMCollectionProvider {
                     vscode.window.showWarningMessage(`"${(scmItem.scm.constructor as any).label}" ${persist.enabled?'enabled':'disabled'}: ${baseUri}.`);
                     break;
                 case 'Remove':
-                    vscode.window.showErrorMessage(`${vscode.l10n.t('Remove')} ${baseUri}?`, 'Yes', 'No')
+                    vscode.window.showWarningMessage(`${vscode.l10n.t('Remove')} ${baseUri}?`, 'Yes', 'No')
                     .then((select) => {
                         if (select==='Yes') {
                             this.removeSCM(scmItem);
