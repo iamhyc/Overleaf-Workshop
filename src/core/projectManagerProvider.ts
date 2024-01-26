@@ -188,7 +188,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     removeServer(name:string) {
-        vscode.window.showErrorMessage(vscode.l10n.t('Remove server "{name}" ?', {name}), "Yes", "No")
+        vscode.window.showWarningMessage(vscode.l10n.t('Remove server "{name}" ?', {name}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 if (GlobalStateManager.removeServer(this.context, name)) {
@@ -256,7 +256,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     logoutServer(server: ServerItem) {
-        vscode.window.showErrorMessage(vscode.l10n.t('Logout server "{name}" ?', {name:server.name}), "Yes", "No")
+        vscode.window.showWarningMessage(vscode.l10n.t('Logout server "{name}" ?', {name:server.name}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.logoutServer(this.context, server.api, server.name)
@@ -350,7 +350,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     deleteProject(project: ProjectItem) {
-        vscode.window.showErrorMessage(vscode.l10n.t('Permanently delete project "{label}" ?', {label:project.label}), "Yes", "No")
+        vscode.window.showWarningMessage(vscode.l10n.t('Permanently delete project "{label}" ?', {label:project.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, project.parent.name)
@@ -462,7 +462,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
     }
 
     deleteTag(tag: TagItem) {
-        vscode.window.showErrorMessage(vscode.l10n.t('Delete tag "{label}" ?', {label:tag.label}), "Yes", "No")
+        vscode.window.showWarningMessage(vscode.l10n.t('Delete tag "{label}" ?', {label:tag.label}), "Yes", "No")
         .then((answer) => {
             if (answer === "Yes") {
                 GlobalStateManager.authenticate(this.context, tag.serverName)
