@@ -85,15 +85,12 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
 
     private projectRecordMap = new Map<string, ProjectStructRecord>();
     private rootPaths = new Set<string>();
-    
-    constructor(protected readonly vfsm: RemoteFileSystemProvider) {
-        super(vfsm);
-    }
 
     async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
         const vfs = await this.vfsm.prefetch(document.uri);
         const rootPath = vfs.getRootDocName();
         const {projectName} = parseUri(document.uri);
+        // update project record map
         if (rootPath) {
             if (!this.projectRecordMap.has(projectName)) {
                 this.projectRecordMap.set(projectName, new ProjectStructRecord(vfs));
@@ -103,10 +100,12 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
                 await this.init(projectName, rootPath, vfs);
             }
         }
-        const documentText = document.getText();
-        this.projectRecordMap.get(projectName)?.updateRecord(document.fileName, await parseTexFileStruct(documentText));
-        const symbols = this.projectRecordMap.get(projectName)?.getTexFileStruct(document.fileName)?.texElements as TeXElement[];
-        return elementsToSymbols(symbols);
+        // update file record
+        const filePath = document.fileName;
+        const fileStruct = await parseTexFileStruct( document.getText() );
+        this.projectRecordMap.get(projectName)!.updateRecord(filePath, fileStruct);
+        // return symbols
+        return elementsToSymbols( fileStruct.texElements );
     }
 
     async init(projectName: string, rootPath: string, vfs: VirtualFileSystem): Promise<void> {
