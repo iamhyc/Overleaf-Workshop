@@ -23,6 +23,23 @@ function elementsTypeCast(section: TeXElement): vscode.SymbolKind {
     }
 }
 
+function elementsToSymbols(sections: TeXElement[]): vscode.DocumentSymbol[] {
+    const symbols: vscode.DocumentSymbol[] = [];
+    sections.forEach(section => {
+        const range = new vscode.Range(section.lineFr, 0, section.lineTo, 65535);
+        const symbol = new vscode.DocumentSymbol(
+            section.label || 'empty',
+            '',
+            elementsTypeCast(section),
+            range, range);
+        symbols.push(symbol);
+        if (section.children.length > 0) {
+            symbol.children = elementsToSymbols(section.children);
+        }
+    });
+    return symbols;
+}
+
 class ProjectStructRecord {
     private fileStructRecord: Map<string, TexFileStruct> = new Map<string, TexFileStruct>();
 
@@ -85,7 +102,7 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
         const documentText = document.getText();
         this.projectRecords.get(this.projectPath)?.updateRecord(document.fileName, await parseTexFileStruct(documentText));
         const symbols = this.projectRecords.get(this.projectPath)?.getTexFileStruct(document.fileName)?.texElements as TeXElement[];
-        return this.elementsToSymbols(symbols);
+        return elementsToSymbols(symbols);
     }
 
     async init(rootPath: string, vfs: VirtualFileSystem): Promise<void> {
@@ -114,22 +131,6 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
             name => (name?.endsWith('.bib') ? name : `${name}.bib`)
         );
         return bibFilePathArray;
-    }
-
-    private elementsToSymbols(sections: TeXElement[]): vscode.DocumentSymbol[] {
-        const symbols: vscode.DocumentSymbol[] = [];
-        sections.forEach(section => {
-            const range = new vscode.Range(section.lineFr, 0, section.lineTo, 65535);
-            const symbol = new vscode.DocumentSymbol(
-                section.label || 'empty', '',
-                elementsTypeCast(section),
-                range, range);
-            symbols.push(symbol);
-            if (section.children.length > 0) {
-                symbol.children = this.elementsToSymbols(section.children);
-            }
-        });
-        return symbols;
     }
 
     get triggers(){
