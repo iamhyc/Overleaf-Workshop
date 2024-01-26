@@ -34,10 +34,10 @@ export class CommandCompletionProvider extends IntellisenseProvider implements v
         return JSON.parse(data);
     }
 
-    private async loadMetadata(uri: vscode.Uri) {
+    private async loadMetadata(uri: vscode.Uri): Promise<SnippetItemMap> {
         const vfs = await this.vfsm.prefetch(uri);
         const res = await vfs.metadata();
-        if (res===undefined) { return; };
+        if (res===undefined) { return {}; };
 
         let metadata:SnippetItemMap = {};
         Object.values(res).forEach((data) => {
@@ -52,7 +52,7 @@ export class CommandCompletionProvider extends IntellisenseProvider implements v
         return metadata;
     }
 
-    private async loadCommands(uri: vscode.Uri) {
+    private async loadCommands(uri: vscode.Uri): Promise<SnippetItemMap> {
         const regex = /\\(?:newcommand|renewcommand)\{\\(\w+)\}(\[(\d)\])?(\[(\d)\])?/g;
         const vfs = await this.vfsm.prefetch(uri);
         const content = new TextDecoder().decode( await vfs.openFile(uri) );
@@ -76,14 +76,13 @@ export class CommandCompletionProvider extends IntellisenseProvider implements v
         return commands;
     }
 
-    private async reloadCommands(uri: vscode.Uri) {
+    private async reloadCommands(uri: vscode.Uri): Promise<Map<string, SnippetItemMap>> {
         const vfs = await this.vfsm.prefetch(uri);
         const rootFiles = await vfs.list(vfs.pathToUri('/'));
 
         let commands: Map<string, SnippetItemMap> = new Map();
         for (const [name, type] of rootFiles) {
             if (type===vscode.FileType.File && name.endsWith('.tex')) {
-                const _uri = vfs.pathToUri(name);
                 const _commands = await this.loadCommands(vfs.pathToUri(name));
                 commands.set(name, _commands);
             }
@@ -386,21 +385,19 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
     private async getCompletionItems(uri:vscode.Uri, idx: number, partial:string): Promise<vscode.CompletionItem[]> {
         const vfs = await this.vfsm.prefetch(uri);
         switch (idx) {
-            case 0:
+            case 0: // group 0: reference
                 const res = await vfs.metadata();
                 if (res===undefined) { return []; };
                 return Object.values(res).map(({labels}) => {
                     return labels.map(label => new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
                 }).flat();
-            case 1:
-                const labels = new Array<string>;
-                labels.push(... await this.getBibCompletionItemsFromBib(vfs, this.symbolProvider?.getBibList() ?? []));
-                labels.push(... await this.getBibCompletionItemsFromBbl(vfs));
-                const items = new Array<vscode.CompletionItem>();
-                [... new Set(labels)].forEach(
-                    label => {
-                        items.push(new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
-                    }
+            case 1: // group 1: citation
+                const labels = [
+                    ... await this.getBibCompletionItemsFromBib(vfs, this.symbolProvider?.getBibList() ?? []),
+                    ... await this.getBibCompletionItemsFromBbl(vfs),
+                ];
+                const items = [...new Set(labels)].map(label =>
+                    new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference)
                 );
                 return items;
             default:

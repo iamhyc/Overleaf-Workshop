@@ -16,6 +16,7 @@ async function prettierFormat(text: string, options: vscode.FormattingOptions ) 
 
 export class TexDocumentFormatProvider extends IntellisenseProvider implements vscode.DocumentFormattingEditProvider {
     protected readonly contextPrefix = [];
+
     provideDocumentFormattingEdits(document: vscode.TextDocument, options: vscode.FormattingOptions, token: vscode.CancellationToken): vscode.ProviderResult<vscode.TextEdit[]> {
         const text = document.getText();
         return prettierFormat(text, options).then(formattedText => {
