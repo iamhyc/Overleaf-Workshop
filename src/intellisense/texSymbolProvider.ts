@@ -4,6 +4,7 @@ import * as unifiedLaTeXParse from '@unified-latex/unified-latex-util-parse';
 import { ROOT_NAME } from '../consts';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { FileCache, ProjectCache, TeXElementType, TeXElement } from './texSymbolTreeProvider';
+import { IntellisenseProvider } from './langIntellisenseProvider';
 
 // Initialize the parser
 let unifiedParser: { parse: (content: string) => Ast.Root } = unifiedLaTeXParse.getParser({ flags: { autodetectExpl3AndAtLetter: true } });
@@ -347,13 +348,15 @@ async function texToCache(filePath:string, fileContent:string): Promise<FileCach
     return fileCache;
 }
 
-export class DocSymbolProvider implements vscode.DocumentSymbolProvider {
+export class DocSymbolProvider extends IntellisenseProvider implements vscode.DocumentSymbolProvider {
+    protected readonly contextPrefix = [];
     private projectCaches = new Map<string, ProjectCache>();
     private rootPaths = new Set<string>();
     private projectPath = '';
     private rootPath = '';
     
     constructor(protected readonly vfsm: RemoteFileSystemProvider) {
+        super(vfsm);
     }
 
     async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {

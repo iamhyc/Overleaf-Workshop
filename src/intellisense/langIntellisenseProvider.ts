@@ -723,20 +723,20 @@ export class LangIntellisenseProvider {
     private status: vscode.StatusBarItem;
     private providers: IntellisenseProvider[];
 
-    private docSymbolProvider: DocSymbolProvider ;
-
     constructor(context: vscode.ExtensionContext, private readonly vfsm: RemoteFileSystemProvider) {
-        this.docSymbolProvider = new DocSymbolProvider(vfsm);
+        const docSymbolProvider = new DocSymbolProvider(vfsm);
         this.providers = [
+            // document symbol provider
+            docSymbolProvider,
+            // document format provider
+            new TexDocFormatter(vfsm),
             // completion provider
             new CommandCompletionProvider(vfsm, context.extensionUri),
             new ConstantCompletionProvider(vfsm, context.extensionUri),
             new FilePathCompletionProvider(vfsm),
-            new ReferenceCompletionProvider(vfsm, this.docSymbolProvider),
+            new ReferenceCompletionProvider(vfsm, docSymbolProvider),
             // misspelling check provider
             new MisspellingCheckProvider(vfsm),
-            // document format provider
-            new TexDocFormatter(vfsm),
         ];
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -2);
         this.activate();
@@ -766,8 +766,6 @@ export class LangIntellisenseProvider {
         return [
             // register provider triggers
             ...this.providers.map(x => x.triggers).flat(),
-            // register other triggers
-            ...this.docSymbolProvider.triggers,
         ];
     }
 }
