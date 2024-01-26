@@ -4,7 +4,7 @@ import { IntellisenseProvider } from '.';
 import { TexFileStruct, TeXElement, TeXElementType, parseTexFileStruct } from './texDocumentParseUtility';
 
 function elementsTypeCast(section: TeXElement): vscode.SymbolKind {
-    switch (section.type){
+    switch (section.type) {
         case TeXElementType.Section:
         case TeXElementType.SectionAst:
             return vscode.SymbolKind.Struct;
@@ -41,32 +41,32 @@ function elementsToSymbols(sections: TeXElement[]): vscode.DocumentSymbol[] {
 }
 
 class ProjectStructRecord {
-    private fileStructRecord: Map<string, TexFileStruct> = new Map<string, TexFileStruct>();
+    private fileRecordMap: Map<string, TexFileStruct> = new Map<string, TexFileStruct>();
 
     public getTexFileStruct(filePath: string): TexFileStruct | undefined {
-        return this.fileStructRecord.get(filePath);
+        return this.fileRecordMap.get(filePath);
     }
     
     public updateRecord(filePath: string, record: TexFileStruct): void {
-        this.fileStructRecord.set(filePath, record);
+        this.fileRecordMap.set(filePath, record);
     }
 
-    public getBibFileNameArray(rootPath:string): string[] {
-        const fileQueue: TexFileStruct[] = this.fileStructRecord.has(rootPath) ? [this.fileStructRecord.get(rootPath)!] : [];
+    public getAllBibFilePaths(rootPath:string): string[] {
+        const rootStruct = this.fileRecordMap.get(rootPath);
+        if (rootStruct === undefined) { return []; }
 
+        const queue = [rootStruct];
         const bibFilePaths: string[] = [];
         // iteratively traverse file node tree
-        while (fileQueue.length > 0) {
-            const fileNode = fileQueue.shift();
-            if (fileNode===undefined) { break; }
-
-            if (fileNode.bibFilePaths.length > 0) {
-                bibFilePaths.push(...fileNode.bibFilePaths);
-            }
-            fileNode.childrenPaths.forEach( child => {
-                if (this.fileStructRecord.has(child)){
-                    fileQueue.push( this.fileStructRecord.get(child)! );
-                };
+        while (queue.length > 0) {
+            const item = queue.shift()!;
+            const paths = item.bibFilePaths.flatMap( name => (name.split(',') ?? []) )
+                                           .map( name => (name.endsWith('.bib') ? name : `${name}.bib`) );
+            bibFilePaths.push(...paths);
+            // append children to queue
+            item.childrenPaths.forEach( child => {
+                const childItem = this.fileRecordMap.get(child);
+                childItem && queue.push(childItem);
             });
         }
         return bibFilePaths;
@@ -75,7 +75,7 @@ class ProjectStructRecord {
 
 export class TexDocumentSymbolProvider extends IntellisenseProvider implements vscode.DocumentSymbolProvider {
     protected readonly contextPrefix = [];
-    private projectRecords = new Map<string, ProjectStructRecord>();
+    private projectRecordMap = new Map<string, ProjectStructRecord>();
     private rootPaths = new Set<string>();
     private projectPath = '';
     private rootPath = '';
@@ -91,23 +91,23 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
         this.projectPath = projectName;
         this.rootPath = rootPath;
         if (rootPath !== undefined ) {
-            if (!this.projectRecords.has(projectName)){
-                this.projectRecords.set(projectName, new ProjectStructRecord());
+            if (!this.projectRecordMap.has(projectName)) {
+                this.projectRecordMap.set(projectName, new ProjectStructRecord());
             }
-            if (!this.rootPaths.has(rootPath)){
+            if (!this.rootPaths.has(rootPath)) {
                 this.rootPaths.add(rootPath);
                 await this.init(rootPath, vfs);
             }
         }
         const documentText = document.getText();
-        this.projectRecords.get(this.projectPath)?.updateRecord(document.fileName, await parseTexFileStruct(documentText));
-        const symbols = this.projectRecords.get(this.projectPath)?.getTexFileStruct(document.fileName)?.texElements as TeXElement[];
+        this.projectRecordMap.get(this.projectPath)?.updateRecord(document.fileName, await parseTexFileStruct(documentText));
+        const symbols = this.projectRecordMap.get(this.projectPath)?.getTexFileStruct(document.fileName)?.texElements as TeXElement[];
         return elementsToSymbols(symbols);
     }
 
     async init(rootPath: string, vfs: VirtualFileSystem): Promise<void> {
         const rootDoc = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(rootPath)));
-        const record = this.projectRecords.get(this.projectPath) as ProjectStructRecord;
+        const record = this.projectRecordMap.get(this.projectPath) as ProjectStructRecord;
         record.updateRecord(rootPath, await parseTexFileStruct(rootDoc));
         const fileQueue: TexFileStruct[] = [record.getTexFileStruct(rootPath) as TexFileStruct];
         // iteratively traverse file node tree
@@ -124,16 +124,10 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
     }
 
     get currentBibPathArray(): string[] {
-        const bibFileNames = this.projectRecords.get(this.projectPath)?.getBibFileNameArray(this.rootPath) || [];
-        const bibFilePathArray = bibFileNames.flatMap(
-            name => (name?.split(',') ?? [])
-        ).map(
-            name => (name?.endsWith('.bib') ? name : `${name}.bib`)
-        );
-        return bibFilePathArray;
+        return this.projectRecordMap.get(this.projectPath)?.getAllBibFilePaths(this.rootPath) ?? [];
     }
 
-    get triggers(){
+    get triggers() {
         const latexSelector = ['latex', 'latex-expl3', 'pweave', 'jlweave', 'rsweave'].map((id) => {
             return {...this.selector, language: id };
         });
