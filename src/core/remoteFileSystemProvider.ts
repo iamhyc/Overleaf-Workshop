@@ -871,12 +871,12 @@ export class VirtualFileSystem extends vscode.Disposable {
             try{
                 await this.resolve(this.pathToUri(OUTPUT_FOLDER_NAME, "output.log"));
             }
-            catch (e){
+            catch (e) {
                 needCacheClearFirst = true;
             }
             const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
             // clear cache if needed
-            if (needCacheClearFirst){
+            if (needCacheClearFirst) {
                 await this.api.deleteAuxFiles(identity, this.projectId);
             }
             // compile project

@@ -370,7 +370,7 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
         ['cite'],
     ];
 
-    constructor(vfsm: RemoteFileSystemProvider, private readonly texSymbolProvider: TexDocumentSymbolProvider){
+    constructor(vfsm: RemoteFileSystemProvider, private readonly texSymbolProvider: TexDocumentSymbolProvider) {
         super(vfsm);
     }
 

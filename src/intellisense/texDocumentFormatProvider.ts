@@ -35,7 +35,7 @@ export class TexDocumentFormatProvider extends IntellisenseProvider implements v
         });
     }
 
-    get triggers(){
+    get triggers() {
         const latexSelector = ['latex', 'latex-expl3', 'pweave', 'jlweave', 'rsweave'].map(id => {
             return {...this.selector, language: id };
         });
