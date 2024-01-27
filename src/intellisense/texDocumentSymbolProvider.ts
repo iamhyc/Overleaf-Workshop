@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
+import { VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { IntellisenseProvider } from '.';
 import { TexFileStruct, TeXElement, TeXElementType, parseTexFileStruct } from './texDocumentParseUtility';
 import { ROOT_NAME } from '../consts';
