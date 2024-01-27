@@ -108,6 +108,7 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
         return elementsToSymbols( fileStruct.texElements );
     }
 
+    //TODO: to be removed
     async init(projectName: string, rootPath: string, vfs: VirtualFileSystem): Promise<void> {
         const rootDoc = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(rootPath)));
         const record = this.projectRecordMap.get(projectName) as ProjectStructRecord;
