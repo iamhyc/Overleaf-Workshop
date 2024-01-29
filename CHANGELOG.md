@@ -4,8 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.2] - 2024-01-26
+## [0.9.0] - 2024-01-29
+### Added
+- feat: create tex symbol caches
+  - Commit: 26efc6dfa48eb88211c32aae2208728e371d64ec
+- feat: make tex symbol provider store the project cache
+  - Commit: 571833138488e5e8643fcc9ae9664bc91c1c2bdb
+- feat: provide bib file to bibItem completion
+  - Commit: a4d5dd3e97b7c89ebbdc127242ad7945eaccbd75
 
+### Changed
+- chore: Refactor and Cleanup Intellisense Implementation (#92)
+  - Commit: d7a29b2027d25b3affa395b1cebc2691297f77ed
+
+## [0.8.2] - 2024-01-26
 ### Changed
 - fix(ci): remove task trigger on version tag
   - Commit: 703099f856117ffadec6ce84fa9905a6b84c7828
