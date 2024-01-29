@@ -50,15 +50,21 @@ class ProjectStructRecord {
         return this.vfs.getRootDocName();
     }
 
-    public getTexFileStruct(filePath: string): TexFileStruct | undefined {
+    getTexFileStruct(filePath: string): TexFileStruct | undefined {
         return this.fileRecordMap.get(filePath);
     }
     
-    public updateRecord(filePath: string, record: TexFileStruct): void {
+    updateRecord(filePath: string, record: TexFileStruct) {
         this.fileRecordMap.set(filePath, record);
     }
 
-    public getAllBibFilePaths(rootPath:string): string[] {
+    async refreshRecord(document: vscode.TextDocument) {
+        const filePath = document.fileName;
+        const fileStruct = await parseTexFileStruct( document.getText() );
+        this.fileRecordMap.set(filePath, fileStruct);
+    }
+
+    getAllBibFilePaths(rootPath:string): string[] {
         const rootStruct = this.fileRecordMap.get(rootPath);
         if (rootStruct === undefined) { return []; }
 
@@ -90,6 +96,7 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
         const vfs = await this.vfsm.prefetch(document.uri);
         const rootPath = vfs.getRootDocName();
         const {projectName} = parseUri(document.uri);
+
         // update project record map
         if (rootPath) {
             if (!this.projectRecordMap.has(projectName)) {
@@ -100,12 +107,11 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
                 await this.init(projectName, rootPath, vfs);
             }
         }
-        // update file record
-        const filePath = document.fileName;
-        const fileStruct = await parseTexFileStruct( document.getText() );
-        this.projectRecordMap.get(projectName)!.updateRecord(filePath, fileStruct);
+
         // return symbols
-        return elementsToSymbols( fileStruct.texElements );
+        const filePath = document.fileName;
+        const symbols = this.projectRecordMap.get(projectName)?.getTexFileStruct(filePath)?.texElements;
+        return elementsToSymbols( symbols ?? [] );
     }
 
     //TODO: to be removed
@@ -146,7 +152,14 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
             return {...this.selector, language: id };
         });
         return [
+            // register symbol provider
             vscode.languages.registerDocumentSymbolProvider(latexSelector, this),
+            // register file change listener
+            vscode.workspace.onDidChangeTextDocument(async (e) => {
+                const filePath = e.document.fileName;
+                const record = this.projectRecordMap.get(filePath);
+                record?.refreshRecord(e.document);
+            }),
         ];
     }
 }
