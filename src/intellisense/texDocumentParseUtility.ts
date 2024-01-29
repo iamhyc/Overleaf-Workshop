@@ -15,12 +15,6 @@ export type TeXElement = {
     appendix?: boolean,
 };
 
-export type TexFileStruct = {
-    texElements: TeXElement[],
-    childrenPaths: string[],
-    bibFilePaths: string[],
-};
-
 // Initialize the parser
 const unifiedParser: { parse: (content: string) => Ast.Root } = unifiedLaTeXParse.getParser({ flags: { autodetectExpl3AndAtLetter: true } });
 
@@ -304,7 +298,7 @@ function hierarchyStructFormat(parentStruct: TeXElement[]): TeXElement[] {
     * @return: the tree-like TeXElement[] structure
 */
 // reference: https://github.com/James-Yu/LaTeX-Workshop/blob/master/src/outline/structurelib/latex.ts#L30
-async function genTexElements(documentText: string): Promise<TeXElement[]> {
+export async function genTexElements(documentText: string): Promise<TeXElement[]> {
     const resElement = { children: [] as TeXElement[] };
     let ast = unifiedParser.parse(documentText);
 
@@ -323,45 +317,4 @@ async function genTexElements(documentText: string): Promise<TeXElement[]> {
     const rootStruct = resElement.children;
     const hierarchyStruct = hierarchyStructFormat(rootStruct);
     return hierarchyStruct;
-}
-
-/*
-    * Convert the file into the struct by:
-    * 1. Construct child, named as Uri.path, from TeXElementType.SubFile
-    * 2. Construct bibFile from TeXElementType.BibFile
-    * 
-    * @param filePath: file path of constructed fileSymbolNode
-    * @param fileContent: file content 
-*/
-export async function parseTexFileStruct(fileContent:string): Promise<TexFileStruct>{ 
-    const childrenPaths = [];
-    const bibFilePaths = [];
-    const texSymbols = await genTexElements(fileContent);
-
-    // BFS: Traverse the texElements and build fileSymbol
-    const queue: TeXElement[] = [...texSymbols];
-    while (queue.length > 0) {
-        const symbol = queue.shift();
-        switch (symbol?.type) {
-            case TeXElementType.BibFile:
-                bibFilePaths.push(symbol.label);
-                break;
-            case TeXElementType.SubFile:
-                const subFilePath = symbol.label?.endsWith('.tex') ? symbol.label : `${symbol.label}.tex`;
-                childrenPaths.push(subFilePath);
-                break;
-            default:
-                break;
-        }
-        // append children to queue
-        symbol?.children.forEach( child => {
-            queue.push(child);
-        });
-    }
-
-    return {
-        texElements: texSymbols,
-        childrenPaths: childrenPaths,
-        bibFilePaths: bibFilePaths,
-    };
 }
