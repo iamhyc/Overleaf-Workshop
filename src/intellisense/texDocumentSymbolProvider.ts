@@ -173,8 +173,8 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
         }
 
         // return symbols
-        const symbols = projectRecord.getTexFileStruct(document)?.texElements;
-        return elementsToSymbols( symbols ?? [] );
+        const fileStruct = projectRecord.getTexFileStruct(document) ?? await projectRecord.refreshRecord(document);
+        return elementsToSymbols( fileStruct.texElements );
     }
 
     get currentBibPathArray(): string[] {
