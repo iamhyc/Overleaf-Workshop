@@ -324,7 +324,7 @@ export class BaseAPI {
         const header = res.headers.raw()['set-cookie'];
         if (header !== undefined) {
             const cookies = header[0].split(';')[0];
-            if (cookies){
+            if (cookies) {
                 identity.cookies = `${identity.cookies}; ${cookies}`;
             }
         }
@@ -562,7 +562,7 @@ export class BaseAPI {
         return this.request('DELETE', `project/${projectId}/${fileType}/${fileId}`);
     }
 
-    async deleteAuxFiles(identity:Identity, projectId:string){
+    async deleteAuxFiles(identity:Identity, projectId:string) {
         this.setIdentity(identity);
         return this.request('DELETE', `project/${projectId}/output`);
     }

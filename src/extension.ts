@@ -5,7 +5,7 @@ import { RemoteFileSystemProvider, VirtualFileSystem } from './core/remoteFileSy
 import { ProjectManagerProvider } from './core/projectManagerProvider';
 import { PdfViewEditorProvider } from './core/pdfViewEditorProvider';
 import { CompileManager } from './compile/compileManager';
-import { LangIntellisenseProvider } from './intellisense/langIntellisenseProvider';
+import { LangIntellisenseProvider } from './intellisense';
 import { LocalReplicaSCMProvider } from './scm/localReplicaSCM';
 
 export function activate(context: vscode.ExtensionContext) {
