@@ -52,7 +52,6 @@ function elementsToSymbols(sections: TeXElement[]): vscode.DocumentSymbol[] {
     * 1. Construct child, named as Uri.path, from TeXElementType.SubFile
     * 2. Construct bibFile from TeXElementType.BibFile
     * 
-    * @param filePath: file path of constructed fileSymbolNode
     * @param fileContent: file content 
 */
 async function parseTexFileStruct(fileContent:string): Promise<TexFileStruct>{ 
@@ -97,12 +96,29 @@ class ProjectStructRecord {
         return this.vfs.getRootDocName();
     }
 
-    getTexFileStruct(filePath: string): TexFileStruct | undefined {
-        return this.fileRecordMap.get(filePath);
+    async init(): Promise<void> {
+        const rootPath = this.rootPath;
+        const rootUri = this.vfs.pathToUri(rootPath);
+        const rootDoc = new TextDecoder().decode(await this.vfs.openFile(rootUri));
+        this.fileRecordMap.set( rootPath, await parseTexFileStruct(rootDoc) );
+        const fileQueue: TexFileStruct[] = [ this.fileRecordMap.get(rootPath)! ];
+
+        // iteratively traverse file node tree
+        while (fileQueue.length > 0) {
+            const fileNode = fileQueue.shift() as TexFileStruct;
+            const subFiles = fileNode.childrenPaths;
+            for (const subFile of subFiles) {
+                const subFileUri = this.vfs.pathToUri(subFile);
+                const subFileDoc = new TextDecoder().decode(await this.vfs.openFile(subFileUri));
+                this.fileRecordMap.set( subFile, await parseTexFileStruct(subFileDoc) );
+                fileQueue.push( this.fileRecordMap.get(rootPath)! );
+            };
+        }
     }
-    
-    updateRecord(filePath: string, record: TexFileStruct) {
-        this.fileRecordMap.set(filePath, record);
+
+    getTexFileStruct(document: vscode.TextDocument): TexFileStruct | undefined {
+        const filePath = document.fileName;
+        return this.fileRecordMap.get(filePath);
     }
 
     async refreshRecord(document: vscode.TextDocument) {
@@ -111,8 +127,8 @@ class ProjectStructRecord {
         this.fileRecordMap.set(filePath, fileStruct);
     }
 
-    getAllBibFilePaths(rootPath:string): string[] {
-        const rootStruct = this.fileRecordMap.get(rootPath);
+    getAllBibFilePaths(): string[] {
+        const rootStruct = this.fileRecordMap.get( this.rootPath );
         if (rootStruct === undefined) { return []; }
 
         const queue = [rootStruct];
@@ -137,47 +153,22 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
     protected readonly contextPrefix = [];
 
     private projectRecordMap = new Map<string, ProjectStructRecord>();
-    private rootPaths = new Set<string>();
 
     async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
         const vfs = await this.vfsm.prefetch(document.uri);
-        const rootPath = vfs.getRootDocName();
         const {projectName} = parseUri(document.uri);
 
-        // update project record map
-        if (rootPath) {
-            if (!this.projectRecordMap.has(projectName)) {
-                this.projectRecordMap.set(projectName, new ProjectStructRecord(vfs));
-            }
-            if (!this.rootPaths.has(rootPath)) {
-                this.rootPaths.add(rootPath);
-                await this.init(projectName, rootPath, vfs);
-            }
+        // init project record if not exist
+        let projectRecord = this.projectRecordMap.get(projectName);
+        if (projectRecord === undefined) {
+            projectRecord = new ProjectStructRecord(vfs);
+            await projectRecord.init();
+            this.projectRecordMap.set(projectName, projectRecord);
         }
 
         // return symbols
-        const filePath = document.fileName;
-        const symbols = this.projectRecordMap.get(projectName)?.getTexFileStruct(filePath)?.texElements;
+        const symbols = projectRecord.getTexFileStruct(document)?.texElements;
         return elementsToSymbols( symbols ?? [] );
-    }
-
-    //TODO: to be removed
-    async init(projectName: string, rootPath: string, vfs: VirtualFileSystem): Promise<void> {
-        const rootDoc = new TextDecoder().decode(await vfs.openFile(vfs.pathToUri(rootPath)));
-        const record = this.projectRecordMap.get(projectName) as ProjectStructRecord;
-        record.updateRecord(rootPath, await parseTexFileStruct(rootDoc));
-        const fileQueue: TexFileStruct[] = [record.getTexFileStruct(rootPath) as TexFileStruct];
-        // iteratively traverse file node tree
-        while (fileQueue.length > 0) {
-            const fileNode = fileQueue.shift() as TexFileStruct;
-            const subFiles = fileNode.childrenPaths;
-            for (const subFile of subFiles) {
-                const subFileUri = vfs.pathToUri(subFile);
-                const subFileDoc = new TextDecoder().decode(await vfs.openFile(subFileUri));
-                record.updateRecord(subFile, await parseTexFileStruct(subFileDoc));
-                fileQueue.push(record.getTexFileStruct(subFile) as TexFileStruct);
-            };
-        }
     }
 
     get currentBibPathArray(): string[] {
@@ -186,12 +177,8 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
         if (uri?.scheme !== ROOT_NAME) { return []; }
         // get bib file paths
         const {projectName} = parseUri(uri);
-        const record = this.projectRecordMap.get(projectName);
-        if (record && record.rootPath) {
-            return record.getAllBibFilePaths(record.rootPath);
-        }
-        // otherwise return empty array
-        return [];
+        const projectRecord = this.projectRecordMap.get(projectName);
+        return projectRecord?.getAllBibFilePaths() ?? [];
     }
 
     get triggers() {
@@ -203,9 +190,9 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
             vscode.languages.registerDocumentSymbolProvider(latexSelector, this),
             // register file change listener
             vscode.workspace.onDidChangeTextDocument(async (e) => {
-                const filePath = e.document.fileName;
-                const record = this.projectRecordMap.get(filePath);
-                record?.refreshRecord(e.document);
+                const {projectName} = parseUri(e.document.uri);
+                const projectRecord = this.projectRecordMap.get(projectName);
+                projectRecord?.refreshRecord(e.document);
             }),
         ];
     }
