@@ -96,22 +96,17 @@ class ProjectStructRecord {
         return this.vfs.getRootDocName();
     }
 
-    async init(): Promise<void> {
-        const rootPath = this.rootPath;
-        const rootUri = this.vfs.pathToUri(rootPath);
-        const rootDoc = new TextDecoder().decode(await this.vfs.openFile(rootUri));
-        this.fileRecordMap.set( rootPath, await parseTexFileStruct(rootDoc) );
-        const fileQueue: TexFileStruct[] = [ this.fileRecordMap.get(rootPath)! ];
+    async init() {
+        const rootFileStruct = await this.refreshRecord( this.rootPath );
+        const fileQueue: TexFileStruct[] = [ rootFileStruct ];
 
         // iteratively traverse file node tree
         while (fileQueue.length > 0) {
-            const fileNode = fileQueue.shift() as TexFileStruct;
+            const fileNode = fileQueue.shift()!;
             const subFiles = fileNode.childrenPaths;
             for (const subFile of subFiles) {
-                const subFileUri = this.vfs.pathToUri(subFile);
-                const subFileDoc = new TextDecoder().decode(await this.vfs.openFile(subFileUri));
-                this.fileRecordMap.set( subFile, await parseTexFileStruct(subFileDoc) );
-                fileQueue.push( this.fileRecordMap.get(rootPath)! );
+                const fileStruct = await this.refreshRecord(subFile);
+                fileQueue.push( fileStruct );
             };
         }
     }
@@ -121,10 +116,21 @@ class ProjectStructRecord {
         return this.fileRecordMap.get(filePath);
     }
 
-    async refreshRecord(document: vscode.TextDocument) {
-        const filePath = document.fileName;
-        const fileStruct = await parseTexFileStruct( document.getText() );
+    async refreshRecord(source: vscode.TextDocument | string): Promise<TexFileStruct> {
+        let filePath:string, content: string;
+        // get file path and content
+        if (typeof source === 'string') {
+            const uri = this.vfs.pathToUri(source);
+            filePath = source;
+            content = new TextDecoder().decode( await this.vfs.openFile(uri) );
+        } else {
+            filePath = source.fileName;
+            content = source.getText();
+        }
+        // update file record
+        const fileStruct = await parseTexFileStruct( content );
         this.fileRecordMap.set(filePath, fileStruct);
+        return fileStruct;
     }
 
     getAllBibFilePaths(): string[] {
@@ -181,7 +187,7 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
         return projectRecord?.getAllBibFilePaths() ?? [];
     }
 
-    get triggers() {
+    get triggers(): vscode.Disposable[] {
         const latexSelector = ['latex', 'latex-expl3', 'pweave', 'jlweave', 'rsweave'].map((id) => {
             return {...this.selector, language: id };
         });
