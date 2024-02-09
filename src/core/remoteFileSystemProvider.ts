@@ -8,7 +8,7 @@ import { GlobalStateManager } from '../utils/globalStateManager';
 import { ClientManager } from '../collaboration/clientManager';
 import { EventBus } from '../utils/eventBus';
 import { SCMCollectionProvider } from '../scm/scmCollectionProvider';
-import { ExtendedBaseAPI, ProjectLinkedFileProvider, UrlLinkedFileProvider } from '../api/extendedBase';
+import { DocumentRangesSchema, ExtendedBaseAPI, ProjectLinkedFileProvider, UrlLinkedFileProvider } from '../api/extendedBase';
 
 const __OUTPUTS_ID = `${ROOT_NAME}-outputs`;
 
@@ -34,6 +34,7 @@ export interface DocumentEntity extends FileEntity {
     lastVersion?: number,
     localCache?: string,
     remoteCache?: string,
+    ranges?: DocumentRangesSchema,
 }
 
 export interface FileRefEntity extends FileEntity {
@@ -518,9 +519,10 @@ export class VirtualFileSystem extends vscode.Disposable {
                 EventBus.fire('fileWillOpenEvent', {uri});
                 return new TextEncoder().encode(content);
             } else {
-                const res = await this.socket.joinDoc(fileEntity._id);
-                const content = res.docLines.join('\n');
-                doc.version = res.version;
+                const {docLines,version,ranges} = await this.socket.joinDoc(fileEntity._id);
+                doc.version = version;
+                doc.ranges  = ranges;
+                const content = docLines.join('\n');
                 doc.remoteCache = content;
                 doc.localCache  = content;
                 EventBus.fire('fileWillOpenEvent', {uri});
@@ -1175,6 +1177,69 @@ export class VirtualFileSystem extends vscode.Disposable {
         } else {
             return false;
         }
+    }
+
+    async getAllDocumentReviews() {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        // get all document ranges and threads
+        const rangesRes = await (this.api as ExtendedBaseAPI).getAllDocumentRanges(identity, this.projectId);
+        if  (rangesRes.type==='success') {
+            const threadsRes = await (this.api as ExtendedBaseAPI).getAllCommentThreads(identity, this.projectId);
+            if (threadsRes.type==='success') {
+                for (const [docId, range] of Object.entries(rangesRes.ranges)) {
+                    for (const comment of range.comments) {
+                        comment.thread = threadsRes.threads[comment.op.t];
+                        threadsRes.threads[comment.op.t].doc_id = docId;
+                    }
+                }
+                const [ranges, threads] = [rangesRes.ranges, threadsRes.threads];
+                return {ranges, threads};
+            }
+        }
+        // return undefined if failed
+        return undefined;
+    }
+
+    async resolveCommentThread(threadId: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await (this.api as ExtendedBaseAPI).resolveCommentThread(identity, this.projectId, threadId);
+        return res.type==='success'? true : false;
+    }
+
+    async reopenResolvedCommentThread(threadId: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await (this.api as ExtendedBaseAPI).reopenResolvedCommentThread(identity, this.projectId, threadId);
+        return res.type==='success'? true : false;
+    }
+
+    async deleteResolvedCommentThread(docId: string, threadId: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await (this.api as ExtendedBaseAPI).deleteResolvedCommentThread(identity, this.projectId, docId, threadId);
+        return res.type==='success'? true : false;
+    }
+
+    async postCommentThreadMessage(threadId: string, content: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await (this.api as ExtendedBaseAPI).postCommentThreadMessage(identity, this.projectId, threadId, content);
+        return res.type==='success'? true : false;
+    }
+
+    async deleteCommentThreadMessage(threadId: string, messageId: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await (this.api as ExtendedBaseAPI).deleteCommentThreadMessage(identity, this.projectId, threadId, messageId);
+        return res.type==='success'? true : false;
+    }
+
+    async editCommentThreadMessage(threadId: string, messageId: string, content: string) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await (this.api as ExtendedBaseAPI).editCommentThreadMessage(identity, this.projectId, threadId, messageId, content);
+        return res.type==='success'? true : false;
+    }
+
+    async acceptTrackChanges(docId: string, changeIds: string[]) {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await (this.api as ExtendedBaseAPI).acceptTrackChanges(identity, this.projectId, docId, changeIds);
+        return res.type==='success'? true : false;
     }
 }
 
