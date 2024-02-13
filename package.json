@@ -667,13 +667,7 @@
         "displayName": "%customEditors.overleaf-workshop.pdfViewer.displayName%",
         "selector": [
           {
-            "filenamePattern": "**/output.pdf"
-          },
-          {
-            "filenamePattern": "*.pdf"
-          },
-          {
-            "filenamePattern": "*.PDF"
+            "filenamePattern": "overleaf-workshop:/**/{*.pdf, .PDF}"
           }
         ],
         "priority": "default"
