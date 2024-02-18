@@ -154,7 +154,7 @@ export abstract class BaseSCM {
     protected set settings(settings: JSON) {
         this.vfs.setProjectSCMPersist(this.scmKey, {
             label: (this.constructor as any).label,
-            baseUri: this.baseUri,
+            baseUri: this.baseUri.toString(),
             settings,
         });
     }
