@@ -46,8 +46,8 @@ export interface DocumentReviewCommentSchema extends DocumentReviewSchema {
 }
 
 export interface DocumentRangesSchema {
-    changes: DocumentReviewChangeSchema[],
-    comments: DocumentReviewCommentSchema[],
+    changes?: DocumentReviewChangeSchema[],
+    comments?: DocumentReviewCommentSchema[],
 }
 
 export interface ExtendedResponseSchema extends ResponseSchema {
@@ -75,7 +75,7 @@ export class ExtendedBaseAPI extends BaseAPI {
     async getAllCommentThreads(identity: Identity,  project_id: string) {
         this.setIdentity(identity);
         return await this.request('GET', `project/${project_id}/threads`, undefined, (res) => {
-            const threads = JSON.parse(res!);
+            const threads = JSON.parse(res!);   
             return {threads};
         }) as ExtendedResponseSchema;
     }

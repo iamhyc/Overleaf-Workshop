@@ -1187,10 +1187,10 @@ export class VirtualFileSystem extends vscode.Disposable {
             const threadsRes = await (this.api as ExtendedBaseAPI).getAllCommentThreads(identity, this.projectId);
             if (threadsRes.type==='success') {
                 for (const [docId, range] of Object.entries(rangesRes.ranges)) {
-                    for (const comment of range.comments) {
+                    range.comments?.forEach((comment) => {
                         comment.thread = threadsRes.threads[comment.op.t];
                         threadsRes.threads[comment.op.t].doc_id = docId;
-                    }
+                    });
                 }
                 const [ranges, threads] = [rangesRes.ranges, threadsRes.threads];
                 return {ranges, threads};
