@@ -327,7 +327,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
             {
                 label: vscode.l10n.t('Configure sync ignore patterns ...'),
                 callback: async () => {
-                    const ignorePatterns = this.getSetting<string[]>(IGNORE_SETTING_KEY) || this.ignorePatterns;
+                    const ignorePatterns = (this.getSetting<string[]>(IGNORE_SETTING_KEY) || this.ignorePatterns).sort();
                     const quickPick = vscode.window.createQuickPick();
                     quickPick.ignoreFocusOut = true;
                     quickPick.title = vscode.l10n.t('Press Enter to add a new pattern, or click the trash icon to remove a pattern.');
