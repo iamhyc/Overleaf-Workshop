@@ -47,7 +47,7 @@ interface SCMRecord {
     triggers: vscode.Disposable[];
 }
 
-export class SCMCollectionProvider {
+export class SCMCollectionProvider extends vscode.Disposable {
     private readonly core: CoreSCMProvider;
     private readonly scms: SCMRecord[] = [];
     private readonly statusBarItem: vscode.StatusBarItem;
@@ -58,6 +58,11 @@ export class SCMCollectionProvider {
         private readonly vfs: VirtualFileSystem,
         private readonly context: vscode.ExtensionContext,
     ) {
+        // define the dispose behavior
+        super(() => {
+            this.scms.forEach(scm => scm.triggers.forEach(t => t.dispose()));
+        });
+
         this.core = new CoreSCMProvider( vfs );
         this.historyDataProvider = new HistoryViewProvider( vfs );
         this.initSCMs();
@@ -300,6 +305,7 @@ export class SCMCollectionProvider {
             vscode.commands.registerCommand(`${ROOT_NAME}.projectSCM.newSCM`, (scmProto) => {
                 return this.createNewSCM(scmProto);
             }),
+            this as vscode.Disposable,
         ];
     }
     
