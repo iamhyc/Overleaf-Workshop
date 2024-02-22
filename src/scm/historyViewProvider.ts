@@ -214,9 +214,9 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.comparePrevious`, async (item: HistoryItem) => {
                 vscode.commands.executeCommand('vscode.diff',
-                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
                     vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.prevVersion}`),
-                    `${this._path} (v${item.version} vs v${item.prevVersion})`,
+                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
+                    `${this._path} v${item.prevVersion}) vs (v${item.version}`,
                 );
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.compareCurrent`, async (item: HistoryItem) => {
