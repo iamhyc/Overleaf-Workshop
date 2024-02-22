@@ -145,7 +145,8 @@ export interface ProjectFileTreeDiffResponseSchema {
     diff: {
         pathname: string,
         newPathname?: string,
-        operation?: 'edited' | 'added' | 'removed' | 'renamed'
+        operation?: 'edited' | 'added' | 'removed' | 'renamed',
+        deletedAtV?: number,
     }[]
 }
 

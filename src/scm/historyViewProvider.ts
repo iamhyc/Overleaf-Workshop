@@ -97,6 +97,43 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
         this.refresh();
     }
 
+    async openDiffEditor(originVersion:number, targetVersion:number) {
+        if (this._path===undefined) {
+            const args: [vscode.Uri, vscode.Uri | undefined, vscode.Uri | undefined][] = [];
+            const {diff} = (await this.vfs.getFileTreeDiff(originVersion, targetVersion))!;
+            for (const change of diff) {
+                if (change.operation===undefined) { continue; }
+                const newPathname = change.newPathname || change.pathname;
+                let originUri: vscode.Uri | undefined = vscode.Uri.parse(`${ROOT_NAME}-diff:${change.pathname}?${originVersion}`);
+                let targetUri: vscode.Uri | undefined = vscode.Uri.parse(`${ROOT_NAME}-diff:${newPathname}?${targetVersion}`);
+                let labelUri = targetUri;
+                // handle removed/added files
+                switch (change.operation) {
+                    case 'added':
+                        labelUri = targetUri;
+                        originUri = undefined;
+                        break;
+                    case 'removed':
+                        labelUri = originUri;
+                        targetUri = undefined;
+                        break;
+                    case 'edited':
+                    case 'renamed':
+                    default:
+                        break;
+                }
+                args.push([labelUri, originUri, targetUri]);
+            }
+            vscode.commands.executeCommand('vscode.changes', `v${originVersion} vs v${targetVersion}`, args);
+        } else {
+            vscode.commands.executeCommand('vscode.diff',
+                vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${originVersion}`),
+                vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${targetVersion}`),
+                `${this._path} (v${originVersion} vs v${targetVersion})`,
+            );
+        }
+    }
+
     getTreeItem(element: HistoryItem): vscode.TreeItem {
         return element;
     }
@@ -213,18 +250,10 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
                 vscode.commands.executeCommand(`${ROOT_NAME}.projectHistory.comparePrevious`, item);
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.comparePrevious`, async (item: HistoryItem) => {
-                vscode.commands.executeCommand('vscode.diff',
-                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.prevVersion}`),
-                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
-                    `${this._path} v${item.prevVersion}) vs (v${item.version}`,
-                );
+                this.openDiffEditor(item.prevVersion, item.version);
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.compareCurrent`, async (item: HistoryItem) => {
-                vscode.commands.executeCommand('vscode.diff',
-                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
-                    vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${this._history?.currentVersion}`),
-                    `${this._path} (v${item.version} vs v${this._history?.currentVersion})`,
-                );
+                this.openDiffEditor(item.version, this._history?.currentVersion || NaN);
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.compareOthers`, async (item: HistoryItem) => {
                 const otherVersions = this._history?.keyVersions.filter(v=>v!==item.version);
@@ -240,11 +269,7 @@ class HistoryDataProvider implements vscode.TreeDataProvider<HistoryItem>, vscod
                     placeHolder: vscode.l10n.t('Select a version to compare'),
                 }).then(async (select) => {
                     if (!select) { return; }
-                    vscode.commands.executeCommand('vscode.diff',
-                        vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${item.version}`),
-                        vscode.Uri.parse(`${ROOT_NAME}-diff:${this._path}?${select.version}`),
-                        `${this._path} (v${item.version} vs v${select.version})`,
-                    );
+                    this.openDiffEditor(item.version, select.version);
                 });
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectHistory.downloadProject`, async (item:HistoryItem) => {
