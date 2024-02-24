@@ -4,8 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2024-02-24
+### Added
+- feat(scm): support multi-file diff
+  - Commit: 8e8dfd84506499450711fddc0b90e8cda391c79f
+
+### Fixed
+- fix(scm): history diff compare in reversed order
+  - Commit: a012a06a71c4773f345889954957e13dfbedc6cd
+- fix(scm): set settings with uri string
+  - Commit: 41e91cbc5a829506c84f0c64fc9ea4f66fb5125e
+- fix(scm): dispose all scm triggers when dispose
+  - Commit: 999450fa0a72bf517da62a53fa6c7a325ebad354
+
 ## [0.9.1] - 2024-02-13
-### Changed
+### Fixed
 - fix(pdfView): restrict activate condition
   - Commit: 5a8ff9c55555fe1d0769d7a327af425b74e4a1a0
 
@@ -24,19 +37,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.2] - 2024-01-26
 ### Changed
+- chore: only use warning message for input required
+  - Commit: a6f7db128e85cbe1c98873647ec196de8b0f9ecb
+
+### Fixed
 - fix(ci): remove task trigger on version tag
   - Commit: 703099f856117ffadec6ce84fa9905a6b84c7828
 - fix(scm): Local Replica Unexpected Behavior (#89)
   - Commit: eedf8272012fef27381094608244dd0239d4e894
-- chore: only use warning message for input required
-  - Commit: a6f7db128e85cbe1c98873647ec196de8b0f9ecb
 
 ## [0.8.1] - 2024-01-17
 ### Added
 - ci: auto publish on tag update
   - Commit: 0622fd11c416b1f01757c8af0d00a0978aa128d6
 
-### Changed
+### Fixed
 - fix: typo in keybindings for mac
   - Commit: c733cddff9b84f6201f2b8af475dc0c094b09158
 - fix: use error/warning popup for user input
