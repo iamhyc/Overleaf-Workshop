@@ -256,12 +256,21 @@ export class ClientManager {
                 break;
             case true:
                 let prefixText = '';
+                let tooltip = new vscode.MarkdownString();
+
+                // notify track changes state
+                if (this.vfs.trackChangesState) {
+                    prefixText = prefixText.concat(`$(record-small) `);
+                    tooltip.appendMarkdown(`<h5 align="center">${vscode.l10n.t('Track changes is on.')}</h5><hr>\n\n`);
+                }
+
                 // notify unread messages
                 if (this.chatViewer.hasUnread) {
                     prefixText = prefixText.concat(`$(bell-dot) ${this.chatViewer.hasUnread} `);
                 }
                 this.status.command = this.chatViewer.hasUnread? `${ROOT_NAME}.collaboration.revealChatView` : `${ROOT_NAME}.collaboration.settings`;
                 this.status.backgroundColor = this.chatViewer.hasUnread? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
+
                 // notify unSynced changes
                 const unSynced = this.socket.unSyncFileChanges;
                 if (unSynced) {
@@ -274,12 +283,12 @@ export class ClientManager {
                     case 0:
                         this.status.color = undefined;
                         this.status.text = prefixText + `${onlineIcon} 0`;
-                        this.status.tooltip = `${ELEGANT_NAME}: ${vscode.l10n.t('Online')}`;
+                        tooltip.appendMarkdown(`${ELEGANT_NAME}: ${vscode.l10n.t('Online')}`);
+                        this.status.tooltip = tooltip;
                         break;
                     default:
                         this.status.color = this.activeExists ? this.onlineUsers[this.activeExists].selection?.color : undefined;
                         this.status.text = prefixText + `${onlineIcon} ${count}`;
-                        const tooltip = new vscode.MarkdownString();
                         tooltip.appendMarkdown(`${ELEGANT_NAME}: ${this.activeExists? vscode.l10n.t('Active'): vscode.l10n.t('Idle') }\n\n`);
 
                         Object.values(this.onlineUsers).forEach(user => {

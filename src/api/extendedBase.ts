@@ -119,6 +119,11 @@ export class ExtendedBaseAPI extends BaseAPI {
         return await this.request('POST', `project/${project_id}/thread/${thread_id}/messages/${message_id}/edit`, {content});
     }
 
+    async toggleTrackChanges(identity: Identity, project_id: string, on_for: boolean | {[userId:string]: boolean}) {
+        this.setIdentity(identity);
+        return await this.request('POST', `project/${project_id}/track_changes`, {on_for});
+    }
+
     async acceptTrackChanges(identity: Identity, project_id: string, doc_id: string, change_ids: string[]) {
         this.setIdentity(identity);
         return await this.request('POST', `project/${project_id}/doc/${doc_id}/changes/accept`, {change_ids});

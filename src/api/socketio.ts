@@ -77,6 +77,7 @@ export interface EventsHandler {
     onCommentThreadMessageCreated?: (threadId:string, message:CommentThreadMessageSchema) => void,
     onCommentThreadMessageEdited?: (threadId:string, messageId:string, content:string) => void,
     onCommentThreadMessageDeleted?: (threadId:string, messageId:string) => void,
+    onToggleTrackChanges?: (enabling:boolean | {[userId:string]: boolean}) => void,
     onAcceptTrackChanges?: (docId:string, tcIds: string[]) => void,
 }
 
@@ -300,6 +301,11 @@ export class SocketIOAPI {
                 case handlers.onCommentThreadMessageDeleted:
                     this.socket.on('delete-message', (threadId:string, messageId:string) => {
                         handler(threadId, messageId);
+                    });
+                    break;
+                case handlers.onToggleTrackChanges:
+                    this.socket.on('toggle-track-changes', (enabling:boolean | {[userId:string]: boolean}) => {
+                        handler(enabling);
                     });
                     break;
                 case handlers.onAcceptTrackChanges:
