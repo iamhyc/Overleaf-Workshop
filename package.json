@@ -311,12 +311,14 @@
       {
         "command": "overleaf-workshop.compileManager.compile",
         "title": "%commands.compileManager.compile.title%",
+        "icon": "$(debug-start)",
         "enablement": "(resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex",
         "category": "%extension.displayName%"
       },
       {
         "command": "overleaf-workshop.compileManager.viewPdf",
         "title": "%commands.compileManager.viewPdf.title%",
+        "icon": "$(open-preview)",
         "enablement": "(resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex",
         "category": "%extension.displayName%"
       },
@@ -523,6 +525,18 @@
           "command": "overleaf-workshop.projectHistory.clearSelection",
           "when": "view == overleaf-workshop.projectHistory",
           "group": "navigation@3"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "overleaf-workshop.compileManager.compile",
+          "when": "(resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex",
+          "group": "navigation@1"
+        },
+        {
+          "command": "overleaf-workshop.compileManager.viewPdf",
+          "when": "(resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile) && resourceExtname == .tex",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
