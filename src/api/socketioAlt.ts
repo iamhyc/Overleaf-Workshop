@@ -204,16 +204,20 @@ export class SocketIOAlt {
                         });
                     }
                     // fetch active users
+                    let row = 0, column = 0;
                     const remoteDiffs = (await vfs.getFileDiff(pathname, this.vfsLocalVersion, latestVersion))?.diff;
                     for (const diff of remoteDiffs || []) {
                         const end_ts = diff.meta?.end_ts || Date.now();
+                        const diffText = (diff?.i || diff?.u || '').split('\n');
+                        row += diffText.length;
+                        column = diffText.slice(-1)[0].length;
                         for (const user of diff.meta?.users || []) {
                             const index = this.connectedUsers.findIndex(u => u.user_id===user.id);
                             if (index===-1) {
                                 const userUpdate = {
                                     id:user.id, user_id:user.id, email:user.email,
                                     name:`${user.first_name} ${user.last_name||''}`,
-                                    doc_id:entityId, row:-1, column:-1,
+                                    doc_id:entityId, row, column,
                                     last_updated_at: end_ts,
                                 };
                                 this.connectedUsers.push( userUpdate );
