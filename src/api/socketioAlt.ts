@@ -50,18 +50,43 @@ type ListenEventsSupport = {
     'new-chat-message': {message:ProjectMessageResponseSchema},    
 };
 
+class SyncTimer {
+    private timer?: NodeJS.Timeout;
+
+    constructor(
+        private _interval: number,
+        private readonly _callback: () => Promise<void>,
+    ) {
+        this._callback().then(() => this.trigger());
+    }
+
+    private trigger() {
+        this.timer = setTimeout(async () => {
+            await this._callback();
+            this.trigger();
+        }, this._interval);
+    }
+
+    set interval(value: number) {
+        this._interval = value;
+    }
+
+    stop() {
+        this.timer && clearTimeout(this.timer);
+    }
+}
 
 export class SocketIOAlt {
     private _vfs?: VirtualFileSystem;
     private _eventEmitter = new EventEmitter();
     private watchConfigurationsDisposable;
 
-    private vfsRefreshTask?: NodeJS.Timeout;
+    private vfsRefreshTask: SyncTimer;
     private vfsLocalVersion?: number;
     private localChangesPath: { [path:string] : {parentFolderId:string,filename:string} } = {};
     private connectedUsers: UpdateUserSchema[] = [];
 
-    private msgRefreshTask?: NodeJS.Timeout;
+    private msgRefreshTask: SyncTimer;
     private msgCache?: string[];
 
     constructor(
@@ -75,16 +100,10 @@ export class SocketIOAlt {
             this._eventEmitter.emit('connect');
             this._eventEmitter.emit('connectionAccepted', undefined, '');
             this._eventEmitter.emit('joinProjectResponse', '', await this.record);
-        }, 100);
+        }, 10);
 
-        const historyRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyHistoryRefreshInterval, 3) * 1000;//ms
-        this.refreshVFS();
-        this.vfsRefreshTask = setInterval(this.refreshVFS.bind(this), historyRefreshInterval);
-
-        const MessageRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyChatMessageRefreshInterval, 3) * 1000;//ms
-        this.refreshMessages();
-        this.msgRefreshTask = setInterval(this.refreshMessages.bind(this), MessageRefreshInterval);
-
+        this.vfsRefreshTask = new SyncTimer(this.historyRefreshInterval, this.refreshVFS.bind(this));
+        this.msgRefreshTask = new SyncTimer(this.messageRefreshInterval, this.refreshMessages.bind(this));
         this.watchConfigurationsDisposable = this.watchConfigurations();
     }
 
@@ -104,18 +123,22 @@ export class SocketIOAlt {
         }
     }
 
+    private get historyRefreshInterval(): number {
+        return vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyHistoryRefreshInterval, 3) * 1000;//ms
+    }
+
+    private get messageRefreshInterval(): number {
+        return vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyChatMessageRefreshInterval, 3) * 1000;//ms
+    }
+
     private watchConfigurations() {
         return vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration(`${ROOT_NAME}.invisibleMode.historyRefreshInterval`)) {
-                    const historyRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyHistoryRefreshInterval, 3) * 1000;//ms
-                    this.vfsRefreshTask && clearInterval(this.vfsRefreshTask);
-                    this.vfsRefreshTask = setInterval(this.refreshVFS.bind(this), historyRefreshInterval);
+                    this.vfsRefreshTask.interval = this.historyRefreshInterval;
                 }
 
                 if (e.affectsConfiguration(`${ROOT_NAME}.invisibleMode.chatMessageRefreshInterval`)) {
-                    const MessageRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyChatMessageRefreshInterval, 3) * 1000;//ms
-                    this.msgRefreshTask && clearInterval(this.msgRefreshTask);
-                    this.msgRefreshTask = setInterval(this.refreshMessages.bind(this), MessageRefreshInterval);
+                    this.msgRefreshTask.interval = this.messageRefreshInterval;
                 }
             });
     }
@@ -189,7 +212,6 @@ export class SocketIOAlt {
                     // generate patch and apply locally
                     const vfsLocalVersion = this.vfsLocalVersion!;
                     const dmp = new DiffMatchPatch();
-                    this.vfsLocalVersion = undefined; // set guard to bypass update check
                     const localContent = new TextDecoder().decode( await vfs.openFile(_uri) );
                     const baseRemoteContent = (await vfs.getFileDiff(pathname, vfsLocalVersion, vfsLocalVersion))?.diff[0].u;
                     const latestRemoteContent = (await vfs.getFileDiff(pathname, latestVersion, latestVersion))?.diff[0].u;
@@ -324,8 +346,8 @@ export class SocketIOAlt {
 
     disconnect() {
         this.watchConfigurationsDisposable.dispose();
-        this.vfsRefreshTask && clearInterval(this.vfsRefreshTask);
-        this.msgRefreshTask && clearInterval(this.msgRefreshTask);
+        this.vfsRefreshTask.stop();
+        this.msgRefreshTask.stop();
         this._eventEmitter.emit('disconnect');
     }
 

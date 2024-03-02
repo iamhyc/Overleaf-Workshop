@@ -95,5 +95,7 @@
   "Upload Unsaved {number} Change(s)": "Upload Unsaved {number} Change(s)",
   "Invisible Mode removes your presence from others' view.": "Invisible Mode removes your presence from others' view.",
   "Back to normal mode.": "Back to normal mode.",
-  "(Experimental Feature) By entering Invisible Mode, the current connection to the server will be lost. Continue?": "(Experimental Feature) By entering Invisible Mode, the current connection to the server will be lost. Continue?"
+  "(Experimental Feature) By entering Invisible Mode, the current connection to the server will be lost. Continue?": "(Experimental Feature) By entering Invisible Mode, the current connection to the server will be lost. Continue?",
+  "Uploading Changes": "Uploading Changes",
+  "Failed to upload": "Failed to upload"
 }
