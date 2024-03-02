@@ -187,9 +187,11 @@ export class SocketIOAlt {
                     const _doc = vscode.workspace.textDocuments.find(doc => doc.uri.toString()===_uri.toString());
                     if (_doc && _doc.isDirty) { await _doc.save(); }
                     // generate patch and apply locally
+                    const vfsLocalVersion = this.vfsLocalVersion!;
                     const dmp = new DiffMatchPatch();
+                    this.vfsLocalVersion = undefined; // set guard to bypass update check
                     const localContent = new TextDecoder().decode( await vfs.openFile(_uri) );
-                    const baseRemoteContent = (await vfs.getFileDiff(pathname, this.vfsLocalVersion, this.vfsLocalVersion))?.diff[0].u;
+                    const baseRemoteContent = (await vfs.getFileDiff(pathname, vfsLocalVersion, vfsLocalVersion))?.diff[0].u;
                     const latestRemoteContent = (await vfs.getFileDiff(pathname, latestVersion, latestVersion))?.diff[0].u;
                     if (baseRemoteContent!==undefined && latestRemoteContent!==undefined) {
                         const patch = dmp.patch_make(baseRemoteContent, latestRemoteContent);
@@ -205,7 +207,7 @@ export class SocketIOAlt {
                     }
                     // fetch active users
                     let row = 0, column = 0;
-                    const remoteDiffs = (await vfs.getFileDiff(pathname, this.vfsLocalVersion, latestVersion))?.diff;
+                    const remoteDiffs = (await vfs.getFileDiff(pathname, vfsLocalVersion, latestVersion))?.diff;
                     for (const diff of remoteDiffs || []) {
                         const end_ts = diff.meta?.end_ts || Date.now();
                         const diffText = (diff?.i || diff?.u || '').split('\n');
