@@ -291,7 +291,7 @@ export class SocketIOAlt {
         // upload local changes
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: 'Uploading Changes',
+            title: vscode.l10n.t('Uploading Changes'),
             cancellable: true,
         }, async (progress, token) => {
             token.onCancellationRequested(() => {});
@@ -309,14 +309,14 @@ export class SocketIOAlt {
                     } else if (fileEntity._type==='file') {
                         this._eventEmitter.emit('reciveNewFile', parentFolderId, fileEntity);
                     }
+                    delete this.localChangesPath[path];
                 } catch (error) {
-                    console.error(error);
+                    vscode.window.showErrorMessage(`${vscode.l10n.t('Failed to upload')}: ${path}`);
                 } finally {
                     increment += 100 * (1 / totalChanges);
                 }
             }
             // update local version
-            this.localChangesPath = {};
             this.vfsLocalVersion = await vfs.getCurrentVersion();
             return Promise.resolve();
         });
