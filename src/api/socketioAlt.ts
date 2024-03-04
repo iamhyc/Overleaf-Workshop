@@ -50,18 +50,43 @@ type ListenEventsSupport = {
     'new-chat-message': {message:ProjectMessageResponseSchema},    
 };
 
+class SyncTimer {
+    private timer?: NodeJS.Timeout;
+
+    constructor(
+        private _interval: number,
+        private readonly _callback: () => Promise<void>,
+    ) {
+        this._callback().then(() => this.trigger());
+    }
+
+    private trigger() {
+        this.timer = setTimeout(async () => {
+            await this._callback();
+            this.trigger();
+        }, this._interval);
+    }
+
+    set interval(value: number) {
+        this._interval = value;
+    }
+
+    stop() {
+        this.timer && clearTimeout(this.timer);
+    }
+}
 
 export class SocketIOAlt {
     private _vfs?: VirtualFileSystem;
     private _eventEmitter = new EventEmitter();
     private watchConfigurationsDisposable;
 
-    private vfsRefreshTask?: NodeJS.Timeout;
+    private vfsRefreshTask: SyncTimer;
     private vfsLocalVersion?: number;
     private localChangesPath: { [path:string] : {parentFolderId:string,filename:string} } = {};
     private connectedUsers: UpdateUserSchema[] = [];
 
-    private msgRefreshTask?: NodeJS.Timeout;
+    private msgRefreshTask: SyncTimer;
     private msgCache?: string[];
 
     constructor(
@@ -75,16 +100,10 @@ export class SocketIOAlt {
             this._eventEmitter.emit('connect');
             this._eventEmitter.emit('connectionAccepted', undefined, '');
             this._eventEmitter.emit('joinProjectResponse', '', await this.record);
-        }, 100);
+        }, 10);
 
-        const historyRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyHistoryRefreshInterval, 3) * 1000;//ms
-        this.refreshVFS();
-        this.vfsRefreshTask = setInterval(this.refreshVFS.bind(this), historyRefreshInterval);
-
-        const MessageRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyChatMessageRefreshInterval, 3) * 1000;//ms
-        this.refreshMessages();
-        this.msgRefreshTask = setInterval(this.refreshMessages.bind(this), MessageRefreshInterval);
-
+        this.vfsRefreshTask = new SyncTimer(this.historyRefreshInterval, this.refreshVFS.bind(this));
+        this.msgRefreshTask = new SyncTimer(this.messageRefreshInterval, this.refreshMessages.bind(this));
         this.watchConfigurationsDisposable = this.watchConfigurations();
     }
 
@@ -104,18 +123,22 @@ export class SocketIOAlt {
         }
     }
 
+    private get historyRefreshInterval(): number {
+        return vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyHistoryRefreshInterval, 3) * 1000;//ms
+    }
+
+    private get messageRefreshInterval(): number {
+        return vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyChatMessageRefreshInterval, 3) * 1000;//ms
+    }
+
     private watchConfigurations() {
         return vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration(`${ROOT_NAME}.invisibleMode.historyRefreshInterval`)) {
-                    const historyRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyHistoryRefreshInterval, 3) * 1000;//ms
-                    this.vfsRefreshTask && clearInterval(this.vfsRefreshTask);
-                    this.vfsRefreshTask = setInterval(this.refreshVFS.bind(this), historyRefreshInterval);
+                    this.vfsRefreshTask.interval = this.historyRefreshInterval;
                 }
 
                 if (e.affectsConfiguration(`${ROOT_NAME}.invisibleMode.chatMessageRefreshInterval`)) {
-                    const MessageRefreshInterval = vscode.workspace.getConfiguration(ROOT_NAME).get<number>(keyChatMessageRefreshInterval, 3) * 1000;//ms
-                    this.msgRefreshTask && clearInterval(this.msgRefreshTask);
-                    this.msgRefreshTask = setInterval(this.refreshMessages.bind(this), MessageRefreshInterval);
+                    this.msgRefreshTask.interval = this.messageRefreshInterval;
                 }
             });
     }
@@ -187,9 +210,10 @@ export class SocketIOAlt {
                     const _doc = vscode.workspace.textDocuments.find(doc => doc.uri.toString()===_uri.toString());
                     if (_doc && _doc.isDirty) { await _doc.save(); }
                     // generate patch and apply locally
+                    const vfsLocalVersion = this.vfsLocalVersion!;
                     const dmp = new DiffMatchPatch();
                     const localContent = new TextDecoder().decode( await vfs.openFile(_uri) );
-                    const baseRemoteContent = (await vfs.getFileDiff(pathname, this.vfsLocalVersion, this.vfsLocalVersion))?.diff[0].u;
+                    const baseRemoteContent = (await vfs.getFileDiff(pathname, vfsLocalVersion, vfsLocalVersion))?.diff[0].u;
                     const latestRemoteContent = (await vfs.getFileDiff(pathname, latestVersion, latestVersion))?.diff[0].u;
                     if (baseRemoteContent!==undefined && latestRemoteContent!==undefined) {
                         const patch = dmp.patch_make(baseRemoteContent, latestRemoteContent);
@@ -204,16 +228,20 @@ export class SocketIOAlt {
                         });
                     }
                     // fetch active users
-                    const remoteDiffs = (await vfs.getFileDiff(pathname, this.vfsLocalVersion, latestVersion))?.diff;
+                    let row = 0, column = 0;
+                    const remoteDiffs = (await vfs.getFileDiff(pathname, vfsLocalVersion, latestVersion))?.diff;
                     for (const diff of remoteDiffs || []) {
                         const end_ts = diff.meta?.end_ts || Date.now();
+                        const diffText = (diff?.i || diff?.u || '').split('\n');
+                        row += diffText.length;
+                        column = diffText.slice(-1)[0].length;
                         for (const user of diff.meta?.users || []) {
                             const index = this.connectedUsers.findIndex(u => u.user_id===user.id);
                             if (index===-1) {
                                 const userUpdate = {
                                     id:user.id, user_id:user.id, email:user.email,
                                     name:`${user.first_name} ${user.last_name||''}`,
-                                    doc_id:entityId, row:-1, column:-1,
+                                    doc_id:entityId, row, column,
                                     last_updated_at: end_ts,
                                 };
                                 this.connectedUsers.push( userUpdate );
@@ -285,7 +313,7 @@ export class SocketIOAlt {
         // upload local changes
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: 'Uploading Changes',
+            title: vscode.l10n.t('Uploading Changes'),
             cancellable: true,
         }, async (progress, token) => {
             token.onCancellationRequested(() => {});
@@ -303,14 +331,14 @@ export class SocketIOAlt {
                     } else if (fileEntity._type==='file') {
                         this._eventEmitter.emit('reciveNewFile', parentFolderId, fileEntity);
                     }
+                    delete this.localChangesPath[path];
                 } catch (error) {
-                    console.error(error);
+                    vscode.window.showErrorMessage(`${vscode.l10n.t('Failed to upload')}: ${path}`);
                 } finally {
                     increment += 100 * (1 / totalChanges);
                 }
             }
             // update local version
-            this.localChangesPath = {};
             this.vfsLocalVersion = await vfs.getCurrentVersion();
             return Promise.resolve();
         });
@@ -318,8 +346,8 @@ export class SocketIOAlt {
 
     disconnect() {
         this.watchConfigurationsDisposable.dispose();
-        this.vfsRefreshTask && clearInterval(this.vfsRefreshTask);
-        this.msgRefreshTask && clearInterval(this.msgRefreshTask);
+        this.vfsRefreshTask.stop();
+        this.msgRefreshTask.stop();
         this._eventEmitter.emit('disconnect');
     }
 
