@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2024-03-05
+### Added
+- feat: icon for compile and view pdf
+  - Commit: 6a859d2cff0e07c7de43d16f431d387f80a95ef2
+
+### Fixed
+- fix: Invisible Mode Unexpected Behavior (#113)
+  - Commit: 16aaebe292c5e61ae3f33c29da2b614c01b598c6
+
 ## [0.10.0] - 2024-02-24
 ### Added
 - feat(scm): support multi-file diff
