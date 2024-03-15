@@ -315,6 +315,41 @@ export async function genTexElements(documentText: string): Promise<TeXElement[]
     }
 
     const rootStruct = resElement.children;
+    const lastLineNum = documentText.split('\n').length;
     const hierarchyStruct = hierarchyStructFormat(rootStruct);
-    return hierarchyStruct;
+    return updateSecMacroLineTo(hierarchyStruct, lastLineNum);
+}
+
+/*
+    * Update the lineTo of each section element in the TeXElement[] structure
+    * 
+    * @param texElements: the TeXElement[] structure
+    * @param lastLine: the last line number of the LaTeX file
+    * @return: the updated TeXElement[] structure
+*/
+function updateSecMacroLineTo(texElements: TeXElement[], lastLine: number): TeXElement[] {
+    const resStruct: TeXElement[] = [];
+    for (const element of texElements) {
+        if (element.type !== TeXElementType.Section && element.type !== TeXElementType.SectionAst) {
+            resStruct.push(element);
+            continue;
+        }
+        if (element.children.length > 0) {
+            resStruct.push(...updateSecMacroLineTo(element.children, lastLine));
+        }
+        // lineto is the linefr of next section element
+        let nextIndex = texElements.indexOf(element) + 1;
+        while (nextIndex < texElements.length) {
+            if (texElements[nextIndex].type === TeXElementType.Section || texElements[nextIndex].type === TeXElementType.SectionAst) {
+                element.lineTo = texElements[nextIndex].lineFr;
+                break;
+            }
+            nextIndex++;
+        }
+        if (nextIndex === texElements.length) {
+            element.lineTo = lastLine;
+        }
+        resStruct.push(element);
+    }
+    return resStruct;
 }

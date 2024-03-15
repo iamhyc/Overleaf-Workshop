@@ -47,6 +47,51 @@ function elementsToSymbols(sections: TeXElement[]): vscode.DocumentSymbol[] {
     return symbols;
 }
 
+function elementsToFoldingRanges(sections: TeXElement[]): vscode.FoldingRange[] {
+    const foldingRanges: vscode.FoldingRange[] = [];
+    sections.forEach(section => {
+        const foldingRange = new vscode.FoldingRange(section.lineFr, section.lineTo - 1); // without the last line, e.g \end{document}
+        foldingRanges.push(foldingRange);
+        if (section.children.length > 0) {
+            foldingRanges.push(...elementsToFoldingRanges(section.children));
+        }
+    });
+    return foldingRanges;
+}
+
+// Reference: https://github.com/iamhyc/LaTeX-Workshop/commit/d1a078d9b63a34c9cda9ff5d1042c8999030e6e1
+function getEnvironmentFoldingRange(document: vscode.TextDocument){
+    const ranges: vscode.FoldingRange[] = [];
+    const opStack: { keyword: string, index: number }[] = [];
+    const text: string =  document.getText();
+    const envRegex: RegExp = /(\\(begin){(.*?)})|(\\(end){(.*?)})/g; //to match one 'begin' OR 'end'
+
+    let match = envRegex.exec(text); // init regex search
+    while (match) {
+        //for 'begin': match[2] contains 'begin', match[3] contains keyword
+        //fro 'end':   match[5] contains 'end',   match[6] contains keyword
+        const item = {
+            keyword: match[2] ? match[3] : match[6],
+            index: match.index
+        };
+        const lastItem = opStack[opStack.length - 1];
+
+        if (match[5] && lastItem && lastItem.keyword === item.keyword) { // match 'end' with its 'begin'
+            opStack.pop();
+            ranges.push(new vscode.FoldingRange(
+                document.positionAt(lastItem.index).line,
+                document.positionAt(item.index).line - 1
+            ));
+        } else {
+            opStack.push(item);
+        }
+
+        match = envRegex.exec(text); //iterate regex search
+    }
+    //TODO: if opStack still not empty
+    return ranges;
+}
+
 /*
     * Convert the file into the struct by:
     * 1. Construct child, named as Uri.path, from TeXElementType.SubFile
@@ -155,10 +200,19 @@ class ProjectStructRecord {
     }
 }
 
-export class TexDocumentSymbolProvider extends IntellisenseProvider implements vscode.DocumentSymbolProvider {
+export class TexDocumentSymbolProvider extends IntellisenseProvider implements vscode.DocumentSymbolProvider, vscode.FoldingRangeProvider {
     protected readonly contextPrefix = [];
 
     private projectRecordMap = new Map<string, ProjectStructRecord>();
+
+    async provideFoldingRanges(document: vscode.TextDocument, context: vscode.FoldingContext, token: vscode.CancellationToken): Promise<vscode.FoldingRange[]> {
+        const environmentRange = getEnvironmentFoldingRange(document);
+        // Try get fileStruct
+        const {projectName} = parseUri(document.uri);
+        let projectRecord = this.projectRecordMap.get(projectName);
+        const fileStruct = projectRecord?.getTexFileStruct(document);
+        return environmentRange.concat( fileStruct ? elementsToFoldingRanges(fileStruct.texElements) : [] );
+    }
 
     async provideDocumentSymbols(document: vscode.TextDocument): Promise<vscode.DocumentSymbol[]> {
         const vfs = await this.vfsm.prefetch(document.uri);
@@ -194,6 +248,8 @@ export class TexDocumentSymbolProvider extends IntellisenseProvider implements v
         return [
             // register symbol provider
             vscode.languages.registerDocumentSymbolProvider(latexSelector, this),
+            // register folding range provider
+            vscode.languages.registerFoldingRangeProvider(latexSelector, this),
             // register file change listener
             vscode.workspace.onDidChangeTextDocument(async (e) => {
                 const {projectName} = parseUri(e.document.uri);
