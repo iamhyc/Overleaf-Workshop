@@ -301,7 +301,6 @@ function hierarchyStructFormat(parentStruct: TeXElement[]): TeXElement[] {
 export async function genTexElements(documentText: string): Promise<TeXElement[]> {
     const resElement = { children: [] as TeXElement[] };
     let ast = unifiedParser.parse(documentText);
-
     for (const node of ast.content) {
         if (['string', 'parbreak', 'whitespace'].includes(node.type)) {
             continue;
@@ -315,6 +314,33 @@ export async function genTexElements(documentText: string): Promise<TeXElement[]
     }
 
     const rootStruct = resElement.children;
+    const documentTextLines = documentText.split('\n');
     const hierarchyStruct = hierarchyStructFormat(rootStruct);
+    updateSecMacroLineTo(hierarchyStruct, documentTextLines.length , documentTextLines);
     return hierarchyStruct;
+}
+
+/*
+    * Update the lineTo of each section element in the TeXElement[] structure
+    * 
+    * @param texElements: the TeXElement[] structure
+    * @param lastLine: the last lineTo of given TeXElement[] structure
+    * @param documentTextLines: the content of the LaTeX file used to refine the lineTo
+    * @return: the updated TeXElement[] structure
+*/
+function updateSecMacroLineTo(texElements: TeXElement[], lastLine: number, documentTextLines: string[]) {
+    const secTexElements = texElements.filter(element => element.type === TeXElementType.Section || element.type === TeXElementType.SectionAst);
+    for (let index = 1; index <= secTexElements.length; index++) {
+        // LineTo of the previous section is the lineFr of the current section OR the last document line
+        let lineTo = secTexElements[index]?.lineFr ?? lastLine;
+
+        // Search the non-empty line before the next section
+        while (lineTo > 1 && documentTextLines[lineTo - 1].trim() === '') {
+            lineTo--;
+        }
+        secTexElements[index - 1].lineTo = lineTo;
+        if (secTexElements[index - 1].children.length > 0 ){
+            updateSecMacroLineTo(secTexElements[index - 1].children, lineTo, documentTextLines);
+        }
+    }
 }
