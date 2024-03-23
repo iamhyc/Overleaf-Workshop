@@ -7,7 +7,7 @@ import { ROOT_NAME } from '../consts';
 type ReviewDecorationType = 'openComment' | 'resolvedComment' | 'insertChange' | 'deleteChange';
 type EditOp = {p:number, i?:string, d?:string, u?:boolean};
 type EditRange = {start:number, end:number};
-type EditChange = {id?:string, op:EditOp, rng:EditRange, offset:number};
+type EditChange = {id?:string, op:EditOp, rng:EditRange};
 
 const reviewDecorationOptions: {[type in ReviewDecorationType]: vscode.DecorationRenderOptions} = {
     openComment: {
@@ -34,6 +34,16 @@ const reviewDecorationOptions: {[type in ReviewDecorationType]: vscode.Decoratio
         dark: {gutterIconPath: 'resources/icons/dark/gutter-edit.svg'},
     },
 };
+
+function editOpRng(editOp: EditOp): EditRange {
+    //NOTE: edit has no insert range
+    return { start: editOp.p - (editOp.d?.length || 0), end: editOp.p };
+}
+
+function textOpRng(textOp: EditOp): EditRange {
+    //NOTE: text has no delete range
+    return { start: textOp.p, end: textOp.p + (textOp.i?.length || 0) };
+}
 
 function offsetToRange(document: vscode.TextDocument, offset:number, quotedText: string): vscode.Range {
     return new vscode.Range(
@@ -114,9 +124,33 @@ class EditManager {
             const edit: EditChange = {
                 id: tcId,
                 op: editOp,
+                rng: editOpRng(editOp),
+            };
+            // lookup for affected `this.changes` start/end index
+            const textOpsRng = this.changes.map(c => textOpRng(c.op));
+            const affectBefore = textOpsRng.findIndex(rng => edit.rng.start < rng.start);
+            const affectAfter  = textOpsRng.reverse().findIndex(rng => edit.rng.end   > rng.end);
+            const affectStart = textOpsRng.findIndex(rng => rng.start<=edit.rng.start && edit.rng.start<=rng.end);
+            const affectEnd   = editOp.i? affectStart : textOpsRng.findIndex(rng => rng.start<=edit.rng.end && edit.rng.end<= rng.end);
+            // apply insert edit
+            if (edit.op.i) {
+                
+            }
+            // apply delete edit
+            else if (edit.op.d) {
+
+            }
+        }
+
+
+        for (const [offset,editOp] of this.update.op!.entries()) {
+            const tcIndex = offset.toString().padStart(6,'0');
+            const tcId = (this.update.meta?.tc) ? (this.update.meta.tc+tcIndex) : undefined;
+            const edit: EditChange = {
+                id: tcId,
+                op: editOp,
                 //NOTE: edit has no insert range
                 rng: { start: editOp.p - (editOp.d?.length || 0), end: editOp.p },
-                offset: 0,
             };
             // update existing changes and decorations
             for (let index=0; index<this.changes.length;) {
@@ -124,9 +158,7 @@ class EditManager {
                 const text: EditChange = {
                     id: change.id,
                     op: change.op,
-                    //NOTE: text has no delete range
-                    rng: { start: change.op.p, end: change.op.p + (change.op.i?.length || 0) },
-                    offset: 0,
+                    rng: textOpRng(change.op),
                 };
                 const {nextIndex, items} = (() => {
                     // Case 1: insert + insert
@@ -223,7 +255,7 @@ class EditManager {
         const nextChange = this.changes.at(index+1);
         // Case 2a: delete.end <= insert.start --> [update position only]
         if (edit.rng.end<=text.rng.start) {
-            text.op.p -= edit.offset;
+            // text.op.p -= edit.offset;
             items.push({id:text.id!, type:'insertChange'});
         }
         // Case 2b: edit.rng collides with text.rng --> [update/remove/merge range]
@@ -266,7 +298,7 @@ class EditManager {
             }
             // obtain the remaining edit for next iteration, else consume `edit.id`
             if (afterRange) {
-                edit.offset = edit.offset || (edit.rng.end-edit.rng.start);
+                // edit.offset = edit.offset || (edit.rng.end-edit.rng.start);
                 edit.rng = afterRange;
                 edit.op.p = text.rng.end;
                 edit.op.d = edit.op.d!.slice(afterRange.start-edit.rng.start);
@@ -330,7 +362,7 @@ class EditManager {
     }
 }
 
-export class ReviewPanelProvider implements vscode.CodeLensProvider {
+export class ReviewPanelProvider extends vscode.Disposable implements vscode.CodeLensProvider {
     private readonly reviewDecorations: {[id:string]: vscode.TextEditorDecorationType} = {};
     private reviewRecords: {[docId:string]: DocumentRangesSchema} = {};
     private reviewThreads: {[threadId:string]: CommentThreadSchema} = {};
@@ -340,6 +372,9 @@ export class ReviewPanelProvider implements vscode.CodeLensProvider {
         readonly context: vscode.ExtensionContext,
         private readonly socket: SocketIOAPI,
     ) {
+        super(() => {
+            this.socket.disconnect();
+        });
         // init review records
         this.vfs.getAllDocumentReviews().then((records) => {
             const {ranges,threads} = records!;
@@ -595,6 +630,8 @@ export class ReviewPanelProvider implements vscode.CodeLensProvider {
 
     get triggers() {
         return [
+            // register self for socket disconnection
+            this as vscode.Disposable,
             // register exposed commands
             vscode.commands.registerCommand(`${ROOT_NAME}.collaboration.addComment`, async () => {
                 const activeTextEditor = vscode.window.activeTextEditor!;
