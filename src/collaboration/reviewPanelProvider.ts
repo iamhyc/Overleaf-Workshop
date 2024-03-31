@@ -6,8 +6,6 @@ import { ROOT_NAME } from '../consts';
 
 type ReviewDecorationType = 'openComment' | 'resolvedComment' | 'insertChange' | 'deleteChange';
 type EditOp = {p:number, i?:string, d?:string, u?:boolean};
-type EditRange = {start:number, end:number};
-type EditChange = {id?:string, op:EditOp, rng:EditRange};
 
 const reviewDecorationOptions: {[type in ReviewDecorationType]: vscode.DecorationRenderOptions} = {
     openComment: {
@@ -34,16 +32,6 @@ const reviewDecorationOptions: {[type in ReviewDecorationType]: vscode.Decoratio
         dark: {gutterIconPath: 'resources/icons/dark/gutter-edit.svg'},
     },
 };
-
-function editOpRng(editOp: EditOp): EditRange {
-    //NOTE: edit has no insert range
-    return { start: editOp.p - (editOp.d?.length || 0), end: editOp.p };
-}
-
-function textOpRng(textOp: EditOp): EditRange {
-    //NOTE: text has no delete range
-    return { start: textOp.p, end: textOp.p + (textOp.i?.length || 0) };
-}
 
 function offsetToRange(document: vscode.TextDocument, offset:number, quotedText: string): vscode.Range {
     return new vscode.Range(
@@ -102,140 +90,196 @@ function genThreadMarkdownString(userId:string, threadId:string, thread: Comment
     return text;
 }
 
-class EditManager {
-    constructor(
-        private readonly changes: DocumentReviewChangeSchema[],
-        private readonly update: UpdateSchema,
-        private readonly metadata: any,
-    ) {}
+class ChangeRange {
+    public readonly change?: DocumentReviewChangeSchema;
+    constructor(readonly _begin: number=0, readonly _end: number=0) {}
+    get begin() { return this._begin; }
+    get end() { return this._end; }
+    includes(position: number): boolean {
+        return position>=this.begin && position<=this.end;
+    }
+    isAfter(position: number): boolean {
+        return position<this.begin;
+    }
+}
 
+/**
+ * NOTE: text has no delete range
+ */
+class TextChange extends ChangeRange {
+    constructor(readonly change: DocumentReviewChangeSchema) { super(); }
+    get op() { return this.change.op; }
+    get begin () { return this.change.op.p; }
+    get end() { return this.change.op.p + (this.change.op.i?.length || 0); }
+}
+
+/**
+ * NOTE: edit has no insert range
+ */
+class EditChange extends ChangeRange {
+    constructor(readonly change: DocumentReviewChangeSchema) { super(); }
+    get op() { return this.change.op; }
+    get begin () { return this.change.op.p - (this.change.op.d?.length || 0); }
+    get end() { return this.change.op.p; }
+}
+
+class InterleavedRange {
+    private interleaved: TextChange[];
+    constructor(changes: readonly DocumentReviewChangeSchema[]) {
+        this.interleaved = changes.map(c => new TextChange(c));
+    }
+
+    locate(position: number): ChangeRange {
+        const index = this.interleaved.findIndex(rng => rng.includes(position) || rng.isAfter(position));
+        if (index===-1) {
+            return new ChangeRange(-1, -1);
+        } else {
+            const text = this.interleaved[index];
+            if (text.includes(position)) {
+                return text;
+            } else {
+                const lastText = this.interleaved[index-1];
+                return new ChangeRange(lastText?.end||0, text.begin);
+            }
+        }
+    }
+
+    next(range: TextChange): ChangeRange {
+        const index = this.interleaved.indexOf(range);
+        const nextText = this.interleaved[index+1];
+        if (nextText.begin===range.end) {
+            return nextText;
+        } else {
+            return new ChangeRange(range.end, nextText.begin);
+        }
+    }
+
+    insert(change: TextChange) {
+        const index = this.interleaved.findIndex(rng => rng.end<=change.begin);
+        if (index!==-1) {
+            this.interleaved.splice(index, 0, change);
+        } else {
+            this.interleaved.push(change);
+        }
+    }
+
+    remove(range: TextChange) {
+        this.interleaved = this.interleaved.filter(rng => rng!==range);
+    }
+
+    condense(): DocumentReviewChangeSchema[] {
+        return [];
+    }
+}
+
+class EditManager {
+    private wholeText: InterleavedRange;
     /**
      * Reference: https://github.com/overleaf/overleaf/tree/main/libraries/ranges-tracker
      * 
-     * Insert Range Direction: (p)|------>|(end)
-     * Delete Range Direction: (start)|<------|(p)
+     * Insert Edit Range Direction: (p)|------>|(end)
+     * Delete Edit Range Direction: (begin)|<------|(p)
      */
+    constructor(
+        changes: readonly DocumentReviewChangeSchema[],
+        private readonly update: UpdateSchema,
+        private readonly metadata: any,
+    ) {
+        this.wholeText = new InterleavedRange(changes);
+    }
+
     generateRefreshes() {
         let refreshes:{id:string, type?:ReviewDecorationType}[] = [];
-        //
-        for (const [offset,editOp] of this.update.op!.entries()) {
-            const tcIndex = offset.toString().padStart(6,'0');
-            const tcId = (this.update.meta?.tc) ? (this.update.meta.tc+tcIndex) : undefined;
-            const edit: EditChange = {
-                id: tcId,
-                op: editOp,
-                rng: editOpRng(editOp),
-            };
-            // lookup for affected `this.changes` start/end index
-            const textOpsRng = this.changes.map(c => textOpRng(c.op));
-            const affectBefore = textOpsRng.findIndex(rng => edit.rng.start < rng.start);
-            const affectAfter  = textOpsRng.reverse().findIndex(rng => edit.rng.end   > rng.end);
-            const affectStart = textOpsRng.findIndex(rng => rng.start<=edit.rng.start && edit.rng.start<=rng.end);
-            const affectEnd   = editOp.i? affectStart : textOpsRng.findIndex(rng => rng.start<=edit.rng.end && edit.rng.end<= rng.end);
-            // apply insert edit
-            if (edit.op.i) {
-                
-            }
-            // apply delete edit
-            else if (edit.op.d) {
-
-            }
-        }
-
 
         for (const [offset,editOp] of this.update.op!.entries()) {
             const tcIndex = offset.toString().padStart(6,'0');
-            const tcId = (this.update.meta?.tc) ? (this.update.meta.tc+tcIndex) : undefined;
-            const edit: EditChange = {
-                id: tcId,
-                op: editOp,
-                //NOTE: edit has no insert range
-                rng: { start: editOp.p - (editOp.d?.length || 0), end: editOp.p },
-            };
-            // update existing changes and decorations
-            for (let index=0; index<this.changes.length;) {
-                const change = this.changes[index];
-                const text: EditChange = {
-                    id: change.id,
-                    op: change.op,
-                    rng: textOpRng(change.op),
-                };
-                const {nextIndex, items} = (() => {
-                    // Case 1: insert + insert
-                    if      (text.op.i !== undefined && edit.op.i !== undefined) {
-                        return this.applyInsertRangeWithInsertChange(index, text, edit);
+            const tcId = (this.update.meta?.tc) ? (this.update.meta.tc+tcIndex) : '';
+            const edit = new EditChange({id:tcId, op:editOp, metadata:this.metadata});
+            // lookup for affected `this.changes` begins/end index
+            const beginText = this.wholeText.locate(edit.begin);
+            const endText = editOp.i? beginText : this.wholeText.locate(edit.end);
+            
+            // 1a. apply insert edit
+            if (editOp.i) {
+                // 1a.1. to insert text range
+                if (beginText instanceof TextChange && beginText.op.i) {
+                    refreshes.push( ...this.applyInsertRangeWithInsertChange(beginText, edit) );
+                }
+                // 1a.2. to delete text range
+                else if (beginText instanceof TextChange && beginText.op.d) {
+                    refreshes.push( ...this.applyDeleteRangeWithInsertChange(beginText, edit) );
+                }
+                // 1a.3. to interleaved range
+                else {
+                    // 1a.3a. insert with `tc` --> create new change
+                    if (tcId) {
+                        this.wholeText.insert(new TextChange(edit.change));
+                        refreshes.push({id:tcId, type:'insertChange'});
                     }
-                    // Case 2: insert + delete
-                    else if (text.op.i !== undefined && edit.op.d !== undefined) {
-                        return this.applyInsertRangeWithDeleteChange(index, text, edit);
-                    }
-                    // Case 3: delete + insert
-                    else if (text.op.d !== undefined && edit.op.i !== undefined) {
-                        return this.applyDeleteRangeWithInsertChange(index, text, edit);
-                    }
-                    // Case 4: delete + delete
-                    else if (text.op.d !== undefined && edit.op.d !== undefined) {
-                        return this.applyDeleteRangeWithDeleteChange(index, text, edit);
-                    }
-                })()!;
-                // update `index` for next iteration
-                index = nextIndex;
-                refreshes.push( ...items );
-                this.changes.sort((a,b) => a.op.p - b.op.p); // sort in ascending order
+                }
             }
-            // if `edit.id` still exists, create new change
-            if (edit.id) {
-                this.changes.push({
-                    id: edit.id,
-                    op: edit.op,
-                    metadata: this.metadata,
-                });
-                refreshes = [{id:edit.id, type:editOp.i ? 'insertChange' : 'deleteChange'}];
+            // 1b. apply delete edit
+            else if (editOp.d) {
+
             }
+            // 2. update position offset for the range after `end`
+
+            // 3. remove intermediate text ranges
+
         }
         return refreshes;
     }
 
-    /**
-     * Case 1: insert + insert
-     *   ┌────────┐
-     *   │ Insert │
-     *   └────────┘
-     * ▲     ▲
-     * │     │
-     * (1a)  (1b,1c)
-     */
-    applyInsertRangeWithInsertChange(index:number, text: EditChange, edit: EditChange) {
+    applyInsertRangeWithInsertChange(text: TextChange, edit: EditChange) {
         let items:{id:string, type?:ReviewDecorationType}[] = [];
-        const editOffset = edit.rng.start - text.rng.start;
-        // Case 1a: insert position `<start` w/ `tc` OR `<=start` w/o `tc` --> [update position only]
-        if ((edit.id && edit.rng.end<text.rng.start) || (edit.id===undefined && edit.rng.end<=text.rng.start)) {
-            text.op.p += edit.op.i!.length;
-            items.push({id:text.id!, type:'insertChange'});
+        const editOffset = edit.begin - text.begin;
+        // 1a.1a. insert with `tc` at start of next delete text range with exact same text --> [remove next text range]
+        const nextRng = this.wholeText.next(text);
+        if (edit.change?.id && edit.begin===text.end && nextRng.change?.id && nextRng.change.op.d===edit.op.i) {
+            items.push({id:nextRng.change.id});
+            this.wholeText.remove(nextRng as TextChange);
         }
-        // Case 1b: insert within [start,end] with `tc` --> [update change]
-        else if (text.rng.start<=edit.rng.start && edit.rng.start<=text.rng.end && edit.id) {
+        // 1a.1b. insert with `tc` --> [extend text range]
+        else if (edit.change?.id && text.change?.id) {
             text.op.i = text.op.i!.slice(0, editOffset) + edit.op.i + text.op.i!.slice(editOffset);
-            edit.id = undefined; // consume `edit.id`
-            items.push({id:text.id!, type:'insertChange'});
+            items.push({id:text.change.id, type:'insertChange'});
         }
-        // Case 1c: insert within (start,end) without `tc` --> [clip change and create new change]
-        else if (text.rng.start<edit.rng.start && edit.rng.start<text.rng.end && edit.id===undefined) {
+        // 1a.1c. insert without `tc` within (begin,end) --> [clip text range and insert new change]
+        else if (text.change?.id===undefined && edit.begin<text.end && edit.begin>text.begin) {
             const [beforeText, afterText] = [text.op.i!.slice(0, editOffset), text.op.i!.slice(editOffset)];
             // clip the original change
             text.op.i = beforeText;
-            text.rng.end = text.rng.start + beforeText.length;
-            items.push({id:text.id!, type:'insertChange'});
-            // create new change
+            items.push({id:text.change.id, type:'insertChange'});
+            // insert new change
             const newId = generateTrackId();
-            this.changes.push({
+            const newText = new TextChange({
                 id: newId,
-                op: { p: text.rng.end + edit.op.i!.length, i: afterText },
+                op: { p: text.end + edit.op.i!.length, i: afterText },
                 metadata: this.metadata,
             });
+            this.wholeText.insert(newText);
             items.push({id:newId, type:'insertChange'});
         }
-        return {nextIndex:index+1, items};
+        return items;
+    }
+
+    applyDeleteRangeWithInsertChange(text: TextChange, edit: EditChange) {
+        let items:{id:string, type?:ReviewDecorationType}[] = [];
+        // 1a.2a. insert with `tc` with exact same text --> remove text range
+        if (edit.change?.id && text.op.d===edit.op.i) {
+            items.push({id:text.change.id});
+            this.wholeText.remove(text);
+        }
+        else {
+            // 1a.2b. insert with `tc` --> create new change
+            if (edit.change?.id) {
+                this.wholeText.insert(new TextChange(edit.change));
+                items.push({id:edit.change.id, type:'insertChange'});
+            }
+            // offset the position of the text range
+            text.op.p += edit.op.i!.length;
+        }
+        return items;
     }
 
     /**
@@ -250,7 +294,7 @@ class EditManager {
      * │(2b)                │
      * └────────────────────┘
      */
-    applyInsertRangeWithDeleteChange(index:number, text: EditChange, edit: EditChange) {
+    applyInsertRangeWithDeleteChange(text: EditChange, edit: EditChange) {
         let items:{id:string, type?:ReviewDecorationType}[] = [];
         const nextChange = this.changes.at(index+1);
         // Case 2a: delete.end <= insert.start --> [update position only]
@@ -310,30 +354,6 @@ class EditManager {
     }
 
     /**
-     * Case 3: delete + insert
-     *    Delete
-     *       │
-     *   ▲   ▲
-     *   │   │
-     * (3a) (3b)
-     */
-    applyDeleteRangeWithInsertChange(index:number, text: EditChange, edit: EditChange) {
-        let items:{id:string, type?:ReviewDecorationType}[] = [];
-        // Case 3a: insert before delete position --> [update position only]
-        if (edit.rng.start<text.rng.start) {
-            text.op.p += edit.op.i!.length;
-            items.push({id:text.id!, type:'deleteChange'});
-        }
-        // Case 3b: text.op.d===edit.op.i with `edit.op.u` --> [remove range]
-        else if (text.rng.start===edit.rng.start && text.op.d===edit.op.i && edit.op.u) {
-            this.changes.splice(index, 1);
-            index -= 1;
-            items.push({id:text.id!});
-        }
-        return {nextIndex:index+1, items};
-    }
-
-    /**
      * Case 4: delete + delete
      *     Delete  Delete
      *        │       |
@@ -373,7 +393,7 @@ export class ReviewPanelProvider extends vscode.Disposable implements vscode.Cod
         private readonly socket: SocketIOAPI,
     ) {
         super(() => {
-            this.socket.disconnect();
+            // this.socket.disconnect();
         });
         // init review records
         this.vfs.getAllDocumentReviews().then((records) => {
@@ -639,9 +659,9 @@ export class ReviewPanelProvider extends vscode.Disposable implements vscode.Cod
                 const quotedRange = activeTextEditor.selection;
                 const quotedOffset = activeTextEditor.document.offsetAt(quotedRange.start);
                 const quotedText = activeTextEditor.document.getText(quotedRange);
+                //
                 let slideText = quotedText.replace(/\n/g, ' ').replace(/\s+/g, ' ');
                 slideText = slideText.length<=30? slideText : slideText.replace(/^(.{15}).*(.{15})$/, '$1...$2');
-                //
                 vscode.window.showInputBox({
                     title: vscode.l10n.t('Reply to comment'),
                     prompt: `Quoted text: "${slideText}"`,
@@ -666,7 +686,6 @@ export class ReviewPanelProvider extends vscode.Disposable implements vscode.Cod
             vscode.commands.registerCommand('reviewPanel.deleteComment', async (args: {docId:string,threadId:string}) => {
                 await this.vfs.deleteResolvedCommentThread(args.docId, args.threadId);
             }),
-            //
             vscode.commands.registerCommand('reviewPanel.replyComment', async (args: {threadId:string}) => {
                 vscode.window.showInputBox({
                     title: vscode.l10n.t('Reply to comment'),
