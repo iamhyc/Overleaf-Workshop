@@ -111,6 +111,7 @@ class TextChange extends ChangeRange {
     get op() { return this.change.op; }
     get begin () { return this.change.op.p; }
     get end() { return this.change.op.p + (this.change.op.i?.length || 0); }
+    get isInsert() { return this.change.op.i!==undefined; }
 }
 
 /**
@@ -121,6 +122,7 @@ class EditChange extends ChangeRange {
     get op() { return this.change.op; }
     get begin () { return this.change.op.p - (this.change.op.d?.length || 0); }
     get end() { return this.change.op.p; }
+    get isInsert() { return this.change.op.i!==undefined; }
 }
 
 class InterleavedRange {
@@ -154,6 +156,15 @@ class InterleavedRange {
         }
     }
 
+    apply(start: ChangeRange, callback: (range: TextChange) => void) {
+        const index = this.interleaved.findIndex(rng => rng.end<=start.begin);
+        if (index!==-1) {
+            for (let i=index; i<this.interleaved.length; i++) {
+                callback(this.interleaved[i]);
+            }
+        }
+    }
+
     insert(change: TextChange) {
         const index = this.interleaved.findIndex(rng => rng.end<=change.begin);
         if (index!==-1) {
@@ -167,8 +178,16 @@ class InterleavedRange {
         this.interleaved = this.interleaved.filter(rng => rng!==range);
     }
 
+    removeBetween(start: ChangeRange, end: ChangeRange) {
+        const startIndex = this.interleaved.findIndex(rng => rng.end<=start.begin);
+        const endIndex = this.interleaved.findIndex(rng => rng.begin>=end.end);
+        if (startIndex!==-1 && endIndex!==-1) {
+            this.interleaved.splice(startIndex, endIndex-startIndex);
+        }
+    }
+
     condense(): DocumentReviewChangeSchema[] {
-        return [];
+        return this.interleaved.map(rng => rng.change);
     }
 }
 
@@ -186,6 +205,10 @@ class EditManager {
         private readonly metadata: any,
     ) {
         this.wholeText = new InterleavedRange(changes);
+    }
+
+    get updatedChanges() {
+        return this.wholeText.condense();
     }
 
     generateRefreshes() {
@@ -211,21 +234,48 @@ class EditManager {
                 }
                 // 1a.3. to interleaved range
                 else {
-                    // 1a.3a. insert with `tc` --> create new change
-                    if (tcId) {
-                        this.wholeText.insert(new TextChange(edit.change));
-                        refreshes.push({id:tcId, type:'insertChange'});
-                    }
+                    refreshes.push( ...this.applyInterleavedRangeWithInsertChange(beginText, edit) );   
                 }
             }
             // 1b. apply delete edit
             else if (editOp.d) {
-
+                // 1b.1. for both `beginText` and `endText` text ranges
+                const [beginRemain, endRemain] = [beginText, endText].map((text,index) => {
+                    const before = index===0? true : false;
+                    // 1b.1a. to insert text range
+                    if (text instanceof TextChange && text.op.i) {
+                        return this.applyInsertRangeWithDeleteChange(text, edit, before);
+                    }
+                    // 1b.1b. to delete text range
+                    else if (text instanceof TextChange && text.op.d) {
+                        return this.applyDeleteRangeWithDeleteChange(text, edit, before);
+                    }
+                    // 1b.1c. to interleaved range
+                    else {
+                        return this.applyInterleavedRangeWithDeleteChange(text, edit, before);
+                    }
+                });
+                // 1b.2. merge the remains of `begin` and `end` text ranges, if they are the same type
+                if (beginRemain instanceof TextChange && endRemain instanceof TextChange && beginRemain.isInsert===endRemain.isInsert) {
+                    const oldRemain = beginRemain < endRemain? beginRemain : endRemain;
+                    if (oldRemain.isInsert) {
+                        oldRemain.op.i += endRemain.op.i!;
+                        refreshes.push({id:oldRemain.change.id, type:'insertChange'});
+                    } else {
+                        oldRemain.op.d += endRemain.op.d!;
+                        refreshes.push({id:oldRemain.change.id, type:'deleteChange'});
+                    }
+                    //
+                    this.wholeText.remove(endRemain);
+                    refreshes.push({id:endRemain.change.id});
+                }
+                // 1b.3 remove intermediate text ranges
+                this.wholeText.removeBetween(beginText, endText);
             }
             // 2. update position offset for the range after `end`
-
-            // 3. remove intermediate text ranges
-
+            this.wholeText.apply(endText, (text) => {
+                text.op.p += edit.op.i!.length - edit.op.d!.length;
+            });
         }
         return refreshes;
     }
@@ -282,103 +332,29 @@ class EditManager {
         return items;
     }
 
-    /**
-     * Case 2: insert + delete
-     *      ┌────────┐  ┌────────┐
-     *      │ Insert │  │ Insert │
-     *      └────────┘  └────────┘
-     * ┌────┐
-     * │(2a)│
-     * └────┘
-     * ┌────────────────────┐
-     * │(2b)                │
-     * └────────────────────┘
-     */
-    applyInsertRangeWithDeleteChange(text: EditChange, edit: EditChange) {
+    applyInterleavedRangeWithInsertChange(text: ChangeRange, edit: EditChange) {
         let items:{id:string, type?:ReviewDecorationType}[] = [];
-        const nextChange = this.changes.at(index+1);
-        // Case 2a: delete.end <= insert.start --> [update position only]
-        if (edit.rng.end<=text.rng.start) {
-            // text.op.p -= edit.offset;
-            items.push({id:text.id!, type:'insertChange'});
+        // 1a.3a. insert with `tc` --> create new change
+        if (edit.change?.id) {
+            this.wholeText.insert(new TextChange(edit.change));
+            items.push({id:edit.change.id, type:'insertChange'});
         }
-        // Case 2b: edit.rng collides with text.rng --> [update/remove/merge range]
-        else if (text.rng.start<edit.rng.end) {
-            const beforeRange = edit.rng.start<text.rng.start? {start:edit.rng.start,end:text.rng.start} : undefined;
-            const afterRange = edit.rng.end>text.rng.end? {start:text.rng.end,end:edit.rng.end} : undefined;
-            const middleRange = {start:Math.max(edit.rng.start,text.rng.start),end:Math.min(edit.rng.end,text.rng.end)};
-            let middleDeleted = false;
-            // remove change if middleRange===text.rng, else update change
-            if (middleRange.start===text.rng.start && middleRange.end===text.rng.end) {
-                this.changes.splice(index, 1);
-                index -= 1;
-                middleDeleted = true;
-                items.push({id:text.id!});
-            } else {
-                text.op.p -= beforeRange? (beforeRange.end-beforeRange.start) : 0;
-                text.op.i = text.op.i!.slice(0, middleRange.start-text.rng.start) + text.op.i!.slice(middleRange.end-text.rng.start);
-                text.rng = {start: text.op.p, end: text.op.p + text.op.i!.length};
-                items.push({id:text.id!, type:'insertChange'});
-            }
-            // create new change for `beforeRange`
-            if (beforeRange && edit.id) {
-                this.changes.push({
-                    id: edit.id,
-                    op: { p: beforeRange.start, d: edit.op.d!.slice(0, beforeRange.end-beforeRange.start) },
-                    metadata: this.metadata,
-                });
-                items.push({id:edit.id, type:'deleteChange'});
-            }
-            // merge with next insert change if `afterRange` collides with it
-            if (afterRange && nextChange && nextChange.op.i) {
-                const nextText = { id: nextChange.id, op: nextChange.op, rng: { start: nextChange.op.p, end: nextChange.op.p + nextChange.op.i.length } };
-                if (nextText.rng.start<=afterRange.start && !middleDeleted) {
-                    text.op.i += nextText.op.i!;
-                    text.rng.end += nextText.op.i!.length;
-                    this.changes.splice(index+1, 1);
-                    items.push({id:nextText.id!});
-                    index -= 1;
-                }
-            }
-            // obtain the remaining edit for next iteration, else consume `edit.id`
-            if (afterRange) {
-                // edit.offset = edit.offset || (edit.rng.end-edit.rng.start);
-                edit.rng = afterRange;
-                edit.op.p = text.rng.end;
-                edit.op.d = edit.op.d!.slice(afterRange.start-edit.rng.start);
-            } else {
-                edit.id = undefined;
-            }
-        }
-        return {nextIndex:index+1, items};
+        return items;
     }
 
-    /**
-     * Case 4: delete + delete
-     *     Delete  Delete
-     *        │       |
-     * ┌────┐
-     * │(4a)│
-     * └────┘
-     *     ┌──────────┐
-     *     │   (4b)   │
-     *     └──────────┘
-     */
-    applyDeleteRangeWithDeleteChange(index:number, text: EditChange, edit: EditChange) {
-        let items:{id:string, type?:ReviewDecorationType}[] = [];
-        // Case 4a: editRng.end at delete position with `tc` --> [update range]
-        if (edit.rng.end===text.rng.start && edit.id) {
+    applyInsertRangeWithDeleteChange(text: EditChange, edit: EditChange, before:boolean) {
+        let remain = new ChangeRange();
+        return remain;
+    }
 
-        }
-        // Case 4b: textRng within editRng --> [remove range]
-        else if (edit.rng.start<=text.rng.start && edit.rng.end>=text.rng.end) {
+    applyDeleteRangeWithDeleteChange(text: EditChange, edit: EditChange, before:boolean) {
+        let remain = new ChangeRange();
+        return remain;
+    }
 
-        }
-        // Case 4c:
-        else if (text.rng.start<edit.rng.end) {
-
-        }
-        return {nextIndex:index+1, items};
+    applyInterleavedRangeWithDeleteChange(text: ChangeRange, edit: EditChange, before:boolean) {
+        let remain = new ChangeRange();
+        return remain;
     }
 }
 
@@ -533,7 +509,9 @@ export class ReviewPanelProvider extends vscode.Disposable implements vscode.Cod
                     // update review records' changes
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     const metadata = { user_id: userId, ts };
-                    const refreshes = new EditManager(changes, update, metadata).generateRefreshes();
+                    const editManager = new EditManager(changes, update, metadata);
+                    const refreshes = editManager.generateRefreshes();
+                    this.reviewRecords[docId].changes = editManager.updatedChanges;
                     // debounce refresh review decorations
                     setTimeout(() => {
                         this.setReviewDecorations(undefined, docId, refreshes);
