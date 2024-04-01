@@ -255,19 +255,30 @@ class EditManager {
                         return this.applyInterleavedRangeWithDeleteChange(text, edit, before);
                     }
                 });
-                // 1b.2. merge the remains of `begin` and `end` text ranges, if they are the same type
+                // 1b.2. notify the removal or create text range
+                [ [beginText,beginRemain], [endText,endRemain] ].map(([text,remain]) => {
+                    if (text instanceof TextChange && remain instanceof ChangeRange) {
+                        refreshes.push({id:text.change.id});
+                    }
+                    if (text instanceof ChangeRange && remain instanceof TextChange) {
+                        refreshes.push({id:remain.change.id, type:'deleteChange'});
+                    }
+                });
+                // 1b.3. merge the remains of `begin` and `end` text ranges, if they are the same type
                 if (beginRemain instanceof TextChange && endRemain instanceof TextChange && beginRemain.isInsert===endRemain.isInsert) {
                     const oldRemain = beginRemain < endRemain? beginRemain : endRemain;
+                    const newRemain = oldRemain===beginRemain? endRemain : beginRemain;
+                    oldRemain.op.p = beginRemain.op.p;
                     if (oldRemain.isInsert) {
-                        oldRemain.op.i += endRemain.op.i!;
+                        oldRemain.op.i = beginRemain.op.i! + endRemain.op.i!;                        
                         refreshes.push({id:oldRemain.change.id, type:'insertChange'});
                     } else {
-                        oldRemain.op.d += endRemain.op.d!;
+                        oldRemain.op.d = beginRemain.op.d! + endRemain.op.d!;
                         refreshes.push({id:oldRemain.change.id, type:'deleteChange'});
                     }
                     //
-                    this.wholeText.remove(endRemain);
-                    refreshes.push({id:endRemain.change.id});
+                    this.wholeText.remove(newRemain);
+                    refreshes.push({id:newRemain.change.id});
                 }
                 // 1b.3 remove intermediate text ranges
                 this.wholeText.removeBetween(beginText, endText);
@@ -343,16 +354,44 @@ class EditManager {
     }
 
     applyInsertRangeWithDeleteChange(text: EditChange, edit: EditChange, before:boolean) {
-        let remain = new ChangeRange();
-        return remain;
+        if (before) {
+            const offset = text.begin - edit.begin;
+            text.op.i = text.op.i!.slice(0, offset);
+        } else {
+            const offset = edit.end - text.end;
+            text.op.p -= offset;
+            text.op.i = text.op.i!.slice(offset);
+        }
+        //
+        if (text.op.i) {
+            return text;
+        } else {
+            return new ChangeRange();
+        }
     }
 
     applyDeleteRangeWithDeleteChange(text: EditChange, edit: EditChange, before:boolean) {
-        let remain = new ChangeRange();
-        return remain;
+        // extend the text range with `tc`
+        if (edit.change?.id) {
+            if (before) {
+                text.op.d = edit.op.d + text.op.d!;
+            } else {
+                text.op.d = text.op.d! + edit.op.d;
+            }
+        }
+        // offset the `before` text range
+        else if (before) {
+            text.op.p -= edit.begin - text.begin;
+        }
+        //
+        return text;
     }
 
     applyInterleavedRangeWithDeleteChange(text: ChangeRange, edit: EditChange, before:boolean) {
+        // create new text range with `tc`
+        if (edit.change?.id) {
+            //???
+        }
         let remain = new ChangeRange();
         return remain;
     }
