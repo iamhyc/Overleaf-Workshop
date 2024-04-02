@@ -255,7 +255,12 @@ class EditManager {
                         return this.applyInterleavedRangeWithDeleteChange(text, edit, before);
                     }
                 });
-                // 1b.2. notify the removal or create text range
+                // 1b.2. extend `beginRemain` with intermediate text range if is instanceof `TextChange`
+                if (beginRemain instanceof TextChange) {
+                    //TODO: clip the intermediate text and append
+                    //TODO: calculate the offset of position
+                }
+                // 1b.3. notify the removal or create text range
                 [ [beginText,beginRemain], [endText,endRemain] ].map(([text,remain]) => {
                     if (text instanceof TextChange && remain instanceof ChangeRange) {
                         refreshes.push({id:text.change.id});
@@ -264,7 +269,7 @@ class EditManager {
                         refreshes.push({id:remain.change.id, type:'deleteChange'});
                     }
                 });
-                // 1b.3. merge the remains of `begin` and `end` text ranges, if they are the same type
+                // 1b.4. merge the remains of `begin` and `end` text ranges, if they are the same type (FIXME: need double check for tcId condition)
                 if (beginRemain instanceof TextChange && endRemain instanceof TextChange && beginRemain.isInsert===endRemain.isInsert) {
                     const oldRemain = beginRemain < endRemain? beginRemain : endRemain;
                     const newRemain = oldRemain===beginRemain? endRemain : beginRemain;
@@ -280,10 +285,10 @@ class EditManager {
                     this.wholeText.remove(newRemain);
                     refreshes.push({id:newRemain.change.id});
                 }
-                // 1b.4 remove intermediate text ranges
+                // 1b.5 remove intermediate text ranges
                 this.wholeText.removeBetween(beginText, endText);
             }
-            // 2. update position offset for the range after `end`
+            // 2. update position offset for the range after `end` (FIXME: need double check for tcId condition)
             this.wholeText.apply(endText, (text) => {
                 text.op.p += edit.op.i!.length - edit.op.d!.length;
             });
@@ -354,15 +359,16 @@ class EditManager {
     }
 
     applyInsertRangeWithDeleteChange(text: EditChange, edit: EditChange, before:boolean) {
+        // clip the text range
         if (before) {
-            const offset = text.begin - edit.begin;
+            const offset = text.end - edit.begin;
             text.op.i = text.op.i!.slice(0, offset);
         } else {
-            const offset = edit.end - text.end;
+            const offset = edit.end - text.begin;
             text.op.p -= offset;
             text.op.i = text.op.i!.slice(offset);
         }
-        //
+        // return the remain text range if it's not empty
         if (text.op.i) {
             return text;
         } else {
@@ -371,38 +377,29 @@ class EditManager {
     }
 
     applyDeleteRangeWithDeleteChange(text: EditChange, edit: EditChange, before:boolean) {
-        // extend the text range with `tc`
-        if (edit.change?.id) {
-            if (before) {
-                text.op.d = edit.op.d + text.op.d!;
-            } else {
-                text.op.d = text.op.d! + edit.op.d;
-            }
-        }
-        // offset the `before` text range
-        else if (before) {
-            text.op.p -= edit.begin - text.begin;
-        }
+        // do nothing
         return text;
     }
 
     applyInterleavedRangeWithDeleteChange(text: ChangeRange, edit: EditChange, before:boolean) {
         // create new text range with `tc`
         if (edit.change?.id) {
-            const newId = generateTrackId();
-            const offset = before? text.begin-edit.begin : edit.end-text.end;
+            const offset = before? text.end-edit.begin : edit.end-text.begin;
             const newText = new TextChange({
-                id: newId,
+                id: edit.change.id,
                 op: {
                     p: before? text.end : text.begin+offset,
-                    d: before? edit.op.d!.slice(0, offset) : edit.op.d!.slice(offset),
+                    d: before? edit.op.d!.slice(0, offset) : edit.op.d!.slice(edit.op.d!.length-offset),
                 },
                 metadata: this.metadata,
             });
             this.wholeText.insert(newText);
             return newText;
         }
-        return new ChangeRange();
+        // else return empty range
+        else {
+            return new ChangeRange();
+        }
     }
 }
 
