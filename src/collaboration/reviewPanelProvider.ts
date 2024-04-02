@@ -92,7 +92,7 @@ function genThreadMarkdownString(userId:string, threadId:string, thread: Comment
 
 class ChangeRange {
     public readonly change?: DocumentReviewChangeSchema;
-    constructor(readonly _begin: number=0, readonly _end: number=0) {}
+    constructor(private readonly _begin: number=0, private readonly _end: number=0) {}
     get begin() { return this._begin; }
     get end() { return this._end; }
     includes(position: number): boolean {
@@ -383,7 +383,6 @@ class EditManager {
         else if (before) {
             text.op.p -= edit.begin - text.begin;
         }
-        //
         return text;
     }
 
@@ -394,7 +393,10 @@ class EditManager {
             const offset = before? text.begin-edit.begin : edit.end-text.end;
             const newText = new TextChange({
                 id: newId,
-                op: {p:0 , d:''}, //FIXME:
+                op: {
+                    p: before? text.end : text.begin+offset,
+                    d: before? edit.op.d!.slice(0, offset) : edit.op.d!.slice(offset),
+                },
                 metadata: this.metadata,
             });
             this.wholeText.insert(newText);
