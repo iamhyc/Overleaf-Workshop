@@ -280,7 +280,7 @@ class EditManager {
                     this.wholeText.remove(newRemain);
                     refreshes.push({id:newRemain.change.id});
                 }
-                // 1b.3 remove intermediate text ranges
+                // 1b.4 remove intermediate text ranges
                 this.wholeText.removeBetween(beginText, endText);
             }
             // 2. update position offset for the range after `end`
@@ -390,10 +390,17 @@ class EditManager {
     applyInterleavedRangeWithDeleteChange(text: ChangeRange, edit: EditChange, before:boolean) {
         // create new text range with `tc`
         if (edit.change?.id) {
-            //???
+            const newId = generateTrackId();
+            const offset = before? text.begin-edit.begin : edit.end-text.end;
+            const newText = new TextChange({
+                id: newId,
+                op: {p:0 , d:''}, //FIXME:
+                metadata: this.metadata,
+            });
+            this.wholeText.insert(newText);
+            return newText;
         }
-        let remain = new ChangeRange();
-        return remain;
+        return new ChangeRange();
     }
 }
 
