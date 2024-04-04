@@ -329,6 +329,26 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         });
     }
 
+    copyProject(project: ProjectItem) {
+        vscode.window.showInputBox({
+            'placeHolder': vscode.l10n.t('New Project Name'),
+            'value': `${project.label} (Copy)`,
+            'title': vscode.l10n.t('Copy Project'),
+        }).then(name => {
+            if (name) {
+                GlobalStateManager.authenticate(this.context, project.parent.name)
+                .then(identity => project.api.cloneProject(identity, project.pid, name))
+                .then(res => {
+                    if (res.type==='success') {
+                        this.refresh();
+                    } else {
+                        vscode.window.showErrorMessage(res.message);
+                    }
+                });
+            }
+        });
+    }
+
     renameProject(project: ProjectItem) {
         vscode.window.showInputBox({
             'placeHolder': vscode.l10n.t('New project name'),
@@ -604,6 +624,9 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
             // register project-related commands
             vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.newProject`, (item) => {
                 this.newProject(item);
+            }),
+            vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.copyProject`, (item) => {
+                this.copyProject(item);
             }),
             vscode.commands.registerCommand(`${ROOT_NAME}.projectManager.renameProject`, (item) => {
                 this.renameProject(item);

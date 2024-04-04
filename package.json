@@ -146,6 +146,12 @@
         "category": "%extension.displayName%"
       },
       {
+        "command": "overleaf-workshop.projectManager.copyProject",
+        "title": "%commands.projectManager.copyProject.title%",
+        "enablement": "viewItem =~ /^(?!archived).*project/",
+        "category": "%extension.displayName%"
+      },
+      {
         "command": "overleaf-workshop.projectManager.renameProject",
         "title": "%commands.projectManager.renameProject.title%",
         "icon": "$(edit)",
@@ -563,6 +569,11 @@
         {
           "command": "overleaf-workshop.projectManager.removeServer",
           "when": "view == overleaf-workshop.projectManager && viewItem == server_login || viewItem == server_no_login"
+        },
+        {
+          "command": "overleaf-workshop.projectManager.copyProject",
+          "when": "view == overleaf-workshop.projectManager && viewItem =~ /^(?!archived).*project/",
+          "group": "1_editActions"
         },
         {
           "command": "overleaf-workshop.projectManager.renameProject",

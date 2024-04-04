@@ -468,6 +468,14 @@ export class BaseAPI {
         });
     }
 
+    async cloneProject(identity:Identity, projectId:string, projectName:string) {
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/clone`, {projectName}, (res) => {
+            const message = (JSON.parse(res!) as NewProjectResponseSchema).project_id;
+            return {message};
+        });
+    }
+
     async renameProject(identity:Identity, projectId:string, newProjectName:string) {
         this.setIdentity(identity);
         return this.request('POST', `project/${projectId}/rename`, {newProjectName});
