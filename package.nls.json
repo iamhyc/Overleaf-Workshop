@@ -11,6 +11,7 @@
     "commands.projectManager.logoutServer.title": "Logout from Server",
     "commands.projectManager.refreshServer.title": "Refresh Project List",
     "commands.projectManager.newProject.title": "New Project",
+    "commands.projectManager.copyProject.title": "Make a Copy",
     "commands.projectManager.renameProject.title": "Rename Project",
     "commands.projectManager.deleteProject.title": "Delete Project",
     "commands.projectManager.archiveProject.title": "Archive Project",
