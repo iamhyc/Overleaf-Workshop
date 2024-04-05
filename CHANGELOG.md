@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2024-04-05
+### Added
+- feat: enable folding for macro and environment
+  - Commit: 6d97c7339d49c9d1a4b282843732f9c20940b0b1
+- feat(core): allow to copy a project
+  - Commit: 5c0ba4233636a9691d908f6ce6b31e32b4b6872e
+
+### Changed
+- chore(deps-dev): bump vite from 4.5.2 to 4.5.3 in /views/chat-view
+  - Commit: 2e75c610dc16e2d645cf28034b4816e1f3623c6f
+
 ## [0.11.0] - 2024-03-05
 ### Added
 - feat: icon for compile and view pdf
