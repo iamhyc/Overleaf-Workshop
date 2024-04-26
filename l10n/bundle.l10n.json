@@ -1,4 +1,5 @@
 {
+  "Cookie Expired. Please Re-Login": "Cookie Expired. Please Re-Login",
   "Project Source Control": "Project Source Control",
   "Click to configure.": "Click to configure.",
   "Disabled": "Disabled",
@@ -60,7 +61,8 @@
   "Upload Project": "Upload Project",
   "Project name": "Project name",
   "Upload Zipped Project": "Upload Zipped Project",
-  "New project name": "New project name",
+  "New Project Name": "New Project Name",
+  "Copy Project": "Copy Project",
   "Permanently delete project \"{label}\" ?": "Permanently delete project \"{label}\" ?",
   "Archive project \"{label}\" ?": "Archive project \"{label}\" ?",
   "Move project \"{label}\" to trash ?": "Move project \"{label}\" to trash ?",

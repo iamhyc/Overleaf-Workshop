@@ -139,6 +139,12 @@ export class GlobalStateManager {
                 context.globalState.update(keyServerPersists, persists);
                 return projects;
             } else {
+                // regex match for cookie expired
+                const cookieExpireRegex = /^302/;
+                if (res.message && cookieExpireRegex.test(res.message)) {
+                    vscode.window.showErrorMessage(vscode.l10n.t('Cookie Expired. Please Re-Login'));
+                    return Promise.reject();
+                }
                 if (res.message!==undefined) {
                     vscode.window.showErrorMessage(res.message);
                 }
