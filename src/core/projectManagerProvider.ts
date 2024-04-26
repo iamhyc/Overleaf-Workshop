@@ -103,6 +103,16 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         if (element) {
             if (element instanceof ServerItem) {
                 return GlobalStateManager.fetchServerProjects(this.context, element.api, element.name)
+                .catch(() => {
+                    // Direct logout if cookie expired
+                    GlobalStateManager.logoutServer(this.context, element.api, element.name)
+                    .then(success => {
+                        if (success) {
+                            this.refresh();
+                        }
+                    });
+                    return Promise.reject();
+                })
                 .then(projects => {
                     return GlobalStateManager.authenticate(this.context, element.name)
                     .then(identity => element.api.getAllTags(identity))
@@ -351,7 +361,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
 
     renameProject(project: ProjectItem) {
         vscode.window.showInputBox({
-            'placeHolder': vscode.l10n.t('New project name'),
+            'placeHolder': vscode.l10n.t('New Project Name'),
             'value': project.label,
         })
         .then(newName => {
