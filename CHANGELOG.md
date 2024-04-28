@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] - 2024-04-28
+### Fixed
+- fix: automatically logout if cookie expired (#127)
+  - Commit: 4646d4925846f9f6afdced7b315d789c80116e60
+
 ## [0.12.0] - 2024-04-05
 ### Added
 - feat: enable folding for macro and environment
