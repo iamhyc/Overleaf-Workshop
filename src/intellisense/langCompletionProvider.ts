@@ -388,9 +388,9 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
             case 0: // group 0: reference
                 const res = await vfs.metadata();
                 if (res===undefined) { return []; };
-                return Object.values(res).map(({labels}) => {
-                    return labels.map(label => new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
-                }).flat();
+                const labels = Object.values(res).map(({labels}) => labels).flat();
+                const uniqueLabels = [...new Set(labels)];
+                return uniqueLabels.map(label => new vscode.CompletionItem(label, vscode.CompletionItemKind.Reference));
             case 1: // group 1: citation
                 let items = await this.getReferenceCompletionItemsFromBib(vfs);
                 items = items.length!==0 ? items : await this.getReferenceCompletionItemsFromBbl(vfs); //fallback option
