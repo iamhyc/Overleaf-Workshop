@@ -183,7 +183,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         }
     }
 
-    private bypassSync(relPath: string, content?: Uint8Array): boolean {
+    private bypassSync(action:'push'|'pull', type:'update'|'delete', relPath: string, content?: Uint8Array): boolean {
         // bypass ignore files
         if (this.matchIgnorePatterns(relPath)) {
             return true;
@@ -196,6 +196,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
             if (lastHash === thisHash) {
                 return true;
             }
+            console.log(`${new Date().toLocaleString()} [${action}] ${type} "${relPath}" ${lastHash} --> ${thisHash}`);
         }
 
         return false;
@@ -215,7 +216,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         } else {
             remoteContent = undefined;
         }
-        if (this.bypassSync(relPath, remoteContent)) { return; }
+        if (this.bypassSync(action, type, relPath, remoteContent)) { return; }
         
         // update bypass cache
         this.setBypassCache(relPath, remoteContent);
