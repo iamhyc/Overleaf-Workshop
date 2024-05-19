@@ -350,7 +350,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
             }
         });
         inputBox.onDidAccept(() => {
-            if (inputBox.selectedItems.length!==0) {
+            if (inputBox.activeItems.length!==0) {
                 const selected = inputBox.selectedItems[0];
                 const path = inputBox.value.split('/').slice(0, -1).join('/');
                 inputBox.value = selected.label==='..'? path : `${path}/${selected.label}/`;
