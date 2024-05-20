@@ -34,7 +34,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
 
     public readonly iconPath: vscode.ThemeIcon = new vscode.ThemeIcon('folder-library');
 
-    private bypassCache: Map<string, number> = new Map();
+    private bypassCache: Map<string, [number,number]> = new Map();
     private baseCache: {[key:string]: Uint8Array} = {};
     private vfsWatcher?: vscode.FileSystemWatcher;
     private localWatcher?: vscode.FileSystemWatcher;
@@ -133,12 +133,36 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         return false;
     }
 
-    private setBypassCache(relPath: string, content?: Uint8Array) {
-        this.bypassCache.set(relPath, hashCode(content));
+    private setBypassCache(relPath: string, content?: Uint8Array, action?: 'push'|'pull') {
+        const hash = hashCode(content);
+        const cache = this.bypassCache.get(relPath) || [undefined,undefined];
+        // update the push/pull cache
+        if (action==='push') {
+            cache[0] = hash;
+            cache[1] = cache[1] ?? hash;
+        } else if (action==='pull') {
+            cache[1] = hash;
+            cache[0] = cache[0] ?? hash;
+        } else {
+            cache[0] = cache[1] = hash;
+        }
+        // write back to the cache
+        this.bypassCache.set(relPath, cache as [number,number]);
     }
 
-    private getByPassCache(relPath: string): number | undefined {
-        return this.bypassCache.get(relPath);
+    private shouldPropagate(action: 'push'|'pull', relPath: string, content?: Uint8Array): boolean {
+        const cache = this.bypassCache.get(relPath);
+        if (cache) {
+            const thisHash = hashCode(content);
+            if (action==='push' && cache[0]===thisHash) { return false; }
+            if (action==='pull' && cache[1]===thisHash) { return false; }
+            if (cache[0]!==cache[1]) {
+                this.setBypassCache(relPath, content, action);
+                return false;
+            }
+        }
+        this.setBypassCache(relPath, content, action);
+        return true;
     }
 
     private async overwrite(root: string='/') {
@@ -188,20 +212,11 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         if (this.matchIgnorePatterns(relPath)) {
             return true;
         }
-
-        // avoid loop call
-        const lastHash = this.getByPassCache(relPath);
-        if (lastHash) {
-            // update --> hash(<byte>) or hash(<empty>); delete --> hash(undefined)
-            const thisHash = hashCode(content);
-            if (lastHash === thisHash) {
-                return true;
-            }
-            console.log(`${new Date().toLocaleString()} [${action}] ${type} "${relPath}" ${lastHash} --> ${thisHash}`);
+        // synchronization propagation check
+        if (!this.shouldPropagate(action, relPath, content)) {
+            return true;
         }
-
-        // update bypass cache
-        this.setBypassCache(relPath, content);
+        // otherwise, log the synchronization
         console.log(`${new Date().toLocaleString()} [${action}] ${type} "${relPath}"`);
         return false;
     }
