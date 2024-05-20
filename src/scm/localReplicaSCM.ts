@@ -159,7 +159,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         const cache = this.bypassCache.get(relPath);
         if (cache) {
             const thisHash = hashCode(content);
-            console.log(action, relPath, `[${cache[0].hash}, ${cache[1].hash}]`, thisHash);
+            // console.log(action, relPath, `[${cache[0].hash}, ${cache[1].hash}]`, thisHash);
             if (action==='push' && cache[0].hash===thisHash) { return false; }
             if (action==='pull' && cache[1].hash===thisHash) { return false; }
             if (cache[0].hash!==cache[1].hash) {
@@ -351,18 +351,19 @@ export class LocalReplicaSCMProvider extends BaseSCM {
     }
 
     public static get baseUriInputBox(): vscode.QuickPick<vscode.QuickPickItem> {
+        const sep = require('path').sep;
         const inputBox = vscode.window.createQuickPick();
         inputBox.placeholder = vscode.l10n.t('e.g., /home/user/empty/local/folder');
-        inputBox.value = '/';
+        inputBox.value = require('os').homedir()+sep;
         // enable auto-complete
         inputBox.onDidChangeValue(async value => {
             try {
                 // remove the last part of the path
                 inputBox.busy = true;
-                const path = value.split('/').slice(0, -1).join('/');
+                const path = value.split(sep).slice(0, -1).join(sep);
                 const items = await vscode.workspace.fs.readDirectory( vscode.Uri.file(path) );
                 const subDirs = items.filter( ([name, type]) => type===vscode.FileType.Directory )
-                                    .filter( ([name, type]) => `${path}/${name}`.startsWith(value) );
+                                    .filter( ([name, type]) => `${path}${sep}${name}`.startsWith(value) );
                 inputBox.busy = false;
                 // update the sub-directories
                 if (subDirs.length!==0) {
@@ -380,8 +381,8 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         inputBox.onDidAccept(() => {
             if (inputBox.activeItems.length!==0) {
                 const selected = inputBox.selectedItems[0];
-                const path = inputBox.value.split('/').slice(0, -1).join('/');
-                inputBox.value = selected.label==='..'? path : `${path}/${selected.label}/`;
+                const path = inputBox.value.split(sep).slice(0, -1).join(sep);
+                inputBox.value = selected.label==='..'? path : `${path}${sep}${selected.label}${sep}`;
             }
         });
         return inputBox;
