@@ -6,6 +6,8 @@ import { VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 
 const IGNORE_SETTING_KEY = 'ignore-patterns';
 
+type FileCache = {date:number, hash:number};
+
 /**
  * Returns a hash code from a string
  * @param  {String} str The string to hash.
@@ -34,7 +36,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
 
     public readonly iconPath: vscode.ThemeIcon = new vscode.ThemeIcon('folder-library');
 
-    private bypassCache: Map<string, [number,number]> = new Map();
+    private bypassCache: Map<string, [FileCache,FileCache]> = new Map();
     private baseCache: {[key:string]: Uint8Array} = {};
     private vfsWatcher?: vscode.FileSystemWatcher;
     private localWatcher?: vscode.FileSystemWatcher;
@@ -134,30 +136,37 @@ export class LocalReplicaSCMProvider extends BaseSCM {
     }
 
     private setBypassCache(relPath: string, content?: Uint8Array, action?: 'push'|'pull') {
+        const date = Date.now();
         const hash = hashCode(content);
         const cache = this.bypassCache.get(relPath) || [undefined,undefined];
         // update the push/pull cache
         if (action==='push') {
-            cache[0] = hash;
-            cache[1] = cache[1] ?? hash;
+            cache[0] = {date, hash};
+            cache[1] = cache[1] ?? {date, hash};
         } else if (action==='pull') {
-            cache[1] = hash;
-            cache[0] = cache[0] ?? hash;
+            cache[1] = {date, hash};
+            cache[0] = cache[0] ?? {date, hash};
         } else {
-            cache[0] = cache[1] = hash;
+            cache[0] = {date, hash};
+            cache[1] = {date, hash};
         }
         // write back to the cache
-        this.bypassCache.set(relPath, cache as [number,number]);
+        this.bypassCache.set(relPath, cache as [FileCache,FileCache]);
     }
 
     private shouldPropagate(action: 'push'|'pull', relPath: string, content?: Uint8Array): boolean {
+        const now = Date.now();
         const cache = this.bypassCache.get(relPath);
         if (cache) {
             const thisHash = hashCode(content);
-            console.log(action, relPath, cache, thisHash);
-            if (action==='push' && cache[0]===thisHash) { return false; }
-            if (action==='pull' && cache[1]===thisHash) { return false; }
-            if (cache[0]!==cache[1]) {
+            console.log(action, relPath, `[${cache[0].hash}, ${cache[1].hash}]`, thisHash);
+            if (action==='push' && cache[0].hash===thisHash) { return false; }
+            if (action==='pull' && cache[1].hash===thisHash) { return false; }
+            if (cache[0].hash!==cache[1].hash) {
+                if (action==='push' && now-cache[0].date<500 || action==='pull' && now-cache[1].date<500) {
+                    this.setBypassCache(relPath, content, action);
+                    return true;
+                }
                 this.setBypassCache(relPath, content, action);
                 return false;
             }
