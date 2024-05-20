@@ -330,7 +330,10 @@ export class VirtualFileSystem extends vscode.Disposable {
 
     private insertEntity(parentFolder: FolderEntity, fileType:FileType, entity: FileEntity) {
         const key = FolderKeys[fileType];
-        parentFolder[key]?.push(entity as any);
+        const index = parentFolder[key]?.findIndex((e) => e._id === entity._id);
+        if (index===undefined || index<0) {
+            parentFolder[key]?.push(entity as any);
+        }
     }
 
     private removeEntity(parentFolder: FolderEntity, fileType:FileType, entity: FileEntity) {

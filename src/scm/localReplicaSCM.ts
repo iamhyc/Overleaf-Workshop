@@ -6,6 +6,27 @@ import { VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 
 const IGNORE_SETTING_KEY = 'ignore-patterns';
 
+type FileCache = {date:number, hash:number};
+
+/**
+ * Returns a hash code from a string
+ * @param  {String} str The string to hash.
+ * @return {Number}    A 32bit integer
+ * @see http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+ */
+function hashCode(content?: Uint8Array): number {
+    if (content===undefined) { return -1; }
+    const str = new TextDecoder().decode(content);
+
+    let hash = 0;
+    for (let i = 0, len = str.length; i < len; i++) {
+        const chr = str.charCodeAt(i);
+        hash = (hash << 5) - hash + chr;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+}
+
 /**
  * A SCM which tracks exact the changes from the vfs.
  * It keeps no history versions.
@@ -15,7 +36,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
 
     public readonly iconPath: vscode.ThemeIcon = new vscode.ThemeIcon('folder-library');
 
-    private bypassCache: Map<string, number> = new Map();
+    private bypassCache: Map<string, [FileCache,FileCache]> = new Map();
     private baseCache: {[key:string]: Uint8Array} = {};
     private vfsWatcher?: vscode.FileSystemWatcher;
     private localWatcher?: vscode.FileSystemWatcher;
@@ -114,6 +135,46 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         return false;
     }
 
+    private setBypassCache(relPath: string, content?: Uint8Array, action?: 'push'|'pull') {
+        const date = Date.now();
+        const hash = hashCode(content);
+        const cache = this.bypassCache.get(relPath) || [undefined,undefined];
+        // update the push/pull cache
+        if (action==='push') {
+            cache[0] = {date, hash};
+            cache[1] = cache[1] ?? {date, hash};
+        } else if (action==='pull') {
+            cache[1] = {date, hash};
+            cache[0] = cache[0] ?? {date, hash};
+        } else {
+            cache[0] = {date, hash};
+            cache[1] = {date, hash};
+        }
+        // write back to the cache
+        this.bypassCache.set(relPath, cache as [FileCache,FileCache]);
+    }
+
+    private shouldPropagate(action: 'push'|'pull', relPath: string, content?: Uint8Array): boolean {
+        const now = Date.now();
+        const cache = this.bypassCache.get(relPath);
+        if (cache) {
+            const thisHash = hashCode(content);
+            // console.log(action, relPath, `[${cache[0].hash}, ${cache[1].hash}]`, thisHash);
+            if (action==='push' && cache[0].hash===thisHash) { return false; }
+            if (action==='pull' && cache[1].hash===thisHash) { return false; }
+            if (cache[0].hash!==cache[1].hash) {
+                if (action==='push' && now-cache[0].date<500 || action==='pull' && now-cache[1].date<500) {
+                    this.setBypassCache(relPath, content, action);
+                    return true;
+                }
+                this.setBypassCache(relPath, content, action);
+                return false;
+            }
+        }
+        this.setBypassCache(relPath, content, action);
+        return true;
+    }
+
     private async overwrite(root: string='/') {
         const vfsUri = this.vfs.pathToUri(root);
         const files = await vscode.workspace.fs.readDirectory(vfsUri);
@@ -133,7 +194,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
                 const localContent = await this.readFile(relPath);
                 const remoteContent = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(vfsUri, name));
                 if (baseContent===undefined || localContent===undefined) {
-                    this.bypassCache.set(`pull ${relPath}`, Date.now());
+                    this.setBypassCache(relPath, remoteContent);
                     await this.writeFile(relPath, remoteContent);
                 } else {
                     const dmp = new DiffMatchPatch();
@@ -156,48 +217,53 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         }
     }
 
-    private bypassSync(status:'push'|'pull', relPath: string, type: 'update'|'delete'): boolean {
-        const bypassKey = status==='push'? 'pull' : 'push';
-
+    private bypassSync(action:'push'|'pull', type:'update'|'delete', relPath: string, content?: Uint8Array): boolean {
         // bypass ignore files
         if (this.matchIgnorePatterns(relPath)) {
             return true;
         }
-
-        // avoid loop call (inactivate within 500ms)
-        const key = `${bypassKey} ${relPath}`;
-        if (this.bypassCache.has(key)) {
-            const lastTime = this.bypassCache.get(key)!;
-            if (Date.now() - lastTime < 500) {
-                return true;
-            }
+        // synchronization propagation check
+        if (!this.shouldPropagate(action, relPath, content)) {
+            return true;
         }
-
+        // otherwise, log the synchronization
+        console.log(`${new Date().toLocaleString()} [${action}] ${type} "${relPath}"`);
         return false;
     }
 
-    private async applySync(status:'push'|'pull', relPath:string, fromUri: vscode.Uri, toUri: vscode.Uri, type: 'update'|'delete') {
-        // bypass loop call
-        if (this.bypassSync(status, relPath, type)) { return; }
-        this.bypassCache.set(`${status} ${relPath}`, Date.now());
-        console.log(`${new Date().toLocaleString()} [${status}] ${type} "${relPath}"`);
+    private async applySync(action:'push'|'pull', type: 'update'|'delete', relPath:string, fromUri: vscode.Uri, toUri: vscode.Uri) {
+        this.status = {status: action, message: `${type}: ${relPath}`};
 
-        // apply update
-        this.status = {status: status, message: `${type}: ${relPath}`};
-        if (type === 'update') {
-            if (status==='pull' && type==='update') { await vscode.workspace.fs.readFile(fromUri); } // update remote cache
-            const stat = await vscode.workspace.fs.stat(fromUri);
-            if (stat.type===vscode.FileType.File) {
-                const content = await vscode.workspace.fs.readFile(fromUri);
-                await vscode.workspace.fs.writeFile(toUri, content);
-                if (status==='push' && type==='update') { vscode.workspace.fs.readFile(toUri); } // update remote cache
-                this.baseCache[relPath] = content;
-            } else if (stat.type===vscode.FileType.Directory) {
-                await vscode.workspace.fs.createDirectory(toUri);
+        await (async () => {
+            if (type==='delete') {
+                const newContent = undefined;
+                if (this.bypassSync(action, type, relPath, newContent)) { return; }
+                delete this.baseCache[relPath];
+                await vscode.workspace.fs.delete(toUri, {recursive:true});
+            } else {
+                const stat = await vscode.workspace.fs.stat(fromUri);
+                if (stat.type===vscode.FileType.Directory) {
+                    const newContent = new Uint8Array();
+                    if (this.bypassSync(action, type, relPath, newContent)) { return; }
+                    await vscode.workspace.fs.createDirectory(toUri);
+                }
+                else if (stat.type===vscode.FileType.File) {
+                    try {
+                        const newContent = await vscode.workspace.fs.readFile(fromUri);
+                        if (this.bypassSync(action, type, relPath, newContent)) { return; }
+                        await vscode.workspace.fs.writeFile(toUri, newContent);
+                        this.baseCache[relPath] = newContent;
+                        if (action==='push') { await vscode.workspace.fs.readFile(toUri); } // update remote cache
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+                else {
+                    console.error(`Unknown file type: ${stat.type}`);
+                }
             }
-        } else {
-            await vscode.workspace.fs.delete(toUri, {recursive:true});
-        }
+        })();
+
         this.status = {status: 'idle', message: ''};
     }
 
@@ -206,7 +272,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         pathParts.at(-1)==='' && pathParts.pop(); // remove the last empty string
         const relPath = ('/' + pathParts.join('/'));
         const localUri = vscode.Uri.joinPath(this.baseUri, relPath);
-        this.applySync('pull', relPath, vfsUri, localUri, type);
+        this.applySync('pull', type, relPath, vfsUri, localUri);
     }
 
     private async syncToVFS(localUri: vscode.Uri, type: 'update'|'delete') {
@@ -214,7 +280,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         const basePath = this.baseUri.path;
         const relPath = localUri.path.slice(basePath.length);
         const vfsUri = this.vfs.pathToUri(relPath);
-        this.applySync('push', relPath, localUri, vfsUri, type);
+        this.applySync('push', type, relPath, localUri, vfsUri);
     }
 
     private async initWatch() {
@@ -285,18 +351,19 @@ export class LocalReplicaSCMProvider extends BaseSCM {
     }
 
     public static get baseUriInputBox(): vscode.QuickPick<vscode.QuickPickItem> {
+        const sep = require('path').sep;
         const inputBox = vscode.window.createQuickPick();
         inputBox.placeholder = vscode.l10n.t('e.g., /home/user/empty/local/folder');
-        inputBox.value = '/';
+        inputBox.value = require('os').homedir()+sep;
         // enable auto-complete
         inputBox.onDidChangeValue(async value => {
             try {
                 // remove the last part of the path
                 inputBox.busy = true;
-                const path = value.split('/').slice(0, -1).join('/');
+                const path = value.split(sep).slice(0, -1).join(sep);
                 const items = await vscode.workspace.fs.readDirectory( vscode.Uri.file(path) );
                 const subDirs = items.filter( ([name, type]) => type===vscode.FileType.Directory )
-                                    .filter( ([name, type]) => `${path}/${name}`.startsWith(value) );
+                                    .filter( ([name, type]) => `${path}${sep}${name}`.startsWith(value) );
                 inputBox.busy = false;
                 // update the sub-directories
                 if (subDirs.length!==0) {
@@ -312,10 +379,10 @@ export class LocalReplicaSCMProvider extends BaseSCM {
             }
         });
         inputBox.onDidAccept(() => {
-            if (inputBox.selectedItems.length!==0) {
+            if (inputBox.activeItems.length!==0) {
                 const selected = inputBox.selectedItems[0];
-                const path = inputBox.value.split('/').slice(0, -1).join('/');
-                inputBox.value = selected.label==='..'? path : `${path}/${selected.label}/`;
+                const path = inputBox.value.split(sep).slice(0, -1).join(sep);
+                inputBox.value = selected.label==='..'? path : `${path}${sep}${selected.label}${sep}`;
             }
         });
         return inputBox;

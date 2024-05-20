@@ -181,7 +181,7 @@ export class SCMCollectionProvider extends vscode.Disposable {
                 resolve(inputBox.value);
             });
             inputBox.onDidAccept(() => {
-                if (inputBox.selectedItems.length===0) {
+                if (inputBox.activeItems.length===0) {
                     inputBox.hide();
                     resolve(inputBox.value);
                 }
