@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.2] - 2024-05-20
+### Changed
+- chore: fix husky script execution
+  - Commit: 9b76c26a69abf4987f9e61c25185d2529e2df8a8
+### Fixed
+- fix(intellisense): filter duplicate reference entries
+  - Commit: ef87e99dee17114f289d08f3c99127168cebe0aa
+- fix(scm): local replica better experience (#138)
+  - Commit: 54d32f9927a0f13d6694547ae60b990ded1e0fe3
+
 ## [0.12.1] - 2024-04-28
 ### Fixed
 - fix: automatically logout if cookie expired (#127)
