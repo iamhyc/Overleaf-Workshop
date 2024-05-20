@@ -154,6 +154,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         const cache = this.bypassCache.get(relPath);
         if (cache) {
             const thisHash = hashCode(content);
+            console.log(action, relPath, cache, thisHash);
             if (action==='push' && cache[0]===thisHash) { return false; }
             if (action==='pull' && cache[1]===thisHash) { return false; }
             if (cache[0]!==cache[1]) {
@@ -243,10 +244,13 @@ export class LocalReplicaSCMProvider extends BaseSCM {
                         if (this.bypassSync(action, type, relPath, newContent)) { return; }
                         await vscode.workspace.fs.writeFile(toUri, newContent);
                         this.baseCache[relPath] = newContent;
-                        if (action==='push') { vscode.workspace.fs.readFile(toUri); } // update remote cache
+                        if (action==='push') { await vscode.workspace.fs.readFile(toUri); } // update remote cache
                     } catch (error) {
                         console.error(error);
                     }
+                }
+                else {
+                    console.error(`Unknown file type: ${stat.type}`);
                 }
             }
         })();
