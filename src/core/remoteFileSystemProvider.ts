@@ -889,7 +889,7 @@ export class VirtualFileSystem extends vscode.Disposable {
                 return true;
             } else {
                 if (res.message!==undefined) {
-                    vscode.window.showErrorMessage(res.message);
+                    console.error('Compile failure.', res.message);
                 }
                 return false;
             }

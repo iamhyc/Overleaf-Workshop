@@ -112,6 +112,7 @@ class CompileDiagnosticProvider {
 
 export class CompileManager {
     readonly status: vscode.StatusBarItem;
+    public inCompiling: boolean = false;
     private diagnosticProvider: CompileDiagnosticProvider;
 
     constructor(
@@ -152,6 +153,7 @@ export class CompileManager {
     async update(status: 'success'|'compiling'|'failed'|'alert') {
         const uri = await CompileManager.check();
         if (uri) {
+            this.inCompiling = status === 'compiling';
             this.vfsm.prefetch(uri).then((vfs) => {
                 const rootDocName = vfs.getRootDocName().slice(1);
                 const compilerName = vfs.getCompiler()?.name || '';
@@ -188,6 +190,9 @@ export class CompileManager {
     }
 
     async compile(force:boolean=false) {
+        if (this.inCompiling) { return; }
+        await vscode.workspace.saveAll(); // save all dirty files
+
         const uri = await this.update('compiling');
         if (uri) {
             this.vfsm.prefetch(uri)

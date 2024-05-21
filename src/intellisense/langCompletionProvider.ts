@@ -153,7 +153,7 @@ export class CommandCompletionProvider extends IntellisenseProvider implements v
                 if (doc.uri.scheme === ROOT_NAME && doc.uri.path.endsWith('.tex')) {
                     const {identifier} = parseUri(doc.uri);
                     const commands = await this.loadCommands(doc.uri);
-                    this.customData[identifier].commands.set(doc.uri.path, commands);
+                    this.customData[identifier]?.commands.set(doc.uri.path, commands);
                 }
             }),
         ];
