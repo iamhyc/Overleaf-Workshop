@@ -16,7 +16,14 @@ export type TeXElement = {
 };
 
 // Initialize the parser
-const unifiedParser: { parse: (content: string) => Ast.Root } = unifiedLaTeXParse.getParser({ flags: { autodetectExpl3AndAtLetter: true } });
+const unifiedParser: { parse: (content: string) => Ast.Root } = unifiedLaTeXParse.getParser({ 
+    flags: { autodetectExpl3AndAtLetter: true },
+    macros: {
+        addbibresource: {  // Takes one mandatory argument for biblatex
+            signature: 'm',
+        }
+    }
+});
 
 // Env that matches the defaultStructure will be treated as a section with top-down order
 const defaultStructure = ["book", "part", "chapter", "section", "subsection", "subsubsection", "paragraph", "subparagraph"];
@@ -117,7 +124,7 @@ async function parseNode(
                 caseType = 'label';
             } else if (node.content === 'input') {
                 caseType = 'subFile';
-            } else if (node.content === 'bibliography') {
+            } else if (node.content === 'bibliography' || node.content === 'addbibresource') {
                 caseType = 'bibFile';
             }
             let argStr = '';
