@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.3] - 2024-05-28
+### Fixed
+- fix: save dirty files before compile
+  - Commit: cb8f847ee51433e291fcedb9dd52d0e8d9acbe95
+- fix: missing biblatex completion
+  - Commit: 58e1c079637a277df3195bb834a151eae989bc1d
+
 ## [0.12.2] - 2024-05-20
 ### Changed
 - chore: fix husky script execution
