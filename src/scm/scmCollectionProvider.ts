@@ -151,7 +151,8 @@ export class SCMCollectionProvider extends vscode.Disposable {
             return scm;
         } catch (error) {
             // permanently remove failed scm
-            this.vfs.setProjectSCMPersist(scm.scmKey, undefined);
+            // this.vfs.setProjectSCMPersist(scm.scmKey, undefined);
+            vscode.window.showErrorMessage( vscode.l10n.t('"{scm}" creation failed.', {scm:scmProto.label}) );
             return undefined;
         }
     }
