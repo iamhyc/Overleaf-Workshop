@@ -209,7 +209,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
                 const [name, relPath] = files[i];
                 const vfsUri = this.vfs.pathToUri(relPath);
                 if (token.isCancellationRequested) { return false; }
-                progress.report({increment: 100*i/total, message: relPath});
+                progress.report({increment: 100/total, message: relPath});
                 //
                 const baseContent = this.baseCache[relPath];
                 const localContent = await this.readFile(relPath);
