@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2024-06-30
+### Changed
+- chore(deps-dev): bump braces from 3.0.2 to 3.0.3
+  - Commit: 80a229ccbae016a1c5ce033bc1efc21cca583897
+- chore(deps-dev): bump braces from 3.0.2 to 3.0.3 in /views/chat-view
+  - Commit: 7e9dc2bb2cd0d7636860a285270c9d6070d95801
+- feat: local replica bulky sync with progress and cancelable (#155)
+  - Commit: df2e8b17afc98d59c1dbd12d555ebb9bddf1817c
+
 ## [0.12.3] - 2024-05-28
 ### Fixed
 - fix: save dirty files before compile
