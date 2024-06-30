@@ -599,16 +599,50 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
         // open local replica
         const replicasPath = replicas.map(scmPersist => vscode.Uri.parse(scmPersist.baseUri).fsPath);
         if (replicasPath.length===0) { return; }
-        const path = await vscode.window.showQuickPick(replicasPath, {
-            canPickMany:false,
-            placeHolder:vscode.l10n.t('Select the local replica below.')
+        const quickPickItems = replicasPath.map(path => {
+            let label = path;
+            let buttons = [{
+                id: "removal",
+                iconPath: new vscode.ThemeIcon('trash'),
+                tooltip: vscode.l10n.t('Remove local replica'),
+            }];
+            return {label, buttons};
         });
-        if (path) {
-            const uri = vscode.Uri.file(path);
+
+        // select local replica via quick pick
+        new Promise(resolve => {
+            const quickPick = vscode.window.createQuickPick();
+            quickPick.placeholder = vscode.l10n.t('Select the local replica below.');
+            quickPick.items = quickPickItems;
+            quickPick.onDidTriggerItemButton(({button,item}) => {
+                if ((button as any).id === "removal") {
+                    vscode.window.showWarningMessage( vscode.l10n.t('Remove local replica "{label}" ?', {label:item.label}), 'Yes', 'No')
+                    .then(answer => {
+                        if (answer === 'Yes') {
+                            // remove local replica from scm persists
+                            const scmKey = Object.keys(scmPersists).find(key => vscode.Uri.parse(scmPersists[key].baseUri).fsPath===item.label)!;
+                            GlobalStateManager.updateServerProjectSCMPersist(this.context, serverName, projectId, scmKey);
+                            // remove entry from quick pick
+                            quickPick.items = quickPick.items.filter(item => item.label!==item.label);
+                        }
+                    });
+                }
+            });
+            quickPick.onDidAccept(() => {
+                const path = quickPick.selectedItems[0]?.label;
+                if (path) {
+                    quickPick.dispose();
+                    resolve(path);
+                }
+            });
+            quickPick.show();
+        })
+        .then(path => {
+            const uri = vscode.Uri.file(path as string);
             // always open in current window
             vscode.commands.executeCommand('vscode.openFolder', uri, false);
             vscode.commands.executeCommand('workbench.view.explorer');
-        }
+        });
     }
 
     get triggers() {
