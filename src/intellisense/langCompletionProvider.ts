@@ -367,7 +367,7 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
         // group 0: reference
         ['\\w*ref'],
         // group 1: citation
-        ['cite'],
+        ['cite\\w*', '\\w*cite'],
     ];
 
     constructor(vfsm: RemoteFileSystemProvider, private readonly texSymbolProvider: TexDocumentSymbolProvider) {
