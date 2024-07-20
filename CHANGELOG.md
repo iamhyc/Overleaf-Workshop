@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.1] - 2024-07-20
+### Fixed
+- fix: autocompletion completion for command beginwith or endwith cite
+  - Commit: 0116b78f62646c00128b46ec102bbc9eb370026e
+
 ## [0.13.0] - 2024-06-30
 ### Changed
 - chore(deps-dev): bump braces from 3.0.2 to 3.0.3
