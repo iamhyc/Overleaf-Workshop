@@ -305,6 +305,44 @@ export class CompileManager {
         }
     }
 
+    async setCompiler() {
+        const uri = await CompileManager.check();
+        const vfs = uri && await this.vfsm.prefetch(uri);
+        const currentCompiler = vfs?.getCompiler();
+        const compilers = vfs?.getAllCompilers();
+        compilers && vscode.window.showQuickPick(compilers.map((item) => {
+            return {
+                label: item.name,
+                description: item.code,
+                picked: item.code === currentCompiler?.code,
+            };
+        }), {
+            canPickMany: false,
+            placeHolder: vscode.l10n.t('Select Compiler'),
+        }).then(async (option) => {
+            option && await vfs?.updateSettings({ compiler: option.description }) && this.compile(true);
+        });
+    }
+
+    async setRootDoc() {
+        const uri = await CompileManager.check();
+        const vfs = uri && await this.vfsm.prefetch(uri);
+        const currentRootDoc = vfs?.getRootDocName();
+        const rootDocs = vfs?.getValidMainDocs();
+        rootDocs && vscode.window.showQuickPick(rootDocs.map((item) => {
+            return {
+                id: item.entity._id,
+                label: item.path,
+                picked: item.path === currentRootDoc,
+            };
+        }), {
+            canPickMany: false,
+            placeHolder: vscode.l10n.t('Select Main Document'),
+        }).then(async (option) => {
+            option && await vfs?.updateSettings({ rootDocId: option.id }) && this.compile(true);
+        });
+    }
+
     async compileSettings() {
         const uri = await CompileManager.check();
         const vfs = uri && await this.vfsm.prefetch(uri);
@@ -318,37 +356,13 @@ export class CompileManager {
 
         switch (setting?.label) {
             case vscode.l10n.t('Setting: Compiler'):
-                const compilers = vfs?.getAllCompilers();
-                compilers && vscode.window.showQuickPick(compilers.map((item) => {
-                    return {
-                        label: item.name,
-                        description: item.code,
-                        picked: item.code === currentCompiler?.code,
-                    };
-                }), {
-                    canPickMany: false,
-                    placeHolder: vscode.l10n.t('Select Compiler'),
-                }).then(async (option) => {
-                    option && await vfs?.updateSettings({ compiler: option.description }) && this.compile(true);
-                });
+                this.setCompiler();
                 break;
             case vscode.l10n.t('Setting: Main Document'):
-                const rootDocs = vfs?.getValidMainDocs();
-                rootDocs && vscode.window.showQuickPick(rootDocs.map((item) => {
-                    return {
-                        id: item.entity._id,
-                        label: item.path,
-                        picked: item.path === currentRootDoc,
-                    };
-                }), {
-                    canPickMany: false,
-                    placeHolder: vscode.l10n.t('Select Main Document'),
-                }).then(async (option) => {
-                    option && await vfs?.updateSettings({ rootDocId: option.id }) && this.compile(true);
-                });
+                this.setRootDoc();
                 break;
             default:
-                return;
+                break;
         }
     }
 
@@ -362,6 +376,8 @@ export class CompileManager {
             vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.syncCode`, () => this.syncCode()),
             vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.syncPdf`, (r) => this.syncPdf(r)),
             vscode.commands.registerCommand(`${ROOT_NAME}.compilerManager.settings`, ()=> this.compileSettings()),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.setCompiler`, () => this.setCompiler()),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.setRootDoc`, () => this.setRootDoc()),
             // register compile conditions
             vscode.workspace.onDidSaveTextDocument(async (e) => {
                 const uri = await CompileManager.check.bind(this)(e.uri);

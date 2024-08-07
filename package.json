@@ -335,6 +335,18 @@
         "category": "%extension.displayName%"
       },
       {
+        "command": "overleaf-workshop.compileManager.setCompiler",
+        "title": "%commands.compileManager.setCompiler.title%",
+        "enablement": "resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile",
+        "category": "%extension.displayName%"
+      },
+      {
+        "command": "overleaf-workshop.compileManager.setRootDoc",
+        "title": "%commands.compileManager.setRootDoc.title%",
+        "enablement": "resourceScheme == overleaf-workshop || overleaf-workshop.activateCompile",
+        "category": "%extension.displayName%"
+      },
+      {
         "command": "overleaf-workshop.collaboration.copyLineRef",
         "title": "%commands.collaboration.copyLineRef.title%",
         "enablement": "editorTextFocus && resourceScheme == overleaf-workshop",
