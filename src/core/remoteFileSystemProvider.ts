@@ -897,6 +897,19 @@ export class VirtualFileSystem extends vscode.Disposable {
         return Promise.resolve(undefined);
     }
 
+    async stopCompile() {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.stopCompile(identity, this.projectId);
+        if (res.type==='success') {
+            return true;
+        } else {
+            if (res.message!==undefined) {
+                vscode.window.showErrorMessage(res.message);
+            }
+            return false;
+        }
+    }
+
     async updateOutputs(outputs: Array<OutputFileEntity>) {
         if (this.root) {
             const rootFolder = this.root.rootFolder[0];

@@ -233,6 +233,15 @@ export class CompileManager {
         }
     }
 
+    async stopCompile() {
+        const uri = await CompileManager.check();
+        if (uri && this.inCompiling) {
+            const vfs = await this.vfsm.prefetch(uri);
+            await vfs.stopCompile();
+            await this.update('failed');
+        }
+    }
+
     async openPdf() {
         const uri = await CompileManager.check();
         if (uri) {
@@ -349,10 +358,14 @@ export class CompileManager {
         const currentCompiler = vfs?.getCompiler();
         const currentRootDoc = vfs?.getRootDocName();
 
-        const setting = await vscode.window.showQuickPick([
+        const settingItems = [
             {label: vscode.l10n.t('Setting: Compiler'), description: currentCompiler?.name, },
             {label: vscode.l10n.t('Setting: Main Document'), description: currentRootDoc, },
-        ]);
+        ];
+        if (this.inCompiling) {
+            settingItems.unshift({label: vscode.l10n.t('Stop compilation'), description: undefined});
+        }
+        const setting = await vscode.window.showQuickPick(settingItems);
 
         switch (setting?.label) {
             case vscode.l10n.t('Setting: Compiler'):
@@ -360,6 +373,9 @@ export class CompileManager {
                 break;
             case vscode.l10n.t('Setting: Main Document'):
                 this.setRootDoc();
+                break;
+            case vscode.l10n.t('Stop compilation'):
+                this.stopCompile();
                 break;
             default:
                 break;
