@@ -19,7 +19,7 @@ export interface NewProjectResponseSchema {
 }
 
 export interface CompileResponseSchema {
-    status: 'success' | 'error';
+    status: 'success' | 'failure' | 'error';
     compileGroup: string;
     outputFiles: Array<OutputFileEntity>;
     stats: {
@@ -602,6 +602,11 @@ export class BaseAPI {
             const compile = JSON.parse(res!) as CompileResponseSchema;
             return {compile};
         }, {'X-Csrf-Token': identity.csrfToken});
+    }
+
+    async stopCompile(identity:Identity, projectId:string) {
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/compile/stop`, undefined, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async indexAll(identity:Identity, projectId:string) {

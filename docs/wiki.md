@@ -370,7 +370,9 @@ The available commands and default shortcuts can be found in the command palette
 - **"Configure Source Control"**: This command is used to configure the source control provider for the project.
 - **Jump to PDF**: Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd> with the cursor in the document editor to jump to the corresponding position in the PDF.
 - **"Focus on Overleaf Chat"**, **"Focus on Overleaf History"**, **"Focus on Hosts View"**: These commands are used to focus on the corresponding views via keyboards without using mouse.
-- "Jump to Collaborator": This command is used to move the cursor to the exact position of one of the collaborators.
+- **"Jump to Collaborator"**: This command is used to move the cursor to the exact position of one of the collaborators.
+- **"Set Compiler"**: This command is used to change the compiler of the current project.
+- **"Set Root Document"**: This command is used to change the root document to be compiled of the current project.
 
 Let us know if you have any suggestions for the commands and shortcuts in the [GitHub Discussions](https://github.com/iamhyc/Overleaf-Workshop/discussions).
 

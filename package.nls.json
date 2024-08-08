@@ -41,6 +41,8 @@
     "commands.compileManager.compile.title": "Compile Project",
     "commands.compileManager.viewPdf.title": "View Compiled PDF",
     "commands.compileManager.syncCode.title": "Jump to PDF",
+    "commands.compileManager.setCompiler.title": "Set Compiler",
+    "commands.compileManager.setRootDoc.title": "Set Root Document",
 
     "commands.collaboration.copyLineRef.title": "Overleaf: Copy Line Reference",
     "commands.collaboration.insertLineRef.title": "Overleaf: Insert Line Reference",
