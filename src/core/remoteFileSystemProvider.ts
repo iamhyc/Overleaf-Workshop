@@ -884,7 +884,7 @@ export class VirtualFileSystem extends vscode.Disposable {
             }
             // compile project
             const res = await this.api.compile(identity, this.projectId, this.root?.rootDoc_id??null);
-            if (res.type==='success' && res.compile) {
+            if (res.type==='success' && res.compile?.status=='success') {
                 this.updateOutputs(res.compile.outputFiles);
                 return true;
             } else {

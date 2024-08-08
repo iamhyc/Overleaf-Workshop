@@ -19,7 +19,7 @@ export interface NewProjectResponseSchema {
 }
 
 export interface CompileResponseSchema {
-    status: 'success' | 'error';
+    status: 'success' | 'failure' | 'error';
     compileGroup: string;
     outputFiles: Array<OutputFileEntity>;
     stats: {
