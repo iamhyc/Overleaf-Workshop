@@ -604,6 +604,11 @@ export class BaseAPI {
         }, {'X-Csrf-Token': identity.csrfToken});
     }
 
+    async stopCompile(identity:Identity, projectId:string) {
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/compile/stop`, undefined, undefined, {'X-Csrf-Token': identity.csrfToken});
+    }
+
     async indexAll(identity:Identity, projectId:string) {
         this.setIdentity(identity);
         return this.request('POST', `project/${projectId}/references/indexAll`, {shouldBroadcast: false}, undefined);
