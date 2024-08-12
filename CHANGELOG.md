@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.2] - 2024-08-12
+### Changed
+- chore(deps): bump vue-template-compiler and vue-tsc in /views/chat-view
+  - Commit: 24217d0ed276e8e16c2a9cddcbf6189c1344f3c4
+- feat: Better Compiling Experience (#171)
+  - Commit: 69f5e8fdafdef444aa54bf37a32d25d99f22181b
+
 ## [0.13.1] - 2024-07-20
 ### Fixed
 - fix: autocompletion completion for command beginwith or endwith cite
