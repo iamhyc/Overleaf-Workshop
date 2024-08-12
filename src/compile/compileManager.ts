@@ -114,6 +114,8 @@ export class CompileManager {
     readonly status: vscode.StatusBarItem;
     public inCompiling: boolean = false;
     private diagnosticProvider: CompileDiagnosticProvider;
+    private compileAsDraft: boolean = false;
+    private compileStopOnFirstError: boolean = false;
 
     constructor(
         private vfsm: RemoteFileSystemProvider,
@@ -196,7 +198,7 @@ export class CompileManager {
         const uri = await this.update('compiling');
         if (uri) {
             this.vfsm.prefetch(uri)
-                .then(async (vfs) => await vfs.compile(force))
+                .then(async (vfs) => await vfs.compile(force, this.compileAsDraft, this.compileStopOnFirstError))
                 .then(async (res) => {
                     switch (res) {
                         case undefined:
@@ -358,15 +360,20 @@ export class CompileManager {
         const currentCompiler = vfs?.getCompiler();
         const currentRootDoc = vfs?.getRootDocName();
 
+        const currentDraftMode = this.compileAsDraft ? vscode.l10n.t('Draft Mode') : vscode.l10n.t('Normal Mode');
+        const currentStopOnError = this.compileStopOnFirstError ? vscode.l10n.t('Stop on first error') : vscode.l10n.t('Try to compile despite errors');
         const settingItems = [
+            {label: vscode.l10n.t('Compile Mode'), description: currentDraftMode},
+            {label: vscode.l10n.t('Compile Error Handling'), description: currentStopOnError},
+            {label: '', kind: vscode.QuickPickItemKind.Separator},
             {label: vscode.l10n.t('Setting: Compiler'), description: currentCompiler?.name, },
             {label: vscode.l10n.t('Setting: Main Document'), description: currentRootDoc, },
         ];
         if (this.inCompiling) {
             settingItems.unshift({label: vscode.l10n.t('Stop compilation'), description: undefined});
         }
-        const setting = await vscode.window.showQuickPick(settingItems);
 
+        const setting = await vscode.window.showQuickPick(settingItems);
         switch (setting?.label) {
             case vscode.l10n.t('Setting: Compiler'):
                 this.setCompiler();
@@ -376,6 +383,14 @@ export class CompileManager {
                 break;
             case vscode.l10n.t('Stop compilation'):
                 this.stopCompile();
+                break;
+            case vscode.l10n.t('Compile Mode'):
+                this.compileAsDraft = !this.compileAsDraft;
+                this.compileSettings();
+                break;
+            case vscode.l10n.t('Compile Error Handling'):
+                this.compileStopOnFirstError = !this.compileStopOnFirstError;
+                this.compileSettings();
                 break;
             default:
                 break;

@@ -588,13 +588,15 @@ export class BaseAPI {
                             {folder_id:newParentFolderId}, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
-    async compile(identity:Identity, projectId:string, rootDoc_id:string|null) {
+    async compile(identity:Identity, projectId:string, rootDoc_id:string|null,
+        draft:boolean=false, stopOnFirstError:boolean=false
+    ) {
         const body = {
-            check: "silent",
-            draft: false,
+            check: 'silent',
+            draft,
             incrementalCompilesEnabled: true,
             rootDoc_id,
-            stopOnFirstError: false
+            stopOnFirstError
         };
 
         this.setIdentity(identity);
