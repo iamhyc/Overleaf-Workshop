@@ -114,6 +114,8 @@ export class CompileManager {
     readonly status: vscode.StatusBarItem;
     public inCompiling: boolean = false;
     private diagnosticProvider: CompileDiagnosticProvider;
+    private compileAsDraft: boolean = false;
+    private compileStopOnFirstError: boolean = false;
 
     constructor(
         private vfsm: RemoteFileSystemProvider,
@@ -196,7 +198,7 @@ export class CompileManager {
         const uri = await this.update('compiling');
         if (uri) {
             this.vfsm.prefetch(uri)
-                .then(async (vfs) => await vfs.compile(force))
+                .then(async (vfs) => await vfs.compile(force, this.compileAsDraft, this.compileStopOnFirstError))
                 .then(async (res) => {
                     switch (res) {
                         case undefined:
@@ -230,6 +232,15 @@ export class CompileManager {
                     );
                 });
 
+        }
+    }
+
+    async stopCompile() {
+        const uri = await CompileManager.check();
+        if (uri && this.inCompiling) {
+            const vfs = await this.vfsm.prefetch(uri);
+            await vfs.stopCompile();
+            await this.update('failed');
         }
     }
 
@@ -305,50 +316,84 @@ export class CompileManager {
         }
     }
 
+    async setCompiler() {
+        const uri = await CompileManager.check();
+        const vfs = uri && await this.vfsm.prefetch(uri);
+        const currentCompiler = vfs?.getCompiler();
+        const compilers = vfs?.getAllCompilers();
+        compilers && vscode.window.showQuickPick(compilers.map((item) => {
+            return {
+                label: item.name,
+                description: item.code,
+                picked: item.code === currentCompiler?.code,
+            };
+        }), {
+            canPickMany: false,
+            placeHolder: vscode.l10n.t('Select Compiler'),
+        }).then(async (option) => {
+            option && await vfs?.updateSettings({ compiler: option.description }) && this.compile(true);
+        });
+    }
+
+    async setRootDoc() {
+        const uri = await CompileManager.check();
+        const vfs = uri && await this.vfsm.prefetch(uri);
+        const currentRootDoc = vfs?.getRootDocName();
+        const rootDocs = vfs?.getValidMainDocs();
+        rootDocs && vscode.window.showQuickPick(rootDocs.map((item) => {
+            return {
+                id: item.entity._id,
+                label: item.path,
+                picked: item.path === currentRootDoc,
+            };
+        }), {
+            canPickMany: false,
+            placeHolder: vscode.l10n.t('Select Main Document'),
+        }).then(async (option) => {
+            option && await vfs?.updateSettings({ rootDocId: option.id }) && this.compile(true);
+        });
+    }
+
     async compileSettings() {
         const uri = await CompileManager.check();
         const vfs = uri && await this.vfsm.prefetch(uri);
         const currentCompiler = vfs?.getCompiler();
         const currentRootDoc = vfs?.getRootDocName();
 
-        const setting = await vscode.window.showQuickPick([
+        const currentDraftMode = this.compileAsDraft ? vscode.l10n.t('Draft Mode') : vscode.l10n.t('Normal Mode');
+        const currentStopOnError = this.compileStopOnFirstError ? vscode.l10n.t('Stop on first error') : vscode.l10n.t('Try to compile despite errors');
+        const settingItems = [
+            {label: vscode.l10n.t('Compile Mode'), description: currentDraftMode},
+            {label: vscode.l10n.t('Compile Error Handling'), description: currentStopOnError},
+            {label: '', kind: vscode.QuickPickItemKind.Separator},
             {label: vscode.l10n.t('Setting: Compiler'), description: currentCompiler?.name, },
             {label: vscode.l10n.t('Setting: Main Document'), description: currentRootDoc, },
-        ]);
+        ];
+        if (this.inCompiling) {
+            settingItems.unshift({label: vscode.l10n.t('Stop compilation'), description: undefined});
+        }
 
+        const setting = await vscode.window.showQuickPick(settingItems);
         switch (setting?.label) {
             case vscode.l10n.t('Setting: Compiler'):
-                const compilers = vfs?.getAllCompilers();
-                compilers && vscode.window.showQuickPick(compilers.map((item) => {
-                    return {
-                        label: item.name,
-                        description: item.code,
-                        picked: item.code === currentCompiler?.code,
-                    };
-                }), {
-                    canPickMany: false,
-                    placeHolder: vscode.l10n.t('Select Compiler'),
-                }).then(async (option) => {
-                    option && await vfs?.updateSettings({ compiler: option.description }) && this.compile(true);
-                });
+                this.setCompiler();
                 break;
             case vscode.l10n.t('Setting: Main Document'):
-                const rootDocs = vfs?.getValidMainDocs();
-                rootDocs && vscode.window.showQuickPick(rootDocs.map((item) => {
-                    return {
-                        id: item.entity._id,
-                        label: item.path,
-                        picked: item.path === currentRootDoc,
-                    };
-                }), {
-                    canPickMany: false,
-                    placeHolder: vscode.l10n.t('Select Main Document'),
-                }).then(async (option) => {
-                    option && await vfs?.updateSettings({ rootDocId: option.id }) && this.compile(true);
-                });
+                this.setRootDoc();
+                break;
+            case vscode.l10n.t('Stop compilation'):
+                this.stopCompile();
+                break;
+            case vscode.l10n.t('Compile Mode'):
+                this.compileAsDraft = !this.compileAsDraft;
+                this.compileSettings();
+                break;
+            case vscode.l10n.t('Compile Error Handling'):
+                this.compileStopOnFirstError = !this.compileStopOnFirstError;
+                this.compileSettings();
                 break;
             default:
-                return;
+                break;
         }
     }
 
@@ -362,6 +407,8 @@ export class CompileManager {
             vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.syncCode`, () => this.syncCode()),
             vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.syncPdf`, (r) => this.syncPdf(r)),
             vscode.commands.registerCommand(`${ROOT_NAME}.compilerManager.settings`, ()=> this.compileSettings()),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.setCompiler`, () => this.setCompiler()),
+            vscode.commands.registerCommand(`${ROOT_NAME}.compileManager.setRootDoc`, () => this.setRootDoc()),
             // register compile conditions
             vscode.workspace.onDidSaveTextDocument(async (e) => {
                 const uri = await CompileManager.check.bind(this)(e.uri);

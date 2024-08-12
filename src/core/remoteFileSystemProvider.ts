@@ -867,7 +867,7 @@ export class VirtualFileSystem extends vscode.Disposable {
         }
     }
 
-    async compile(force:boolean=false) {
+    async compile(force:boolean=false, draft:boolean=false, stopOnFirstError:boolean=false) {
         if (force || (this.root && this.isDirty)) {
             this.isDirty = false;
             let needCacheClearFirst = false;
@@ -883,8 +883,8 @@ export class VirtualFileSystem extends vscode.Disposable {
                 await this.api.deleteAuxFiles(identity, this.projectId);
             }
             // compile project
-            const res = await this.api.compile(identity, this.projectId, this.root?.rootDoc_id??null);
-            if (res.type==='success' && res.compile) {
+            const res = await this.api.compile(identity, this.projectId, this.root?.rootDoc_id??null, draft, stopOnFirstError);
+            if (res.type==='success' && res.compile?.status==='success') {
                 this.updateOutputs(res.compile.outputFiles);
                 return true;
             } else {
@@ -895,6 +895,19 @@ export class VirtualFileSystem extends vscode.Disposable {
             }
         }
         return Promise.resolve(undefined);
+    }
+
+    async stopCompile() {
+        const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
+        const res = await this.api.stopCompile(identity, this.projectId);
+        if (res.type==='success') {
+            return true;
+        } else {
+            if (res.message!==undefined) {
+                vscode.window.showErrorMessage(res.message);
+            }
+            return false;
+        }
     }
 
     async updateOutputs(outputs: Array<OutputFileEntity>) {

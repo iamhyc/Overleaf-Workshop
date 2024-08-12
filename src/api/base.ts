@@ -19,7 +19,7 @@ export interface NewProjectResponseSchema {
 }
 
 export interface CompileResponseSchema {
-    status: 'success' | 'error';
+    status: 'success' | 'failure' | 'error';
     compileGroup: string;
     outputFiles: Array<OutputFileEntity>;
     stats: {
@@ -588,13 +588,15 @@ export class BaseAPI {
                             {folder_id:newParentFolderId}, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
-    async compile(identity:Identity, projectId:string, rootDoc_id:string|null) {
+    async compile(identity:Identity, projectId:string, rootDoc_id:string|null,
+        draft:boolean=false, stopOnFirstError:boolean=false
+    ) {
         const body = {
-            check: "silent",
-            draft: false,
+            check: 'silent',
+            draft,
             incrementalCompilesEnabled: true,
             rootDoc_id,
-            stopOnFirstError: false
+            stopOnFirstError
         };
 
         this.setIdentity(identity);
@@ -602,6 +604,11 @@ export class BaseAPI {
             const compile = JSON.parse(res!) as CompileResponseSchema;
             return {compile};
         }, {'X-Csrf-Token': identity.csrfToken});
+    }
+
+    async stopCompile(identity:Identity, projectId:string) {
+        this.setIdentity(identity);
+        return this.request('POST', `project/${projectId}/compile/stop`, undefined, undefined, {'X-Csrf-Token': identity.csrfToken});
     }
 
     async indexAll(identity:Identity, projectId:string) {
