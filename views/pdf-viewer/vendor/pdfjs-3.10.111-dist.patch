@@ -145,3 +145,16 @@ index 8ec1e8f..b435c79 100644
  Object.defineProperty(exports, "ImageKind", ({
    enumerable: true,
    get: function () {
+diff --git a/web/viewer.js b/web/viewer.js
+index 6d1fb61..7feba07 100644
+--- a/web/viewer.js
++++ b/web/viewer.js
+@@ -8387,7 +8387,7 @@ class PDFViewer {
+     this.#annotationEditorMode = options.annotationEditorMode ?? _pdfjsLib.AnnotationEditorType.NONE;
+     this.imageResourcesPath = options.imageResourcesPath || "";
+     this.enablePrintAutoRotate = options.enablePrintAutoRotate || false;
+-    this.removePageBorders = options.removePageBorders || false;
++    this.removePageBorders = options.removePageBorders || true;
+     if (options.useOnlyCssZoom) {
+       console.error("useOnlyCssZoom was removed, please use `maxCanvasPixels = 0` instead.");
+       options.maxCanvasPixels = 0;
