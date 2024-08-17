@@ -83,7 +83,6 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
                 case 'ready':
                     const state = GlobalStateManager.getPdfViewPersist(this.context, doc.uri.toString());
                     const colorThemes = vscode.workspace.getConfiguration('overleaf-workshop.pdfViewer').get('themes', undefined);
-                    console.log(colorThemes);
                     webviewPanel.webview.postMessage({type:'initState', content:state, colorThemes});
                     break;
                 default:
