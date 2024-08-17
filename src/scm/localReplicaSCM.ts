@@ -49,6 +49,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         '**/*.blg',
         '**/*.fdb_latexmk',
         '**/*.fls',
+        '**/*.git',
         '**/*.lof',
         '**/*.log',
         '**/*.lot',
