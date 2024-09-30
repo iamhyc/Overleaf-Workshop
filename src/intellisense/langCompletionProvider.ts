@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { OUTPUT_FOLDER_NAME, ROOT_NAME } from '../consts';
 import { SnippetItemSchema } from '../api/base';
-import { IntellisenseProvider } from '.';
+import { fuzzyFilter, IntellisenseProvider } from '.';
 import { RemoteFileSystemProvider, VirtualFileSystem, parseUri } from '../core/remoteFileSystemProvider';
 import { TexDocumentSymbolProvider } from './texDocumentSymbolProvider';
 
@@ -394,6 +394,8 @@ export class ReferenceCompletionProvider extends IntellisenseProvider implements
             case 1: // group 1: citation
                 let items = await this.getReferenceCompletionItemsFromBib(vfs);
                 items = items.length!==0 ? items : await this.getReferenceCompletionItemsFromBbl(vfs); //fallback option
+                items = fuzzyFilter(items, partial, ['label']);
+                items.forEach(item => item.filterText = `${partial} ${item.label}`);
                 return items;
             default:
                 return [];
