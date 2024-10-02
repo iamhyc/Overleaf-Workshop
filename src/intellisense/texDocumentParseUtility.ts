@@ -28,6 +28,7 @@ const unifiedParser: { parse: (content: string) => Ast.Root } = unifiedLaTeXPars
 // Env that matches the defaultStructure will be treated as a section with top-down order
 const defaultStructure = ["book", "part", "chapter", "section", "subsection", "subsubsection", "paragraph", "subparagraph"];
 
+
 // Match label command
 const defaultCMD = ["label"];
 
@@ -118,7 +119,7 @@ async function parseNode(
     switch (node.type) {
         case 'macro':
             let caseType = '';
-            if (defaultStructure.includes(node.content) && node.args?.[3].openMark === '{') {
+            if (defaultStructure.includes(node.content) && node.args?.[node.args?.length - 1].openMark === '{') {
                 caseType = 'section';
             } else if (defaultCMD.includes(node.content)) {
                 caseType = 'label';
@@ -138,7 +139,7 @@ async function parseNode(
                         label: argContentToStr(
                             ((node.args?.[1]?.content?.length ?? 0) > 0
                                 ? node.args?.[1]?.content
-                                : node.args?.[3]?.content) || []
+                                : node.args?.[node.args?.length - 1]?.content) || []
                         ),
                         ...attributes
                     };
