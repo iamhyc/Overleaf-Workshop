@@ -149,8 +149,11 @@ class ProjectStructRecord {
             const fileNode = fileQueue.shift()!;
             const subFiles = fileNode.childrenPaths;
             for (const subFile of subFiles) {
-                const fileStruct = await this.refreshRecord(subFile);
-                fileQueue.push( fileStruct );
+                // Get fileStruct can be failed due to file not exist
+                try {
+                    const fileStruct = await this.refreshRecord(subFile);
+                    fileQueue.push( fileStruct );
+                } catch { continue; }
             };
         }
     }
