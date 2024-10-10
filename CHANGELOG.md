@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2024-10-10
+### Changed
+- feat(pdfjs): remove pdfjs page border
+  - Commit: 408aa79e0ff4906d33c977304081359f13e25f9a
+- chore(scm): local replica update default ignore patterns
+  - Commit: f3c12f09f088636b34e651ad2a4c59c28d1b1d20
+- chore(deps): bump micromatch from 4.0.5 to 4.0.8
+  - Commit: c0564b240cf07ae122a116e1c21d58ffbe8603a9
+- chore(deps-dev): bump micromatch from 4.0.5 to 4.0.8 in /views/chat-view
+  - Commit: 7191c3d74c86e453c094a222cd14430b7e51fe75
+- chore(deps): bump rollup from 3.29.4 to 3.29.5 in /views/chat-view
+  - Commit: 7290a11aeb36aa010da575116684e926d289ab85
+- feat(intellisense): fuzzy filterText match
+  - Commit: 731d075dfb82a768a34adc3ef65cf57ad24f21f5
+
+### Fixed
+- fix: missing chapter in outline (#195)
+  - c1552cfe57ac0820b96eccfa7fc0e9340549e2a4
+
 ## [0.13.2] - 2024-08-12
 ### Changed
 - chore(deps): bump vue-template-compiler and vue-tsc in /views/chat-view
