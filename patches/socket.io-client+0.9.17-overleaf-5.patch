@@ -1,8 +1,16 @@
 diff --git a/node_modules/socket.io-client/lib/socket.js b/node_modules/socket.io-client/lib/socket.js
-index 07c1c3f..e208abc 100644
+index 07c1c3f..d206feb 100644
 --- a/node_modules/socket.io-client/lib/socket.js
 +++ b/node_modules/socket.io-client/lib/socket.js
-@@ -152,11 +152,27 @@
+@@ -133,6 +133,7 @@
+         , io.protocol
+         , io.util.query(this.options.query, 't=' + +new Date)
+       ].join('/');
++      console.log('Internal Socket URL:', url);
+ 
+     if (this.isXDomain() && !io.util.ua.hasCORS) {
+       var insertAt = document.getElementsByTagName('script')[0]
+@@ -152,11 +153,27 @@
        if (this.isXDomain()) {
          xhr.withCredentials = true;
        }
@@ -30,7 +38,7 @@ index 07c1c3f..e208abc 100644
              complete(xhr.responseText);
            } else if (xhr.status == 403) {
              self.onError(xhr.responseText);
-@@ -229,7 +245,7 @@
+@@ -229,7 +246,7 @@
          self.transport.ready(self, function () {
            self.connecting = true;
            self.publish('connecting', self.transport.name);
@@ -39,7 +47,7 @@ index 07c1c3f..e208abc 100644
  
            if (self.options['connect timeout']) {
              self.connectTimeoutTimer = setTimeout(function () {
-@@ -369,6 +385,12 @@
+@@ -369,6 +386,12 @@
      ].join('/') + '/?disconnect=1';
  
      xhr.open('GET', uri, false);

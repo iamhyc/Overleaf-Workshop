@@ -240,6 +240,7 @@ export class BaseAPI {
     // Reference: "github:overleaf/overleaf/services/web/frontend/js/ide/connection/ConnectionManager.js#L137"
     _initSocketV0(identity:Identity, query?:string) {
         const url = new URL(this.url).origin + (query ?? '');
+        console.log('Init Socket:', url);
         return (require('socket.io-client').connect as any)(url, {
             reconnect: false,
             'force new connection': true,
