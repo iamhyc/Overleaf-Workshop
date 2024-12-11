@@ -765,7 +765,7 @@
     "download-cli": "^1.1.1",
     "eslint": "^8.41.0",
     "husky": "^8.0.3",
-    "mocha": "^10.2.0",
+    "mocha": "^10.8.2",
     "patch-package": "^7.0.2",
     "typescript": "^5.1.3"
   },
