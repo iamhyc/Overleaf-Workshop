@@ -13,6 +13,9 @@ const severityMap: Record<string, vscode.DiagnosticSeverity> = {
     information: vscode.DiagnosticSeverity.Information,
 };
 
+// Match the document class in the tex file
+const documentClassRegex = new RegExp(/\\documentclass(?:\[[^\[\]\{\}]*\])?\{([^\[\]\{\}]+)\}/);
+
 const pdfViewRecord: {
     [key: string]: {
         [key: string]: { doc: PdfDocument, webviewPanel: vscode.WebviewPanel }
@@ -198,7 +201,13 @@ export class CompileManager {
         const uri = await this.update('compiling');
         if (uri) {
             this.vfsm.prefetch(uri)
-                .then(async (vfs) => await vfs.compile(force, this.compileAsDraft, this.compileStopOnFirstError))
+                .then(async (vfs) => {
+                    const content = new TextDecoder().decode( await vfs?.openFile(uri) );
+                    const match = RegExp(documentClassRegex).exec(content);
+                    const fileId = (await vfs._resolveUri(uri)).fileId;
+                    const rootDocId = match ? fileId : undefined;
+                    return await vfs.compile(force, this.compileAsDraft, this.compileStopOnFirstError, rootDocId);
+                })
                 .then(async (res) => {
                     switch (res) {
                         case undefined:
