@@ -68,14 +68,24 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         public readonly baseUri: vscode.Uri,
     ) {
         super(vfs, baseUri);
-        if ( !baseUri.path.endsWith(`/${vfs.projectName}`) ) {
-            this.baseUri = vscode.Uri.joinPath(baseUri, vfs.projectName);
-        }
     }
 
-    public static async validateBaseUri(uri: string): Promise<vscode.Uri> {
+    public static async validateBaseUri(uri: string, projectName?: string): Promise<vscode.Uri> {
         try {
             let baseUri = vscode.Uri.file(uri);
+            // check if the path exists
+            try {
+                const stat = await vscode.workspace.fs.stat(baseUri);
+                if (stat.type!==vscode.FileType.Directory) {
+                    throw new Error('Not a folder');
+                }
+                // check if the project name is included in the path
+                if (projectName!==undefined && !baseUri.path.endsWith(`/${projectName}`)) {
+                    baseUri = vscode.Uri.joinPath(baseUri, projectName);
+                }
+            } catch {
+                // keep the baseUri as is
+            }
             // try to create the folder with `mkdirp` semantics
             await vscode.workspace.fs.createDirectory(baseUri);
             await vscode.workspace.fs.stat(baseUri);

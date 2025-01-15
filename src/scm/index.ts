@@ -71,7 +71,7 @@ export abstract class BaseSCM {
      * 
      * @returns A promise that resolves to the validated URI
      */
-    public static async validateBaseUri(uri: string): Promise<vscode.Uri> {
+    public static async validateBaseUri(uri: string, projectName?: string): Promise<vscode.Uri> {
         return Promise.resolve( vscode.Uri.parse(uri) );
     }
 
