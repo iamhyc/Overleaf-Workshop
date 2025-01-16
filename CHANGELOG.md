@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2025-01-16
+### Added
+- feat(scm): allow to set local replica folder name
+  - Commit: 9635545921d3fc50fddc35bd1147765a458ca521
+- feat: enable compiling different root file when opened
+  - Commit: 97501e03eae51c3926ac0b5d896c7aa0443b013c
+
 ## [0.14.0] - 2024-10-10
 ### Changed
 - feat(pdfjs): remove pdfjs page border
