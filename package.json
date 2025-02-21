@@ -474,6 +474,12 @@
           "minimum": 10,
           "maximum": 3600,
           "markdownDescription": "%configuration.invisibleMode.inactiveTimeout.markdownDescription%"
+        },
+        "overleaf-workshop.formatWithLineBreak.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine",
+          "markdownDescription": "%configuration.formatWithLineBreak.enabled.markdownDescription%"
         }
       }
     },
