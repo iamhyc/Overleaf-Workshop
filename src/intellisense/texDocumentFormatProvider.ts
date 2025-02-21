@@ -6,11 +6,15 @@ import { IntellisenseProvider } from '.';
 
 // https://github.com/siefkenj/latex-parser-playground/blob/master/src/async-worker/parsing-worker.ts#L35-L43
 async function prettierFormat(text: string, options: vscode.FormattingOptions ) {
+
+    const lineBreakEnabled = vscode.workspace.getConfiguration('overleaf-workshop.formatWithLineBreak').get<boolean>('enabled', true);
+    const printWidth = lineBreakEnabled ? 80 : 10000;
     return Prettier.format(text, {
         parser: "latex-parser",
         tabWidth: options.tabSize,
         useTabs: !(options.insertSpaces),
         plugins: [prettierPluginLatex],
+        printWidth: printWidth,
     });
 }
 
