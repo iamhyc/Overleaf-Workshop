@@ -5,7 +5,6 @@ import { CommentThreadSchema, DocumentRangesSchema, DocumentReviewChangeSchema }
 import { ROOT_NAME } from '../consts';
 
 type ReviewDecorationType = 'openComment' | 'resolvedComment' | 'insertChange' | 'deleteChange';
-type EditOp = {p:number, i?:string, d?:string, u?:boolean};
 
 const reviewDecorationOptions: {[type in ReviewDecorationType]: vscode.DecorationRenderOptions} = {
     openComment: {
@@ -92,7 +91,7 @@ function genThreadMarkdownString(userId:string, threadId:string, thread: Comment
 
 class ChangeRange {
     public readonly change?: DocumentReviewChangeSchema;
-    constructor(private readonly _begin: number=0, private readonly _end: number=0) {}
+    constructor(private readonly _begin: number=-1, private readonly _end: number=-1) {}
     get begin() { return this._begin; }
     get end() { return this._end; }
     includes(position: number): boolean {
@@ -127,6 +126,7 @@ class EditChange extends ChangeRange {
 
 class InterleavedRange {
     private interleaved: TextChange[];
+
     constructor(changes: readonly DocumentReviewChangeSchema[]) {
         this.interleaved = changes.map(c => new TextChange(c));
     }
@@ -134,25 +134,15 @@ class InterleavedRange {
     locate(position: number): ChangeRange {
         const index = this.interleaved.findIndex(rng => rng.includes(position) || rng.isAfter(position));
         if (index===-1) {
-            return new ChangeRange(-1, -1);
+            return new ChangeRange();
         } else {
             const text = this.interleaved[index];
             if (text.includes(position)) {
                 return text;
             } else {
-                const lastText = this.interleaved[index-1];
+                const lastText = this.interleaved[index-1] || new ChangeRange(0,0);
                 return new ChangeRange(lastText?.end||0, text.begin);
             }
-        }
-    }
-
-    next(range: TextChange): ChangeRange {
-        const index = this.interleaved.indexOf(range);
-        const nextText = this.interleaved[index+1];
-        if (nextText.begin===range.end) {
-            return nextText;
-        } else {
-            return new ChangeRange(range.end, nextText.begin);
         }
     }
 
@@ -200,25 +190,24 @@ class EditManager {
      * Delete Edit Range Direction: (begin)|<------|(p)
      */
     constructor(
-        changes: readonly DocumentReviewChangeSchema[],
-        private readonly update: UpdateSchema,
-        private readonly metadata: any,
+        _changes: readonly DocumentReviewChangeSchema[],
     ) {
-        this.wholeText = new InterleavedRange(changes);
+        this.wholeText = new InterleavedRange(_changes);
     }
 
-    get updatedChanges() {
+    get changes() {
         return this.wholeText.condense();
     }
 
-    generateRefreshes() {
+    generateRefreshes(update: UpdateSchema, metadata: any) {
         let refreshes:{id:string, type?:ReviewDecorationType}[] = [];
 
-        for (const [offset,editOp] of this.update.op!.entries()) {
+        const tcPrefix = update.meta?.tc;
+        for (const [offset,editOp] of update.op!.entries()) {
             const tcIndex = offset.toString().padStart(6,'0');
-            const tcId = (this.update.meta?.tc) ? (this.update.meta.tc+tcIndex) : '';
-            const edit = new EditChange({id:tcId, op:editOp, metadata:this.metadata});
-            // lookup for affected `this.changes` begins/end index
+            const tcId = tcPrefix ? (tcPrefix+tcIndex) : '';
+            const edit = new EditChange({id:tcId, op:editOp, metadata:metadata});
+            // lookup for affected edit begins/end index
             const beginText = this.wholeText.locate(edit.begin);
             const endText = editOp.i? beginText : this.wholeText.locate(edit.end);
             
@@ -299,19 +288,13 @@ class EditManager {
     applyInsertRangeWithInsertChange(text: TextChange, edit: EditChange) {
         let items:{id:string, type?:ReviewDecorationType}[] = [];
         const editOffset = edit.begin - text.begin;
-        // 1a.1a. insert with `tc` at start of next delete text range with exact same text --> [remove next text range]
-        const nextRng = this.wholeText.next(text);
-        if (edit.change?.id && edit.begin===text.end && nextRng.change?.id && nextRng.change.op.d===edit.op.i) {
-            items.push({id:nextRng.change.id});
-            this.wholeText.remove(nextRng as TextChange);
-        }
-        // 1a.1b. insert with `tc` --> [extend text range]
-        else if (edit.change?.id && text.change?.id) {
+        // 1a.1a. insert with `tc` --> [extend text range]
+        if (edit.change.id) {
             text.op.i = text.op.i!.slice(0, editOffset) + edit.op.i + text.op.i!.slice(editOffset);
             items.push({id:text.change.id, type:'insertChange'});
         }
-        // 1a.1c. insert without `tc` within (begin,end) --> [clip text range and insert new change]
-        else if (text.change?.id===undefined && edit.begin<text.end && edit.begin>text.begin) {
+        // 1a.1b. insert without `tc` within (begin,end) --> [clip text range and insert new change]
+        else if (text.change.id===undefined && edit.begin<text.end && edit.begin>text.begin) {
             const [beforeText, afterText] = [text.op.i!.slice(0, editOffset), text.op.i!.slice(editOffset)];
             // clip the original change
             text.op.i = beforeText;
@@ -321,7 +304,7 @@ class EditManager {
             const newText = new TextChange({
                 id: newId,
                 op: { p: text.end + edit.op.i!.length, i: afterText },
-                metadata: this.metadata,
+                metadata: edit.change.metadata,
             });
             this.wholeText.insert(newText);
             items.push({id:newId, type:'insertChange'});
@@ -391,7 +374,7 @@ class EditManager {
                     p: before? text.end : text.begin+offset,
                     d: before? edit.op.d!.slice(0, offset) : edit.op.d!.slice(edit.op.d!.length-offset),
                 },
-                metadata: this.metadata,
+                metadata: edit.change.metadata,
             });
             this.wholeText.insert(newText);
             return newText;
@@ -490,80 +473,94 @@ export class ReviewPanelProvider extends vscode.Disposable implements vscode.Cod
             },
             onAcceptTrackChanges: (docId, tcIds) => {
                 if (this.reviewRecords[docId].changes) {
-                    this.reviewRecords[docId].changes = this.reviewRecords[docId].changes!.filter((c) => !tcIds.includes(c.id));
+                    this.reviewRecords[docId].changes = this.reviewRecords[docId].changes?.filter((c) => !tcIds.includes(c.id));
                     this.setReviewDecorations(undefined, docId, tcIds.map(id => {return {id};}));
                 }
             },
-            //
             onFileChanged: (update) => {
-                if (update.op===undefined) { return; }
-                const ts = new Date(update.meta?.ts || new Date()).toISOString();
-                // update review records' comments
-                if (update.op[0].t !== undefined && update.op[0].c !== undefined) {
-                    const docId = update.doc;
-                    const {p,c,t} = update.op[0];
-                    const userId = update.meta?.user_id || '';
-                    // create new comment thread if not exists
-                    if (this.reviewRecords[docId] === undefined) {
-                        this.reviewRecords[docId] = {comments: [], changes: []};
+                if (update.op) {
+                    const ts = new Date(update.meta?.ts || new Date()).toISOString();
+                    if (update.op[0].t !== undefined && update.op[0].c !== undefined) {
+                        this.updateRecordComment(update, ts);
                     }
-                    let comments = this.reviewRecords[docId]?.comments;
-                    if (comments === undefined) {
-                        comments = [];
-                        this.reviewRecords[docId].comments = comments;
+                    else {
+                        this.updateRecordChange(update, ts);
                     }
-                    // update review records' comments
-                    comments.push({
-                        id: t,
-                        op: {p,c,t},
-                        metadata: {
-                            // eslint-disable-next-line @typescript-eslint/naming-convention
-                            user_id: userId, ts,
-                        }
-                    });
-                    // update review threads with `doc_id`
-                    const thread = this.reviewThreads[t];
-                    if (thread) {
-                        // case 2: `new-comment` arrives first
-                        if (thread.doc_id === undefined) {
-                            thread.doc_id = docId;
-                            this.setReviewDecorations(undefined, docId, [{id:t, type:'openComment'}]);
-                        }
-                    } else {
-                        // case 1: `otUpdateApplied` arrives first
-                        this.reviewThreads[t] = {
-                            // eslint-disable-next-line @typescript-eslint/naming-convention
-                            doc_id: docId,
-                            messages: [],
-                        };
-                    }
-                }
-                // update review records' changes
-                else {
-                    const docId = update.doc;
-                    const userId = update.meta?.user_id || '';
-                    // create new changes array if not exists
-                    if (this.reviewRecords[docId] === undefined) {
-                        this.reviewRecords[docId] = {comments: [], changes: []};
-                    }
-                    let changes = this.reviewRecords[docId]?.changes;
-                    if (changes === undefined) {
-                        changes = [];
-                        this.reviewRecords[docId].changes = changes;
-                    }
-                    // update review records' changes
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    const metadata = { user_id: userId, ts };
-                    const editManager = new EditManager(changes, update, metadata);
-                    const refreshes = editManager.generateRefreshes();
-                    this.reviewRecords[docId].changes = editManager.updatedChanges;
-                    // debounce refresh review decorations
-                    setTimeout(() => {
-                        this.setReviewDecorations(undefined, docId, refreshes);
-                    }, 100);
                 }
             },
         });
+    }
+
+    private updateRecordComment(update: UpdateSchema, ts: string) {
+        if (!(update.op && update.op[0].t !== undefined && update.op[0].c !== undefined)) {
+            return;
+        }
+
+        const docId = update.doc;
+        const {p,c,t} = update.op[0];
+        const userId = update.meta?.user_id || '';
+        // create new comment thread if not exists
+        if (this.reviewRecords[docId] === undefined) {
+            this.reviewRecords[docId] = {comments: [], changes: []};
+        }
+        let comments = this.reviewRecords[docId]?.comments;
+        if (comments === undefined) {
+            comments = [];
+            this.reviewRecords[docId].comments = comments;
+        }
+        // update review records' comments
+        comments.push({
+            id: t,
+            op: {p,c,t},
+            metadata: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                user_id: userId, ts,
+            }
+        });
+        // update review threads with `doc_id`
+        const thread = this.reviewThreads[t];
+        if (thread) {
+            // case 2: `new-comment` arrives first
+            if (thread.doc_id === undefined) {
+                thread.doc_id = docId;
+                this.setReviewDecorations(undefined, docId, [{id:t, type:'openComment'}]);
+            }
+        } else {
+            // case 1: `otUpdateApplied` arrives first
+            this.reviewThreads[t] = {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                doc_id: docId,
+                messages: [],
+            };
+        }
+    }
+
+    private updateRecordChange(update: UpdateSchema, ts: string) {
+        const docId = update.doc;
+        const userId = update.meta?.user_id || '';
+        // create new changes array if not exists
+        if (this.reviewRecords[docId] === undefined) {
+            this.reviewRecords[docId] = {comments: [], changes: []};
+        }
+        let changes = this.reviewRecords[docId]?.changes;
+        if (changes === undefined) {
+            changes = [];
+            this.reviewRecords[docId].changes = changes;
+        }
+        // update review records' changes
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        const metadata = { user_id: userId, ts };
+        const editManager = new EditManager(changes);
+        const refreshes = editManager.generateRefreshes(update, metadata);
+        this.reviewRecords[docId].changes = editManager.changes; // update changes
+        // debounce refresh review decorations
+        setTimeout(() => {
+            this.setReviewDecorations(undefined, docId, refreshes);
+        }, 100);
+    }
+
+    provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
+        return [];
     }
 
     private setTextEditorDecoration(type: ReviewDecorationType, editor: vscode.TextEditor, range: vscode.DecorationOptions, contentText?: string): vscode.TextEditorDecorationType {
@@ -574,7 +571,7 @@ export class ReviewPanelProvider extends vscode.Disposable implements vscode.Cod
         };
 
         // set `after` attachment
-        let after;
+        let after = undefined;
         switch (type) {
             case 'openComment':
             case 'resolvedComment':
@@ -665,10 +662,6 @@ export class ReviewPanelProvider extends vscode.Disposable implements vscode.Cod
             const type = change.op.i ? 'insertChange' : 'deleteChange';
             this.setReviewDecorations(editor, fileId, [{id:change.id, type}]);
         }
-    }
-
-    provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
-        return [];
     }
 
     get triggers() {
