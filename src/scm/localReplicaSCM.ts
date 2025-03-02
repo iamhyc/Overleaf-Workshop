@@ -313,7 +313,7 @@ export class LocalReplicaSCMProvider extends BaseSCM {
         try {
             await vscode.workspace.fs.stat(settingUri);
         } catch (error) {
-            await vscode.workspace.fs.writeFile(settingUri, Buffer.from(
+            await vscode.workspace.fs.writeFile(settingUri, Uint8Array.from(
                 JSON.stringify({
                     'uri': this.vfs.origin.toString(),
                     'serverName': this.vfs.serverName,

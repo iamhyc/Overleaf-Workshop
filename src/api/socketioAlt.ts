@@ -322,7 +322,7 @@ export class SocketIOAlt {
             let increment = 0;
             for (const [path,{parentFolderId,filename}] of Object.entries(this.localChangesPath)) {
                 try {
-                    const fileContent = Buffer.from(await vfs.openFile( vfs.pathToUri(path) ));
+                    const fileContent = Uint8Array.from(await vfs.openFile( vfs.pathToUri(path) ));
                     progress.report({increment, message:`${path}`});
                     const fileEntity = (await this.api.uploadFile(this.identity, this.projectId, parentFolderId, filename, fileContent)).entity!;
                     // update local entityId

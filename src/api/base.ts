@@ -424,7 +424,7 @@ export class BaseAPI {
             }
         };
 
-        return Buffer.concat(content);
+        return Buffer.concat(content as ReadonlyArray<Uint8Array>);
     }
 
     async logout(identity:Identity): Promise<ResponseSchema> {
