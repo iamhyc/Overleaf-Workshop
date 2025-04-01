@@ -395,6 +395,9 @@ The project-irrelevant configurations of the extension can be found in the VS Co
         "dark":    {"fontColor":"#FBF0D9", "bgColor":"#4B4B4B"}
     }
     ```
+- **Formatter: Line break**: The formatter will restrict line length as 80 characters in default. Toggle the following option will disable this feature.
+
+    ![alt text](assets/screenshot-formatter-linebreak.png)
 
 ## FAQ
 
