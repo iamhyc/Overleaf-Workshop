@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1] - 2025-04-01
+### Added
+- feat: enable format without line break
+  - Commit: 33dd4835919ac2f6434cc13975973ebc4d33fc29
+
+### Changed
+- chore(deps-dev): bump vite from 4.5.5 to 4.5.9 in /views/chat-view
+  - Commit: 53fbfed4dbd7b8cb8a0ef9eef77286c286dfbe1e
+- chore(deps): bump esbuild, @vitejs/plugin-vue and vite
+  - Commit: e73ff61a242c4383830f8c5f6338db9420fb4e1f
+- docs: update wiki about formatter setting on line break
+  - Commit: 59a114bcb199da86d71f892a8c13089345449f59
+
 ## [0.15.0] - 2025-01-16
 ### Added
 - feat(scm): allow to set local replica folder name
