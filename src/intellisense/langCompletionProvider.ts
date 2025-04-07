@@ -279,12 +279,20 @@ export class FilePathCompletionProvider extends IntellisenseProvider implements 
     private parseMatch(match: RegExpMatchArray) {
         const keywords = match.slice(1, -1);
         const path = match.at(-1) as string;
-        const type:FilePathCompletionType = keywords[0]? 'text' : keywords[1] ? 'image' : 'bib';
+        const [type,postfix]: [FilePathCompletionType,string] = (()=>{
+            if (keywords[0]) {
+                return path.endsWith('.tex') ? ['text', ''] : ['text', '.tex'];
+            }
+            if (keywords[2]) {
+                return path.endsWith('.bib') ? ['bib', ''] : ['bib', '.bib'];
+            }
+            return ['image', ''];
+        })();
         const offset = '\\'.length
                         + (keywords[0]||keywords[1]||keywords[2]||'').length
                         + (keywords.at(-1)||'').length
                         +'{'.length;
-        return {path, type, offset};
+        return {path, type, offset, postfix};
     }
 
     private async getCompletionItems(uri:vscode.Uri, path: string, type: FilePathCompletionType): Promise<vscode.CompletionItem[]> {
@@ -323,8 +331,8 @@ export class FilePathCompletionProvider extends IntellisenseProvider implements 
         const links:vscode.DocumentLink[] = [];
         let match: RegExpExecArray | null;
         while (match = regex.exec(text)) {
-            const {path,offset} = this.parseMatch(match);
-            const uri = vfs.pathToUri(path);
+            const {path,offset,postfix} = this.parseMatch(match);
+            const uri = vfs.pathToUri(path + postfix);
             try {
                 await vfs.resolve(uri);
                 const range = new vscode.Range(
