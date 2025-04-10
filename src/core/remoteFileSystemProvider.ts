@@ -117,6 +117,7 @@ export class VirtualFileSystem extends vscode.Disposable {
     private isDirty: boolean = true;
     private initializing?: Promise<ProjectEntity>;
     private retryConnection: number = 0;
+    private outputBuildId?: string;
     private notify: (events:vscode.FileChangeEvent[])=>void;
     private clientManagerItem?: {manager: ClientManager, triggers: vscode.Disposable[]};
     private scmCollectionItem?: {collection: SCMCollectionProvider, triggers: vscode.Disposable[]};
@@ -912,6 +913,10 @@ export class VirtualFileSystem extends vscode.Disposable {
 
     async updateOutputs(outputs: Array<OutputFileEntity>) {
         if (this.root) {
+            // update output buildId
+            // '/project/65dbfff719ad65b54b9eaed4/user/65094b5fa537faaba0bec01f/build/19620231e54-5372f67292889500/output/output.aux' --> 19620231e54-5372f67292889500'
+            this.outputBuildId = outputs[0].url.split('/').slice(-3)[0];
+
             const rootFolder = this.root.rootFolder[0];
             if (this.removeEntityById(rootFolder, 'folder', __OUTPUTS_ID)) {
                 this.notify([
@@ -955,7 +960,7 @@ export class VirtualFileSystem extends vscode.Disposable {
 
     async syncPdf(page:number, h:number, v:number) {
         const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
-        const res = await this.api.proxySyncPdf(identity, this.projectId, page, h, v);
+        const res = await this.api.proxySyncPdf(identity, this.projectId, page, h, v, this.outputBuildId ?? '');
         if (res.type==='success') {
             return res.syncPdf;
         } else {
