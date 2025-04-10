@@ -694,9 +694,10 @@ export class BaseAPI {
         };
     }
 
-    async proxySyncPdf(identity:Identity, projectId:string, page:number, h:number, v:number) {
+    async proxySyncPdf(identity:Identity, projectId:string, page:number, h:number, v:number, buildId:string) {
         this.setIdentity(identity);
-        return this.request('GET', `project/${projectId}/sync/pdf?page=${page}&h=${h.toFixed(2)}&v=${v.toFixed(2)}`,
+        const request = `project/${projectId}/sync/pdf?page=${page}&h=${h.toFixed(2)}&v=${v.toFixed(2)}&editorId=${uuidv4()}&buildId=${buildId}`;
+        return this.request('GET', `project/${projectId}/sync/pdf?page=${page}&h=${h.toFixed(2)}&v=${v.toFixed(2)}&editorId=${uuidv4()}&buildId=${buildId}`,
                             undefined, (res) => {
                                 const syncPdf = (JSON.parse(res!) as any).code[0] as SyncPdfResponseSchema;
                                 return {syncPdf};
