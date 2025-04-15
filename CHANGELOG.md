@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.3] - 2025-04-15
+### Changed
+- fix: overleaf official site connection loss
+  - Commit: 264f3c741ebe790d3b399039a1b6f00ecac1ed88
+
 ## [0.15.2] - 2025-04-11
 ### Changed
 - fix: document link provider completed with common postfix
