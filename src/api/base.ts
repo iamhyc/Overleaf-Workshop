@@ -244,6 +244,7 @@ export class BaseAPI {
             reconnect: false,
             'force new connection': true,
             extraHeaders: {
+                'Origin': new URL(this.url).origin,
                 'Cookie': identity.cookies,
             }
         });
