@@ -947,7 +947,7 @@ export class VirtualFileSystem extends vscode.Disposable {
 
     async syncCode(filePath: string, line:number, column:number) {
         const identity = await GlobalStateManager.authenticate(this.context, this.serverName);
-        const res = await this.api.proxySyncCode(identity, this.projectId, filePath, line, column);
+        const res = await this.api.proxySyncCode(identity, this.projectId, filePath, line, column, this.outputBuildId ?? '');
         if (res.type==='success') {
             return res.syncCode;
         } else {

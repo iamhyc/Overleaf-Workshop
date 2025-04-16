@@ -705,9 +705,9 @@ export class BaseAPI {
                             });
     }
 
-    async proxySyncCode(identity:Identity, projectId:string, file:string, line:number, column:number) {
+    async proxySyncCode(identity:Identity, projectId:string, file:string, line:number, column:number, buildId:string) {
         this.setIdentity(identity);
-        return this.request('GET', `project/${projectId}/sync/code?file=${file}&line=${line}&column=${column}`,
+        return this.request('GET', `project/${projectId}/sync/code?file=${file}&line=${line}&column=${column}&editorId=${uuidv4()}&buildId=${buildId}`,
                             undefined, (res) => {
                                 const syncCode = (JSON.parse(res!) as any).pdf as SyncCodeResponseSchema;
                                 return {syncCode};
