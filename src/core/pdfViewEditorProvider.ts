@@ -65,8 +65,12 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
 
     public async resolveCustomEditor(doc: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
         EventBus.fire('pdfWillOpenEvent', {uri: doc.uri, doc, webviewPanel});
-        doc.onDidChange(() => {
+        const docOnDidChangeListener = doc.onDidChange(() => {
             this.updateWebview(doc, webviewPanel);
+        });
+
+        webviewPanel.onDidDispose(() => {
+            docOnDidChangeListener.dispose();
         });
 
         webviewPanel.webview.options = {enableScripts:true};
