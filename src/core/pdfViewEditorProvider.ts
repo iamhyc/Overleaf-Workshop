@@ -56,10 +56,17 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
         return doc;
     }
 
+    public async updateWebview(document: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
+        if (document.cache.buffer.byteLength === 0) {
+            return;
+        }
+        await webviewPanel.webview.postMessage({type:'update', content:document.cache.buffer});
+    }
+
     public async resolveCustomEditor(doc: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
         EventBus.fire('pdfWillOpenEvent', {uri: doc.uri, doc, webviewPanel});
         doc.onDidChange(() => {
-            webviewPanel.webview.postMessage({type:'update', content:doc.cache.buffer});
+            this.updateWebview(doc, webviewPanel);
         });
 
         webviewPanel.webview.options = {enableScripts:true};
@@ -84,6 +91,7 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
                     const state = GlobalStateManager.getPdfViewPersist(this.context, doc.uri.toString());
                     const colorThemes = vscode.workspace.getConfiguration('overleaf-workshop.pdfViewer').get('themes', undefined);
                     webviewPanel.webview.postMessage({type:'initState', content:state, colorThemes});
+                    this.updateWebview(doc, webviewPanel);
                     break;
                 default:
                     break;
