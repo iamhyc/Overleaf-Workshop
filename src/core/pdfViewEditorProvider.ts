@@ -56,17 +56,17 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
         return doc;
     }
 
-    public async updateWebview(document: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
-        if (document.cache.buffer.byteLength === 0) {
-            return;
-        }
-        await webviewPanel.webview.postMessage({type:'update', content:document.cache.buffer});
-    }
-
     public async resolveCustomEditor(doc: PdfDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
         EventBus.fire('pdfWillOpenEvent', {uri: doc.uri, doc, webviewPanel});
+
+        const updateWebview = () => {
+            if (doc.cache.buffer.byteLength !== 0) {
+                webviewPanel.webview.postMessage({type:'update', content:doc.cache.buffer});
+            }
+        }
+
         const docOnDidChangeListener = doc.onDidChange(() => {
-            this.updateWebview(doc, webviewPanel);
+            updateWebview();
         });
 
         webviewPanel.onDidDispose(() => {
@@ -75,7 +75,7 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
 
         webviewPanel.webview.options = {enableScripts:true};
         webviewPanel.webview.html = await this.getHtmlForWebview(webviewPanel.webview);
-        webviewPanel.webview.postMessage({type:'update', content:doc.cache.buffer});
+        updateWebview();
 
         // register event listeners
         webviewPanel.onDidChangeViewState((e) => {
@@ -95,7 +95,7 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
                     const state = GlobalStateManager.getPdfViewPersist(this.context, doc.uri.toString());
                     const colorThemes = vscode.workspace.getConfiguration('overleaf-workshop.pdfViewer').get('themes', undefined);
                     webviewPanel.webview.postMessage({type:'initState', content:state, colorThemes});
-                    this.updateWebview(doc, webviewPanel);
+                    updateWebview();
                     break;
                 default:
                     break;
