@@ -291,36 +291,6 @@ export class CompileManager {
         }
     }
 
-    private _revealSelectionInEditor(editor: vscode.TextEditor, targetLine: number, identifier: string) {
-        const _identifier = identifier.replace(/\s+/g, '\\s+');
-        // targetLine is 1-based from the syncTeX result
-        const lineIndex = targetLine - 1;
-
-        if (lineIndex < 0 || lineIndex >= editor.document.lineCount) {
-            console.warn(`${ELEGANT_NAME}: Invalid line number ${targetLine} for revealing in editor. Document has ${editor.document.lineCount} lines.`);
-            // Optionally, just focus the editor if the line is invalid
-            vscode.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, preserveFocus: false });
-            return;
-        }
-
-        const lineText = editor.document.lineAt(lineIndex).text;
-        const match = lineText.match(_identifier);
-        const matchIndex = match?.index ?? 0;
-
-        let newSelections: vscode.Selection[];
-        const newSelection = new vscode.Selection(lineIndex, matchIndex, lineIndex, matchIndex);
-        if (editor.selections.length > 0) {
-            newSelections = editor.selections.map((sel, index) =>
-                index === 0 ? newSelection : sel
-            );
-        } else {
-            newSelections = [newSelection];
-        }
-        editor.selections = newSelections;
-
-        editor.revealRange(new vscode.Range(lineIndex, matchIndex, lineIndex, matchIndex), vscode.TextEditorRevealType.InCenter);
-    }
-
     async syncPdf(r: { page: number, h: number, v: number, identifier: string }) {
         const uri = await CompileManager.check();
         if (uri) {
@@ -332,33 +302,25 @@ export class CompileManager {
                         const { file, line, column } = res;
                         const _file = file.match(/output\.[^\.]+$/) ? `${OUTPUT_FOLDER_NAME}/${file}` : file;
                         const fileUri = uri.with({ path: `/${projectName}/${_file}` });
-
-                        let viewColumnToUse: vscode.ViewColumn | undefined;
-                        const existingEditor = vscode.window.visibleTextEditors.find(
-                            e => e.document.uri.toString() === fileUri.toString()
-                        );
-
-                        if (existingEditor) {
-                            viewColumnToUse = existingEditor.viewColumn;
-                        } else {
-                            viewColumnToUse = vscode.window.visibleTextEditors.at(-1)?.viewColumn || vscode.ViewColumn.Beside;
-                        }
-
-                        vscode.window.showTextDocument(fileUri, { viewColumn: viewColumnToUse, preserveFocus: false })
-                            .then(
-                                (openedEditor) => {
-                                    if (openedEditor) {
-                                        this._revealSelectionInEditor(openedEditor, line, r.identifier);
+                        // get doc by fileUri
+                        const viewColumn = vscode.window.visibleTextEditors.at(-1)?.viewColumn || vscode.ViewColumn.Beside;
+                        vscode.commands.executeCommand('vscode.open', fileUri, { viewColumn })
+                            .then((doc) => {
+                                for (const editor of vscode.window.visibleTextEditors) {
+                                    if (editor.document.uri.toString() === fileUri.toString()) {
+                                        const _identifier = r.identifier.replace(/\s+/g, '\\s+');
+                                        const matchIndex = editor.document.lineAt(line - 1).text.match(_identifier)?.index || 0;
+                                        editor.selections = editor.selections.map((sel, index) => {
+                                            return index === 0 ?
+                                                new vscode.Selection(line - 1, matchIndex, line - 1, matchIndex)
+                                                : sel;
+                                        });
+                                        editor.revealRange(new vscode.Range(line - 1, matchIndex, line - 1, matchIndex), vscode.TextEditorRevealType.InCenter);
+                                        break;
                                     }
-                                },
-                                (error) => {
-                                    console.error(`${ELEGANT_NAME}: Failed to open document ${fileUri.fsPath} for syncPdf:`, error);
                                 }
-                            );
+                            });
                     }
-                })
-                .catch(error => {
-                    console.error(`${ELEGANT_NAME}: Error in syncPdf promise chain:`, error);
                 });
         }
     }
