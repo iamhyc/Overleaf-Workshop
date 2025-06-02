@@ -105,6 +105,10 @@ export class MisspellingCheckProvider extends IntellisenseProvider implements vs
     }
 
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeAction[]> {
+        if (context.diagnostics.length === 0) {
+            return [];
+        }
+
         const diagnostic = context.diagnostics[0];
         const actions = this.suggestionCache.get(diagnostic.code as string)
                         ?.slice(0,8).map(suggestion => {
