@@ -75,7 +75,6 @@ export class PdfViewEditorProvider implements vscode.CustomEditorProvider<PdfDoc
 
         webviewPanel.webview.options = {enableScripts:true};
         webviewPanel.webview.html = await this.getHtmlForWebview(webviewPanel.webview);
-        updateWebview();
 
         // register event listeners
         webviewPanel.onDidChangeViewState((e) => {
