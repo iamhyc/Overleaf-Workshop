@@ -28,6 +28,12 @@ export class LangIntellisenseProvider {
             new MisspellingCheckProvider(vfsm),
         ];
         this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -2);
+        // Enable CSpell
+        const config = vscode.workspace.getConfiguration("cSpell");
+        const enabledSchemes = config.get<Record<string, boolean>>("enabledSchemes") || {}; 
+        enabledSchemes[ROOT_NAME] = true; 
+        config.update("enabledSchemes", enabledSchemes, vscode.ConfigurationTarget.Global);
+        
         this.activate();
     }
 
