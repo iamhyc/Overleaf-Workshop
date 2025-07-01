@@ -68,6 +68,11 @@
         ColorThemes = themes;
         // set global css
         const style = document.createElement('style');
+        document.head.appendChild(style);
+        if (!style.sheet) {
+            console.error('Failed to initialize stylesheet for color themes.');
+            return;
+        }
         for (const theme in ColorThemes) {
             // sanitize theme name
             if (theme.match(/^[a-zA-Z0-9-_]+$/) === null) {
@@ -81,11 +86,8 @@
                 continue;
             }
             // update css
-            style.innerHTML += `
-                #theme-${theme}::before {
-                    background-color: ${ColorThemes[theme].bgColor};
-                }
-            `;
+            const rule = `#theme-${theme}::before { background-color: ${ColorThemes[theme].bgColor}; }`;
+            style.sheet.insertRule(rule, style.sheet.cssRules.length);
         }
         document.head.appendChild(style);
     }
