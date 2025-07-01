@@ -1,4 +1,7 @@
 name: Package Extension
+permissions:
+  contents: read
+  packages: write
 on:
   pull_request:
     branches: [master]
