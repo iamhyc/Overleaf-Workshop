@@ -1,4 +1,6 @@
 name: Publish Extension
+permissions:
+  contents: read
 on:
   push:
     branches: [master]
