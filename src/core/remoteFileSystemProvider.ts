@@ -100,7 +100,10 @@ export function parseUri(uri: vscode.Uri) {
     const [userId, projectId] = [query.user, query.project];
     const _pathParts = uri.path.split('/');
     const serverName = uri.authority;
-    const projectName = _pathParts[1];
+    let projectName = _pathParts[1] ? decodeURIComponent(_pathParts[1]) : '';
+    if (!projectName && query.projectName) {
+        projectName = decodeURIComponent(query.projectName);
+    }
     const pathParts = _pathParts.splice(2);
     const identifier = `${userId}/${projectId}/${projectName}`;
     return {userId, projectId, serverName, projectName, identifier, pathParts};
