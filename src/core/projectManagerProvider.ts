@@ -128,7 +128,7 @@ export class ProjectManagerProvider implements vscode.TreeDataProvider<DataItem>
                     // get project items
                     const normalProjects = [], trashedProjects = [], archivedProjects = [];
                     for (const project of projects) {
-                        const uri = `${ROOT_NAME}://${element.name}/${project.name}?user=${project.userId}&project=${project.id}`;
+                        const uri = `${ROOT_NAME}://${element.name}/${encodeURIComponent(project.name)}?user=${project.userId}&project=${project.id}`;
                         const status = project.archived ? 'archived' : project.trashed ? 'trashed' : 'normal';
                         const item = new ProjectItem(element.api, uri, element, project.id, project.name, status);
                         switch (status) {
