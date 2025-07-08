@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.5] - 2025-07-08
+### Changed
+- feat: enable code spell checker by default
+  - Commit: c0c5cba2dce779ea52c07f372775fd49ae9d3814
+- feat: check if already exists a texteditor with document shown, show it directly
+  - Commit: 926e60e558b5d878fd919a8ee3f3b8adf64deeab
+- chore: unified-latex version to 1.8.3
+  - Commit: 8610632554a4a403269b90720c688ca4355b8470
+- chore(deps-dev): bump vite from 6.2.6 to 6.3.5 in /views/chat-view
+  - Commit: 487db3077018395a92807cfddaac55ee30fff87a
+- Potential fix for code scanning alert no. 2: Workflow does not contain permissions
+  - Commit: 0c68501620699bd333bfd8917dfc7f8a8c4fd0cf
+- Potential fix for code scanning alert no. 3: Workflow does not contain permissions
+  - Commit: fd5ba0dec9c5d743bab0d11f0f91f616a980fa1c
+- chore(deps-dev): upgrade brace-expansion dependency
+  - Commit: 464c78e893a7c0525454aa0e10c49faf0c996fd7
+
+### Fixed
+- fix: update content when ready, fix cannot drag to new window (#270)
+  - Commit: f3fc02260ae06f7af2cf517574d98fe721027289
+- fix(remoteFileSystemProvider): robust project name parsing for special characters (#284)
+  - Commit: 14f30f4dc2dd096aa4071b432c59ddacaf733902
+
 ## [0.15.4] - 2025-04-16
 ### Changed
 - fix: overleaf synccode

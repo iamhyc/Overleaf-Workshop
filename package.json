@@ -2,7 +2,7 @@
   "name": "overleaf-workshop",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.15.4",
+  "version": "0.15.5",
   "icon": "resources/icons/app_icon.png",
   "author": {
     "name": "iamhyc",
@@ -19,6 +19,18 @@
       "name": "QianrenLi",
       "email": "liqr2022@mail.sustech.edu.cn",
       "url": "https://github.com/QianrenLi"
+    },
+    {
+      "name": "Mingbo-Lee",
+      "url": "https://github.com/Mingbo-Lee"
+    },
+    {
+      "name": "zeyugao",
+      "url": "https://github.com/zeyugao"
+    },
+    {
+      "name": "LaureatePoet",
+      "url": "https://github.com/LaureatePoet"
     }
   ],
   "repository": {
