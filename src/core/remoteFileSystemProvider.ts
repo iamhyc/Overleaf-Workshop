@@ -854,8 +854,8 @@ export class VirtualFileSystem extends vscode.Disposable {
             if (res?.type==='success') {
                 const newEntity = Object.assign(oldPath.fileEntity);
                 newEntity.name = newPath.fileName;
-                this.insertEntity(newPath.parentFolder, oldPath.fileType, newEntity);
                 this.removeEntity(oldPath.parentFolder, oldPath.fileType, oldPath.fileEntity);
+                this.insertEntity(newPath.parentFolder, oldPath.fileType, newEntity);
                 this.notify([
                     {type: vscode.FileChangeType.Deleted, uri: oldUri},
                     {type: vscode.FileChangeType.Created, uri: newUri},
